@@ -15,6 +15,7 @@ import { replicateMovementsNew as replicateMovements } from "./replication/movem
 import { replicateSalesNew as replicateSales } from "./replication/sale.replication";
 import { replicateDeathsNew as replicateDeaths } from "./replication/death.replication";
 import { replicateExchangesNew as replicateExchanges } from "./replication/exchange.replication";
+import { replicateOrganizationSettingsNew as replicateOrganizationSettings } from "./replication/organization_settings.replication";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { setupRealtimeSync } from "@/lib/sync/realtimeSync";
 
@@ -40,34 +41,20 @@ function getSupabaseConfig() {
   return { url, key };
 }
 
-async function checkSupabaseHealth(url: string, key: string): Promise<boolean> {
-  try {
-    SyncLogger.info("health", "Checking Supabase health...");
+async function checkSupabaseHealth(_url: string, _key: string): Promise<boolean> {
+  // Use navigator.onLine as a lightweight connectivity check.
+  // Avoids hitting the Supabase REST API directly, which logs 401 errors
+  // in the browser console that cannot be suppressed from JavaScript.
+  // The replication framework handles retries automatically when offline.
+  const isOnline = typeof navigator !== "undefined" ? navigator.onLine : true;
 
-    const response = await fetch(`${url}/rest/v1/`, {
-      method: "HEAD",
-      headers: {
-        apikey: key,
-        Authorization: `Bearer ${key}`,
-      },
-      signal: AbortSignal.timeout(5000),
-    });
-
-    const isHealthy = response.ok || response.status === 404;
-    if (isHealthy) {
-      SyncLogger.info("health", "Supabase health check: ✅ OK");
-    } else {
-      SyncLogger.warn(
-        "health",
-        `Supabase health check: ❌ FAILED (${response.status})`,
-      );
-    }
-
-    return isHealthy;
-  } catch (error) {
-    SyncLogger.error("health", "Supabase health check failed", error);
-    return false;
+  if (isOnline) {
+    SyncLogger.info("health", "Network check: ✅ Online");
+  } else {
+    SyncLogger.warn("health", "Network check: ❌ Offline");
   }
+
+  return isOnline;
 }
 
 let realtimeTeardown: (() => void) | null = null;
@@ -258,6 +245,12 @@ export async function setupReplication(db: MyDatabase) {
       SUPABASE_KEY,
     );
 
+    const organizationSettingsReplication = await replicateOrganizationSettings(
+      db,
+      SUPABASE_URL,
+      SUPABASE_KEY,
+    );
+
     (
       db as {
         replications: {
@@ -277,6 +270,7 @@ export async function setupReplication(db: MyDatabase) {
           sales: typeof salesReplication;
           deaths: typeof deathsReplication;
           exchanges: typeof exchangesReplication;
+          organization_settings: typeof organizationSettingsReplication;
         };
       }
     ).replications = {
@@ -296,6 +290,7 @@ export async function setupReplication(db: MyDatabase) {
       sales: salesReplication,
       deaths: deathsReplication,
       exchanges: exchangesReplication,
+      organization_settings: organizationSettingsReplication,
     };
 
     SyncLogger.info("setup", "Replication setup complete");
@@ -336,6 +331,7 @@ export async function setupReplication(db: MyDatabase) {
       salesReplication.start();
       deathsReplication.start();
       exchangesReplication.start();
+      organizationSettingsReplication.start();
 
       SyncLogger.info("setup", "All 16 replications started ✅");
     }, 500);
@@ -358,6 +354,7 @@ export async function setupReplication(db: MyDatabase) {
       { name: "sales", rep: salesReplication },
       { name: "deaths", rep: deathsReplication },
       { name: "exchanges", rep: exchangesReplication },
+      { name: "organization_settings", rep: organizationSettingsReplication },
     ];
 
     const errorCounts: Record<string, number> = {};

@@ -15,6 +15,7 @@ import type { Session } from "@supabase/supabase-js";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { PendingQueue } from "@/lib/sync/pendingQueue";
 import type { SyncLogEntry } from "@/lib/sync/syncLogger";
+import { setupRealtimeSync } from "@/lib/sync/realtimeSync";
 
 interface SyncStats {
   pending: number;
@@ -74,6 +75,7 @@ export function ReplicationProvider({
     Record<string, { isSyncing: boolean; error: Error | null }>
   >({});
   const [syncStats, setSyncStats] = useState<SyncStats>(defaultSyncStats);
+  const [replicationsReady, setReplicationsReady] = useState(false);
 
   useEffect(() => {
     SyncLogger.info("provider", "ReplicationProvider initialized", {
@@ -174,6 +176,7 @@ export function ReplicationProvider({
     return () => clearInterval(interval);
   }, []);
 
+  // BUG-04 FIX: Poll until db.replications is populated (it's set async after setupReplication)
   useEffect(() => {
     if (!isLoading && db && replicationsReady && (db as any).replications) {
       const replicationsMap = (db as any).replications;

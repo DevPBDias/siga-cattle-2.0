@@ -101,7 +101,58 @@ async function generateReproductionReport(
     })
     .exec();
 
-  const events = eventDocs.map((doc) => doc.toJSON() as ReproductionEvent);
+  const allDbEvents = eventDocs.map((doc) => doc.toJSON() as ReproductionEvent);
+  let events = allDbEvents;
+
+  if (filters.managementDates && filters.managementDates.length > 0) {
+    const dateSet = new Set(filters.managementDates);
+    events = events.filter(
+      (e) =>
+        (e.d10_date && dateSet.has(e.d10_date)) ||
+        (e.d11_date && dateSet.has(e.d11_date)),
+    );
+  } else if (filters.startDate || filters.endDate) {
+    events = events.filter((e) => {
+      const pivot = e.d10_date || e.d11_date;
+      if (!pivot) return false;
+      if (filters.startDate && pivot < filters.startDate) return false;
+      if (filters.endDate && pivot > filters.endDate) return false;
+      return true;
+    });
+  }
+
+  // Verificar se todas as datas do ano selecionado foram marcadas
+  const allYearDates = Array.from(
+    new Set(
+      allDbEvents
+        .flatMap((e) => [e.d10_date, e.d11_date])
+        .filter((d): d is string => !!d && (!filters.year || d.startsWith(filters.year!))),
+    ),
+  );
+
+  const isAllYearSelected =
+    Boolean(filters.year) &&
+    allYearDates.length > 0 &&
+    filters.managementDates &&
+    filters.managementDates.length > 0 &&
+    (allYearDates.every((d) => filters.managementDates!.includes(d)) ||
+      (filters.managementDates.every((d) => d.startsWith(filters.year!)) &&
+        filters.managementDates.length >= allYearDates.length));
+
+  let managementDateText = "Todas as datas";
+  if (isAllYearSelected) {
+    managementDateText = `Todas as inseminações de ${filters.year}`;
+  } else if (filters.managementDates?.length) {
+    if (filters.managementDates.length <= 3) {
+      managementDateText = filters.managementDates.map((d) => formatDate(d)).join(", ");
+    } else if (filters.year && filters.managementDates.every((d) => d.startsWith(filters.year!))) {
+      managementDateText = `Inseminações de ${filters.year} (${filters.managementDates.length} datas)`;
+    } else {
+      managementDateText = `${filters.managementDates.length} datas selecionadas`;
+    }
+  } else if (filters.startDate) {
+    managementDateText = `${formatDate(filters.startDate)} a ${formatDate(filters.endDate)}`;
+  }
 
   const reportData = {
     farmName:
@@ -109,9 +160,7 @@ async function generateReproductionReport(
         ? filters.farmNames.join(", ")
         : filters.farmName || "Todas as Fazendas",
     showFarmColumn,
-    managementDate: filters.managementDates?.length
-      ? filters.managementDates.map((d) => formatDate(d)).join(", ")
-      : "---",
+    managementDate: managementDateText,
     data: events
       .map((event) => {
         const animal = animalMap.get(event.rgn);
