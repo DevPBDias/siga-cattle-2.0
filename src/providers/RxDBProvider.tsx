@@ -122,6 +122,12 @@ export function RxDBProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    const handleCleared = () => {
+      setDb(null);
+      setIsReady(false);
+      setIsLoading(false);
+    };
+
     const handleOnline = () => {
       if (db && !error) {
         console.log("[RxDB] Back online, database ready for sync");
@@ -129,7 +135,11 @@ export function RxDBProvider({ children }: { children: React.ReactNode }) {
     };
 
     window.addEventListener("online", handleOnline);
-    return () => window.removeEventListener("online", handleOnline);
+    window.addEventListener("rxdb-cleared", handleCleared);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("rxdb-cleared", handleCleared);
+    };
   }, [db, error]);
 
   return (

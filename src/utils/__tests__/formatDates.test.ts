@@ -5,7 +5,7 @@ import {
   parseToDate,
   diffInDays,
   calculateAgeInMonths,
-} from "../formatDates";
+} from "../dates";
 
 describe("parseToDate", () => {
   it("should parse BR format (DD/MM/YYYY)", () => {
@@ -30,7 +30,6 @@ describe("parseToDate", () => {
 
   it("should return null for invalid date strings", () => {
     expect(parseToDate("invalid")).toBeNull();
-    // @ts-expect-error testing invalid input
     expect(parseToDate(null)).toBeNull();
   });
 });
@@ -41,7 +40,6 @@ describe("formatDate", () => {
   });
 
   it("should return original string for non-string input if possible", () => {
-    // @ts-expect-error testing invalid input
     expect(formatDate(null)).toBe("");
   });
 

@@ -1,6 +1,7 @@
 "use client";
 
 import ProtectedClient from "@/components/auth/WrapperAuth";
+import { MobileFooter } from "@/components/layout/MobileFooter";
 import { ReportsProvider } from "@/context/ReportsContext";
 
 export default function Layout({
@@ -10,7 +11,10 @@ export default function Layout({
 }>) {
   return (
     <ProtectedClient>
-      <ReportsProvider>{children}</ReportsProvider>
+      <ReportsProvider>
+        {children}
+        <MobileFooter />
+      </ReportsProvider>
     </ProtectedClient>
   );
 }

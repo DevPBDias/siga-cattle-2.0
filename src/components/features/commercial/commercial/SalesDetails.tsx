@@ -25,28 +25,15 @@ import {
   Legend,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { parseDateParts, MONTHS_SHORT } from "@/utils/dates";
 
-const MONTHS_SHORT = [
-  "Jan",
-  "Fev",
-  "Mar",
-  "Abr",
-  "Mai",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Set",
-  "Out",
-  "Nov",
-  "Dez",
-];
 
 const COLORS = ["#3B82F6", "#FFCC04", "#93C5FD", "#BFDBFE"];
 
 export function SalesDetails() {
   const { allSales, loading: isLoading, availableYears } = useSales();
   const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
+  const currentMonth = new Date().getMonth() + 1; // 1-indexed, agora comparado com parts.month
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   // Doughnut chart data: sales by month for selected year
@@ -54,17 +41,18 @@ export function SalesDetails() {
     const monthlyData = Array(12).fill(0);
 
     allSales.forEach((sale) => {
-      const saleDate = new Date(sale.date);
-      if (saleDate.getFullYear() === selectedYear) {
-        const month = saleDate.getMonth();
+      const parts = parseDateParts(sale.date);
+      if (!parts) return;
+      if (parts.year === selectedYear) {
+        const month = parts.month - 1; // 0-indexed
         monthlyData[month] += 1;
       }
     });
 
     return monthlyData.map((count, idx) => ({
-      name: MONTHS_SHORT[idx],
+      name: MONTHS_SHORT[idx].label,
       value: count,
-      isCurrent: idx === currentMonth && selectedYear === currentYear,
+      isCurrent: idx + 1 === currentMonth && selectedYear === currentYear,
     }));
   }, [allSales, selectedYear, currentMonth, currentYear]);
 
@@ -76,7 +64,7 @@ export function SalesDetails() {
 
     return years.map((year) => {
       const yearSales = allSales.filter(
-        (s) => new Date(s.date).getFullYear() === year,
+        (s) => parseDateParts(s.date)?.year === year,
       );
 
       const abateCount = yearSales.filter(

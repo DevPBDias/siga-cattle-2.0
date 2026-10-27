@@ -2,6 +2,7 @@ import { getDatabase } from "@/db/client";
 import { SemenDose } from "@/types/semen_dose.type";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { generateSemenDosePDF } from "../generators/semen-dose";
+import { getTodayFormatted } from "@/utils/dates";
 
 async function generateSemenDoseReport(
   params: ReportGeneratorParams
@@ -38,7 +39,7 @@ async function generateSemenDoseReport(
 
   const reportData = {
     farmName: filters.farmName || "GERAL",
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    reportDate: getTodayFormatted(),
     systemName: filters.farmName || "RICO OURO",
     totalItems: doses.length,
     data: sortedDoses.map((dose) => ({

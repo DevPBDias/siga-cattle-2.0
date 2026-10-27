@@ -1,7 +1,7 @@
 import { RxJsonSchema } from "rxdb";
 
 export const movementSchema: RxJsonSchema<any> = {
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -17,12 +17,20 @@ export const movementSchema: RxJsonSchema<any> = {
       type: "string", // ISO Date
       maxLength: 50,
     },
+    event_date: {
+      type: "string",
+      maxLength: 50,
+    },
     animal_id: {
       type: "string",
     },
     details_id: {
       type: "string",
       maxLength: 100,
+    },
+    created_by: {
+      type: "string",
+      maxLength: 36,
     },
     created_at: {
       type: "number",

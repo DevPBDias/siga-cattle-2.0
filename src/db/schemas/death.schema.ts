@@ -3,7 +3,7 @@ import { RxJsonSchema } from "rxdb";
 
 export const deathSchema: RxJsonSchema<Death> = {
   title: "deaths",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -11,6 +11,17 @@ export const deathSchema: RxJsonSchema<Death> = {
     animal_rgn: { type: "string" },
     date: { type: "string", maxLength: 50 },
     reason: { type: "string" },
+    mother_name: { type: "string" },
+    photos: {
+      type: "array",
+      maxItems: 2,
+      items: { type: "string" },
+    },
+    photo_paths: {
+      type: "array",
+      maxItems: 2,
+      items: { type: "string" },
+    },
     created_at: {
       type: "number",
       multipleOf: 1,
@@ -25,6 +36,8 @@ export const deathSchema: RxJsonSchema<Death> = {
     "animal_rgn",
     "date",
     "reason",
+    "photos",
+    "photo_paths",
     "created_at",
     "updated_at",
     "_deleted",

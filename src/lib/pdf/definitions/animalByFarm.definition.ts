@@ -6,7 +6,13 @@ import {
   ANIMAL_REPORT_AVAILABLE_COLUMNS,
   DEFAULT_SELECTED_COLUMNS,
 } from "./availableColumns";
-import { calculateAgeInMonths, getAgeRange } from "@/utils/formatDates";
+import {
+  calculateAgeInMonths,
+  getAgeRange,
+  formatDate,
+  formatAge,
+  getTodayFormatted,
+} from "@/utils/dates";
 
 async function generateAnimalByFarmReport(
   params: ReportGeneratorParams,
@@ -149,10 +155,8 @@ async function generateAnimalByFarmReport(
       sex: showSexColumn ? animal.sex || "---" : undefined,
       status: showStatusColumn ? animal.status || "---" : undefined,
       name: animal.name || "---",
-      birthDate: animal.born_date
-        ? new Date(animal.born_date).toLocaleDateString("pt-BR")
-        : "---",
-      age: animal.born_date ? calculateAge(new Date(animal.born_date)) : "---",
+      birthDate: formatDate(animal.born_date, "---"),
+      age: animal.born_date ? formatAge(animal.born_date, { short: true }) : "---",
       fatherRgd: animal.father_name || "---",
       motherRgd: animal.mother_rgn
         ? `${animal.mother_serie_rgd || ""} ${animal.mother_rgn}`
@@ -179,7 +183,7 @@ async function generateAnimalByFarmReport(
       category: getAgeRange(calculateAgeInMonths(animal.born_date)),
       observations: "---",
     })),
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    reportDate: getTodayFormatted(),
     systemName:
       filters.farmNames && filters.farmNames.length > 0
         ? filters.farmNames.join(", ")
@@ -192,25 +196,6 @@ async function generateAnimalByFarmReport(
       : [...DEFAULT_SELECTED_COLUMNS];
 
   await generateAnimalsByFarmPDF(reportData, selectedColumns);
-}
-
-function calculateAge(birthDate: Date): string {
-  const now = new Date();
-  const diffMs = now.getTime() - birthDate.getTime();
-  const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
-
-  if (diffMonths < 12) {
-    return `${diffMonths} meses`;
-  }
-
-  const years = Math.floor(diffMonths / 12);
-  const months = diffMonths % 12;
-
-  if (months === 0) {
-    return `${years} ${years === 1 ? "ano" : "anos"}`;
-  }
-
-  return `${years}a ${months}m`;
 }
 
 export const animalByFarmDefinition: ReportDefinition = {

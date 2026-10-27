@@ -29,6 +29,27 @@ async function getSupabaseForRequest(req: NextRequest) {
   return await createServerClient();
 }
 
+const ALLOWED_TABLES = new Set([
+  "animals",
+  "farms",
+  "vaccines",
+  "user_profiles",
+  "animal_metrics_weight",
+  "animal_metrics_ce",
+  "animal_vaccines",
+  "reproduction_events",
+  "animal_statuses",
+  "animal_situations",
+  "semen_doses",
+  "clients",
+  "movements",
+  "sales",
+  "deaths",
+  "exchanges",
+  "retreats",
+  "agenda_reminders",
+]);
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const table = searchParams.get("table");
@@ -41,6 +62,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       { error: "Table name is required" },
       { status: 400 },
+    );
+  }
+
+  if (!ALLOWED_TABLES.has(table)) {
+    console.warn(`[SyncAPI] Blocked unauthorized table access attempt: ${table}`);
+    return NextResponse.json(
+      { error: "Access to the requested table is forbidden" },
+      { status: 403 },
     );
   }
 
@@ -107,6 +136,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { error: "Table and documents are required" },
         { status: 400 },
+      );
+    }
+
+    if (!ALLOWED_TABLES.has(table)) {
+      console.warn(`[SyncAPI] Blocked unauthorized table write attempt: ${table}`);
+      return NextResponse.json(
+        { error: "Access to the requested table is forbidden" },
+        { status: 403 },
       );
     }
 

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import loginImg from "@/assets/images/login-page.png";
-import logoImg from "@/assets/icons/logo-hor-indiouro.png";
+import logoImg from "@/assets/icons/logo_siga_cattle.png";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
 
 export default function LoginPage() {

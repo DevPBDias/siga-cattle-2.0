@@ -24,7 +24,8 @@ export type FilterType =
   | "status"
   | "class"
   | "society"
-  | "animalState";
+  | "animalState"
+  | "eventType";
 
 /**
  * Gender filter options
@@ -40,6 +41,7 @@ export type AnimalStateFilterValue = "ATIVO" | "INATIVO" | "Ambos";
  * Sort options for animal report
  */
 export type AnimalReportSortBy = "rgn" | "classification";
+export type BirthForecastSortBy = "rgn" | "farm" | "birthDate";
 
 /**
  * Active filters state
@@ -59,6 +61,7 @@ export interface ReportFilters {
   selectedColumns?: TableColumn[];
   year?: string;
   managementDates?: string[]; // Selected d10_dates for reproduction report
+  eventType?: import("@/types/reproduction_event.type").EventType | "Todos";
   status?: string;
   statusFilterMode?: "all" | "specific"; // "all" para todos (mostra coluna), "specific" para um status (filtra, não mostra)
   sortBy?: AnimalReportSortBy; // Ordenação do relatório de animais
@@ -66,6 +69,7 @@ export interface ReportFilters {
   classFilterMode?: "all" | "specific";
   society?: string;
   societyFilterMode?: "all" | "specific";
+  birthForecastSortBy?: BirthForecastSortBy;
 }
 
 // =============================================================================
@@ -143,7 +147,7 @@ export function validateRequiredFilters(
   for (const filterType of definition.requiredFilters) {
     switch (filterType) {
       case "farm":
-        if (!filters.farmId) {
+        if (!filters.farmId && filters.farmFilterMode !== "all") {
           errors.push({ field: "farm", message: "Selecione uma fazenda" });
         }
         break;

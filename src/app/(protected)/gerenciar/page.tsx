@@ -1,162 +1,34 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import Header from "@/components/layout/Header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RgnAutocomplete } from "@/components/features/animals/RgnAutocomplete";
-import { useAnimals } from "@/hooks/db/animals/useAnimals";
-import { Animal } from "@/types/animal.type";
-import { ManageFarms } from "@/components/features/animals/manage/ManageFarms";
-import { ManageStatus } from "@/components/features/animals/manage/ManageStatus";
-import { ManageClassification } from "@/components/features/animals/manage/ManageClassification";
-import { ManageSociety } from "@/components/features/animals/manage/ManageSociety";
-import { ManageSituation } from "@/components/features/animals/manage/ManageSituation";
-import {
-  X,
-  Landmark,
-  Activity,
-  Layers,
-  Users,
-  ClipboardList,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { StandardTabList } from "@/components/ui/StandardTabList";
-import Link from "next/link";
+import ShortHeader from "@/components/layout/ShortHeader";
+import { AnimalManageSelector } from "@/components/features/animals/manage/AnimalManageSelector";
+import { AnimalManageTabs } from "@/components/features/animals/manage/AnimalManageTabs";
+import { useAnimalManage } from "@/hooks/forms/useAnimalManage";
 
-const GerenciarPage = () => {
-  const { data: animals = [] } = useAnimals();
-  const [selectedRgn, setSelectedRgn] = useState("");
-  const [activeTab, setActiveTab] = useState("fazenda");
-
-  const selectedAnimal = useMemo(() => {
-    if (!selectedRgn) return null;
-    return animals.find(
-      (a) => a.rgn?.toLowerCase() === selectedRgn.toLowerCase(),
-    );
-  }, [selectedRgn, animals]);
-
-  const rgnOptions = useMemo(() => {
-    return animals
-      .map((animal) => ({
-        label: animal.rgn || "",
-        value: animal.rgn || "",
-      }))
-      .filter((option) => option.value);
-  }, [animals]);
-
-  const handleClearSelection = () => {
-    setSelectedRgn("");
-  };
+export default function GerenciarPage() {
+  const { data, actions } = useAnimalManage();
 
   return (
-    <main className="min-h-screen bg-background pb-10">
-      <Header title="Gerenciamento" />
+    <main className="flex h-dvh flex-col overflow-hidden bg-background pb-12">
+      <ShortHeader title="Gestão Animal" />
 
-      <div className="p-4 space-y-4">
-        {/* Selector Section */}
-        <div className="space-y-3">
-          {!selectedAnimal ? (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-700 ease-in-out">
-              <label
-                htmlFor="rgn"
-                className="text-primary font-bold text-xs uppercase block mb-2"
-              >
-                Buscar Animal (RGN):
-              </label>
-              <div className="relative">
-                <RgnAutocomplete
-                  options={rgnOptions}
-                  value={selectedRgn}
-                  onSelect={setSelectedRgn}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="bg-primary/5 border border-primary/20 p-4 rounded-2xl flex justify-between items-center animate-in zoom-in-95 duration-300 shadow-sm">
-              <div>
-                <span className="text-[10px] font-bold text-foreground/50 uppercase mb-0.5">
-                  Animal Selecionado
-                </span>
-                <p className="text-xl font-black text-primary leading-none">
-                  {selectedAnimal.rgn}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleClearSelection}
-                className="text-destructive/70 hover:text-white hover:bg-destructive h-10 w-10 p-0 rounded-xl transition-all group border border-destructive/10"
-              >
-                <X className="w-5 h-5 group-hover:scale-110" />
-              </Button>
-            </div>
-          )}
-        </div>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 no-scrollbar">
+        <AnimalManageSelector
+          selectedAnimal={data.selectedAnimal}
+          rgnOptions={data.rgnOptions}
+          selectedRgn={actions.selectedRgn}
+          onSelect={actions.setSelectedRgn}
+          onClear={actions.clearSelection}
+        />
 
-        {/* Tabs Section */}
-        {selectedAnimal && (
-          <div className="animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <Tabs
-              defaultValue="fazenda"
-              value={activeTab}
-              onValueChange={setActiveTab}
-              className="w-full"
-            >
-              <StandardTabList
-                variant="simple"
-                tabs={[
-                  { value: "fazenda", label: "Fazenda" },
-                  { value: "status", label: "Status" },
-                  { value: "classe", label: "Classe" },
-                  { value: "sociedade", label: "Sociedade" },
-                  { value: "situacao", label: "Situação" },
-                ]}
-                activeTab={activeTab}
-                className="mb-4"
-              />
-
-              <div className="mt-2">
-                <TabsContent
-                  value="fazenda"
-                  className="mt-0 ring-offset-background focus-visible:outline-none"
-                >
-                  <ManageFarms selectedAnimal={selectedAnimal} />
-                </TabsContent>
-
-                <TabsContent
-                  value="status"
-                  className="mt-0 ring-offset-background focus-visible:outline-none"
-                >
-                  <ManageStatus selectedAnimal={selectedAnimal} />
-                </TabsContent>
-
-                <TabsContent
-                  value="classe"
-                  className="mt-0 ring-offset-background focus-visible:outline-none"
-                >
-                  <ManageClassification selectedAnimal={selectedAnimal} />
-                </TabsContent>
-
-                <TabsContent
-                  value="sociedade"
-                  className="mt-0 ring-offset-background focus-visible:outline-none"
-                >
-                  <ManageSociety selectedAnimal={selectedAnimal} />
-                </TabsContent>
-
-                <TabsContent
-                  value="situacao"
-                  className="mt-0 ring-offset-background focus-visible:outline-none"
-                >
-                  <ManageSituation selectedAnimal={selectedAnimal} />
-                </TabsContent>
-              </div>
-            </Tabs>
-          </div>
+        {data.selectedAnimal && (
+          <AnimalManageTabs
+            animal={data.selectedAnimal}
+            activeTab={actions.activeTab}
+            onTabChange={actions.setActiveTab}
+          />
         )}
       </div>
     </main>
   );
-};
-
-export default GerenciarPage;
+}

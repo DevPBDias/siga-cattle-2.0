@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { StandardTabList } from "@/components/ui/StandardTabList";
-import Header from "@/components/layout/Header";
+import ShortHeader from "@/components/layout/ShortHeader";
 import { useAnimalById } from "@/hooks/db/animals/useAnimalById";
 import { useAnimalVaccines } from "@/hooks/db/animal_vaccines/useAnimalVaccines";
 import { useVaccines } from "@/hooks/db/vaccines/useVaccines";
 import { useFarms } from "@/hooks/db/farms/useFarms";
 import { useDeleteAnimalVaccine } from "@/hooks/db/animal_vaccines/useDeleteAnimalVaccine";
+import { useUpdateAnimal } from "@/hooks/db/animals/useUpdateAnimal";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
+import { Animal } from "@/types/animal.type";
 import {
   Trash2,
   Syringe,
@@ -18,17 +21,19 @@ import {
   VenusAndMars,
   RulerDimensionLine,
   History,
+  Pencil,
+  Save,
 } from "lucide-react";
 import { DetailsMovementList } from "@/components/features/commercial/movements/DetailsMovementList";
-import {
-  calculateAgeInMonths as getAgeMonths,
-  getAgeRange,
-} from "@/hooks/utils/useAnimalsByAgeAndSex";
 import { ChartLineLabel } from "@/components/charts/BoiCharts";
 import { useAnimalWeights } from "@/hooks/db/animal_weights";
 import { useAnimalCE } from "@/hooks/db/animal_ce";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDate } from "@/utils/formatDates";
+import {
+  formatDate,
+  calculateAgeInMonths as getAgeMonths,
+  getAgeRange,
+} from "@/utils/dates";
 import Link from "next/link";
 import { DetailsWeightList } from "@/components/features/animals/lists/DetailsWeightList";
 import { DetailsCircunfList } from "@/components/features/animals/lists/DetailsCircunfList";
@@ -41,7 +46,43 @@ import { DeleteReproductionModal } from "@/components/features/reproduction/moda
 import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { ReproductionEventCard } from "@/components/features/reproduction/ReproductionEventCard";
 
-const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
+interface DetailsAnimalLayoutProps {
+  rgn: string;
+  isEditing?: boolean;
+  onToggleEdit?: () => void;
+  onSaveSuccess?: () => void;
+}
+
+const LABEL = "text-[10px] text-gray-500 uppercase";
+const VALUE = "text-[12px] font-semibold text-primary uppercase text-right truncate";
+const INPUT =
+  "w-full max-w-[170px] rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary outline-none focus:border-field-green font-semibold";
+
+const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="flex items-center justify-between gap-2 border-b border-border py-0.5 last:border-b-0">
+    <span className={LABEL}>{label}</span>
+    {children}
+  </div>
+);
+
+const Val = ({ children }: { children?: React.ReactNode }) => (
+  <span className={VALUE}>{children || "-"}</span>
+);
+
+const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div className="bg-card border border-border rounded-lg px-3 py-1.5 w-full">
+    <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider">{title}</h3>
+    {children}
+  </div>
+);
+
+const DetailsAnimalLayout = ({
+  rgn,
+  isEditing: externalIsEditing,
+  onToggleEdit,
+  onSaveSuccess,
+}: DetailsAnimalLayoutProps) => {
+  const { role } = useUserAccess();
   const { data: animal, loading: animalLoading } = useAnimalById(rgn);
   const { data: animalVaccines, loading: vaccinesLoading } =
     useAnimalVaccines(rgn);
@@ -72,6 +113,109 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
   );
 
   const [vaccineToDelete, setVaccineToDelete] = useState<string | null>(null);
+
+  const {
+    actions: { updateAnimal },
+    loading: isSavingAnimal,
+  } = useUpdateAnimal();
+  const [internalEditing, setInternalEditing] = useState(false);
+  const editing =
+    externalIsEditing !== undefined ? externalIsEditing : internalEditing;
+  const setEditing = (val: boolean) => {
+    setInternalEditing(val);
+    if (onToggleEdit) onToggleEdit();
+  };
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [editData, setEditData] = useState<Partial<Animal>>({});
+
+  useEffect(() => {
+    if (animal) {
+      setEditData({
+        farm_id: animal.farm_id || "",
+        breed: animal.breed || "Nelore",
+        born_date: animal.born_date || "",
+        sex: animal.sex || "F",
+        type: animal.type,
+        genotyping: animal.genotyping || "",
+        f: animal.f || "",
+        p: animal.p || "",
+        iabcgz: animal.iabcgz || "",
+        deca: animal.deca || "",
+        father_name: animal.father_name || "",
+        mother_rgn: animal.mother_rgn || "",
+        mother_serie_rgd: animal.mother_serie_rgd || "INDI",
+        maternal_grandfather_name: animal.maternal_grandfather_name || "",
+        paternal_grandfather_name: animal.paternal_grandfather_name || "",
+      });
+    }
+  }, [animal, editing]);
+
+  type TextKey =
+  | "genotyping" | "f" | "p" | "iabcgz" | "deca"
+  | "father_name" | "maternal_grandfather_name" | "paternal_grandfather_name";
+
+const onField =
+  (key: keyof Animal) =>
+  (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setEditData((prev) => ({ ...prev, [key]: e.target.value }));
+
+const textRow = (label: string, key: TextKey) => (
+  <Row label={label}>
+    {editing ? (
+      <input
+        aria-label={label}
+        value={(editData[key] as string) || ""}
+        onChange={onField(key)}
+        className={INPUT}
+      />
+    ) : (
+      <Val>{animal?.[key]}</Val>
+    )}
+  </Row>
+);
+
+const selectRow = (
+  label: string,
+  key: keyof Animal,
+  options: { value: string; label: string }[],
+  shown?: React.ReactNode,
+) => (
+  <Row label={label}>
+    {editing ? (
+      <select
+        aria-label={label}
+        value={(editData[key] as string) || ""}
+        onChange={onField(key)}
+        className={INPUT}
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    ) : (
+      <Val>{shown}</Val>
+    )}
+  </Row>
+);
+
+  const handleSaveAnimal = async () => {
+    if (!animal) return;
+    setSaveError(null);
+    try {
+      await updateAnimal(animal.rgn, editData);
+      setEditing(false);
+      if (onSaveSuccess) onSaveSuccess();
+    } catch (err) {
+      console.error("Erro ao atualizar dados do animal:", err);
+      setSaveError(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível salvar os dados do animal.",
+      );
+    }
+  };
 
   const handleEditReproduction = (event: ReproductionEvent) => {
     setEventToEdit(event);
@@ -111,9 +255,8 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
     return farm ? farm.farm_name : "SEM DADO";
   }, [animal?.farm_id, farms]);
 
-  const mother_name = `${animal?.mother_serie_rgd || ""} ${
-    animal?.mother_rgn || ""
-  }`;
+  const mother_name = `${animal?.mother_serie_rgd || ""} ${animal?.mother_rgn || ""
+    }`;
 
   if (isLoading) {
     return <DetailsSkeleton />;
@@ -122,7 +265,7 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
   if (!animal) {
     return (
       <main>
-        <Header title="Não encontrado" />
+        <ShortHeader title="Não encontrado" />
         <div className="p-4 text-center">
           <p>Animal não encontrado</p>
         </div>
@@ -133,7 +276,7 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
   return (
     <main>
       <div className="flex-1 overflow-y-auto w-full">
-        <div className="space-y-3 mt-2 w-full">
+        <div className="space-y-3 w-full">
           <div>
             <Tabs
               value={activeTab}
@@ -149,234 +292,167 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                     label: "Medidas",
                     icon: RulerDimensionLine,
                   },
-                  { value: "reproduction", label: "Repro", icon: VenusAndMars },
+                  { value: "reproduction", label: "Reprodução", icon: VenusAndMars },
                   { value: "history", label: "Histórico", icon: History },
                   { value: "graphics", label: "Gráficos", icon: LineChart },
                 ]}
                 activeTab={activeTab}
                 onTabChange={setActiveTab}
-                className="mb-4"
+                className="mb-1"
               />
-              <TabsContent
-                value="dados"
-                className="mt-0 animate-in fade-in-0 duration-200 w-full"
-              >
-                <div className="grid grid-cols-1 gap-y-1.5 w-full">
-                  <div className="space-y-1 w-full">
-                    <div className="bg-card border border-border rounded-lg px-3 py-2 w-full">
-                      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Dados Básicos
-                      </h3>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Fazenda
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {farmName}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Nascimento
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {formatDate(animal?.born_date)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Idade
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {Math.floor(getMonths / 12)}{" "}
-                          {Math.floor(getMonths / 12) === 1 ? "ano" : "anos"} e{" "}
-                          {getMonths % 12}{" "}
-                          {getMonths % 12 === 1 ? "mês" : "meses"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Categoria
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {getAgeRange(getMonths)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-0.5 border-b border-border">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          SEXO
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {animal?.sex}
-                        </span>
-                      </div>
-                      {animal?.sex === "F" && (
-                        <div className="flex justify-between items-center pt-0.5 border-b border-border">
-                          <span className="text-[11px] text-gray-500 uppercase">
-                            Tipo
-                          </span>
-                          <span className="text-sm font-semibold text-primary">
-                            {animal?.type || "-"}
-                          </span>
-                        </div>
+              <TabsContent value="dados" className="mt-0 animate-in fade-in-0 duration-200 w-full">
+                <div className="grid grid-cols-1 gap-y-1 w-full">
+                  <Card title="Dados Básicos">
+                    {selectRow(
+                      "Fazenda",
+                      "farm_id",
+                      [
+                        { value: "", label: "Selecione..." },
+                        ...(farms || []).map((f) => ({ value: f.id, label: f.farm_name })),
+                      ],
+                      farmName,
+                    )}
+                    {selectRow(
+                      "Raça",
+                      "breed",
+                      [
+                        { value: "Nelore", label: "Nelore" },
+                        { value: "Nelore Mocha", label: "Nelore Mocha" },
+                      ],
+                      animal.breed || "Nelore",
+                    )}
+                    <Row label="Nascimento">
+                      {editing ? (
+                        <input
+                          type="date"
+                          aria-label="Nascimento"
+                          value={editData.born_date || ""}
+                          onChange={onField("born_date")}
+                          className={INPUT}
+                        />
+                      ) : (
+                        <Val>{formatDate(animal.born_date)}</Val>
                       )}
-                      <div className="flex justify-between items-center pt-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          genotipagem
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {animal?.genotyping}
-                        </span>
-                      </div>
+                    </Row>
+                    <Row label="Idade">
+                      <Val>
+                        {Math.floor(getMonths / 12)}{" "}
+                        {Math.floor(getMonths / 12) === 1 ? "ano" : "anos"} e {getMonths % 12}{" "}
+                        {getMonths % 12 === 1 ? "mês" : "meses"}
+                      </Val>
+                    </Row>
+                    <Row label="Categoria">
+                      <Val>{getAgeRange(getMonths)}</Val>
+                    </Row>
+                    {selectRow(
+                      "Sexo",
+                      "sex",
+                      [
+                        { value: "F", label: "F" },
+                        { value: "M", label: "M" },
+                      ],
+                      animal.sex,
+                    )}
+                    {(editing || (editData.sex || animal.sex) === "F") &&
+                      selectRow(
+                        "Tipo",
+                        "type",
+                        [
+                          { value: "", label: "Não informado" },
+                          { value: "Doadora", label: "Doadora" },
+                          { value: "Reprodutora", label: "Reprodutora" },
+                          { value: "Receptora FIV", label: "Receptora FIV" },
+                        ],
+                        animal.type,
+                      )}
+                    {textRow("Genotipagem", "genotyping")}
+                  </Card>
+
+                  <Card title="Índices Genéticos">
+                    <div className="grid grid-cols-2 gap-x-4">
+                      {textRow("F%", "f")}
+                      {textRow("P%", "p")}
+                      {textRow("IABCZG", "iabcgz")}
+                      {textRow("Deca", "deca")}
                     </div>
-                  </div>
+                  </Card>
 
-                  <div className="space-y-1 grid grid-cols-1 gap-x-4">
-                    <div className="bg-card border border-border rounded-lg px-3 py-1.5">
-                      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Índices Genéticos
-                      </h3>
-                      <div className="flex flex-row justify-between items-start">
-                        <div className="flex flex-col justify-start items-start">
-                          <span className="text-[11px] text-gray-500 uppercase block">
-                            F%
-                          </span>
-                          <span className="text-sm font-semibold text-primary">
-                            {animal?.f}
-                          </span>
+                  <Card title="Genealogia">
+                    {textRow("Pai", "father_name")}
+                    <Row label="Mãe">
+                      {editing ? (
+                        <div className="flex items-center gap-1 max-w-[170px]">
+                          <input
+                            aria-label="Série da Mãe"
+                            value={editData.mother_serie_rgd || ""}
+                            onChange={onField("mother_serie_rgd")}
+                            placeholder="Série"
+                            className={`${INPUT} w-16`}
+                          />
+                          <input
+                            aria-label="RGN da Mãe"
+                            value={editData.mother_rgn || ""}
+                            onChange={onField("mother_rgn")}
+                            placeholder="RGN"
+                            className={`${INPUT} w-20`}
+                          />
                         </div>
-                        <div className="flex flex-col justify-start items-start">
-                          <span className="text-[11px] text-gray-500 uppercase block">
-                            P%
-                          </span>
-                          <span className="text-sm font-semibold text-primary">
-                            {animal?.p}
-                          </span>
-                        </div>
-                        <div className="flex flex-col justify-start items-start">
-                          <span className="text-[11px] text-gray-500 uppercase">
-                            IABCZG
-                          </span>
-                          <span className="text-sm font-semibold text-primary">
-                            {animal?.iabcgz}
-                          </span>
-                        </div>
-                        <div className="flex flex-col justify-start items-start">
-                          <span className="text-[10px] text-gray-500 uppercase">
-                            Deca
-                          </span>
-                          <span className="text-sm font-semibold text-primary">
-                            {animal?.deca}
-                          </span>
-                        </div>
-                      </div>
+                      ) : (
+                        <Val>{mother_name.trim()}</Val>
+                      )}
+                    </Row>
+                    {textRow("Avô Materno", "maternal_grandfather_name")}
+                    {textRow("Avô Paterno", "paternal_grandfather_name")}
+                  </Card>
+
+                  <Card title="Outras informações">
+                    <Row label="Classe">
+                      <Val>{animal.classification}</Val>
+                    </Row>
+                    <Row label="Status">
+                      <Val>{animal.status?.split(" / ").join(", ")}</Val>
+                    </Row>
+                    <Row label="Situação">
+                      <Val>{animal.document_situation?.split(" / ").join(", ")}</Val>
+                    </Row>
+                    <Row label="Sociedade">
+                      <Val>{animal.partnership}</Val>
+                    </Row>
+                  </Card>
+
+                  {role === "owner" && (
+                    <div className="mt-2 space-y-2">
+                      {saveError && (
+                        <p role="alert" className="text-xs text-destructive text-center">
+                          {saveError}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className="flex min-h-[32px] w-full items-center justify-center gap-2 rounded-md bg-primary text-xs font-bold text-white transition-colors hover:bg-field-green disabled:opacity-60 cursor-pointer shadow-xs"
+                        onClick={() => (editing ? void handleSaveAnimal() : setEditing(true))}
+                        disabled={isSavingAnimal}
+                      >
+                        {isSavingAnimal ? (
+                          "Salvando..."
+                        ) : editing ? (
+                          <><Save className="h-4 w-4" /> Salvar alterações</>
+                        ) : (
+                          <><Pencil className="h-4 w-4" /> Editar informações</>
+                        )}
+                      </button>
+                      {editing && (
+                        <button
+                          type="button"
+                          className="flex min-h-[38px] w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-xs font-bold text-primary hover:bg-muted transition-colors cursor-pointer"
+                          onClick={() => setEditing(false)}
+                          disabled={isSavingAnimal}
+                        >
+                          Cancelar
+                        </button>
+                      )}
                     </div>
-                  </div>
-
-                  <div className="space-y-1 w-full">
-                    <div className="bg-card border border-border rounded-lg px-3 py-2">
-                      <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                        Genealogia
-                      </h3>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          pai
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {animal?.father_name}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Mãe
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {mother_name}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center border-b border-border py-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Avô Materno
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {animal?.maternal_grandfather_name}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center pt-0.5">
-                        <span className="text-[11px] text-gray-500 uppercase">
-                          Avô Paterno
-                        </span>
-                        <span className="text-sm font-semibold text-primary">
-                          {animal?.paternal_grandfather_name}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1 grid grid-cols-1 gap-x-4 w-full">
-                      <div className="bg-card border border-border rounded-lg px-3 py-2 w-full">
-                        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                          Outras informações
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 justify-between items-start w-full">
-                          <div className="flex flex-col justify-start items-start">
-                            <span className="text-[11px] text-gray-500 uppercase block">
-                              Classe
-                            </span>
-                            <span className="text-sm font-semibold text-primary">
-                              {animal?.classification || "-"}
-                            </span>
-                          </div>
-
-                          <div className="flex flex-col justify-start items-start">
-                            <span className="text-[11px] text-gray-500 uppercase">
-                              Status
-                            </span>
-                            <div className="flex flex-col">
-                              {animal?.status?.split(" / ").map((s, idx) => (
-                                <span
-                                  key={idx}
-                                  className={cn(
-                                    "font-semibold text-primary truncate max-w-[150px] text-xs",
-                                  )}
-                                >
-                                  - {s}
-                                </span>
-                              )) || "-"}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col justify-start items-start">
-                            <span className="text-[11px] text-gray-500 uppercase">
-                              Situação
-                            </span>
-                            <div className="flex flex-col">
-                              {animal?.document_situation
-                                ?.split(" / ")
-                                .map((s, idx) => (
-                                  <span
-                                    key={idx}
-                                    className={cn(
-                                      "font-semibold text-primary truncate max-w-[150px] text-xs",
-                                    )}
-                                  >
-                                    {s}
-                                  </span>
-                                )) || "-"}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col justify-start items-start">
-                            <span className="text-[11px] text-gray-500 uppercase">
-                              Sociedade
-                            </span>
-                            <span className="text-sm font-semibold text-primary">
-                              {animal?.partnership || "-"}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </TabsContent>
               <TabsContent
@@ -412,8 +488,8 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                                   {vaccine.name}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
-                                  <Calendar className="w-3 h-3 text-muted-foreground" />
-                                  <span className="text-xs text-muted-foreground">
+                                  <Calendar className="w-3 h-3 text-primary" />
+                                  <span className="text-xs text-primary">
                                     {vaccine.date
                                       ? formatDate(vaccine.date)
                                       : "Data não informada"}
@@ -435,7 +511,7 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                                 </button>
                                 <button
                                   onClick={() => setVaccineToDelete(null)}
-                                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground text-xs font-medium rounded-md transition-colors"
+                                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-primary text-xs font-medium rounded-md transition-colors"
                                 >
                                   Cancelar
                                 </button>
@@ -443,7 +519,7 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                             ) : (
                               <button
                                 onClick={() => setVaccineToDelete(vaccine.id)}
-                                className="shrink-0 p-2 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                                className="shrink-0 p-2 rounded-md text-primary hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
                                 title="Excluir vacina"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -455,16 +531,17 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                     ) : (
                       <div className="bg-card border border-border rounded-lg p-6 text-center">
                         <div className="flex flex-col items-center gap-3">
-                          <div className="w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <AlertCircle className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center">
+                            <AlertCircle size={24} className="w-6 h-6 text-primary" />
                           </div>
-                          <div>
+                          <div className="flex flex-col gap-4 w-full">
                             <p className="text-sm font-medium text-foreground">
                               Nenhuma vacina registrada
                             </p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Adicione vacinas para manter o histórico do animal
-                            </p>
+                            <Link href={'/vacinas'}
+                              className="bg-primary hover:bg-primary/80 transition-colors w-full px-4 py-4 rounded-md text-xs text-white font-bold uppercase cursor-pointer">
+                              Adicionar vacinas
+                            </Link>
                           </div>
                         </div>
                       </div>
@@ -481,13 +558,13 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                   <TabsList className="grid w-full grid-cols-2 bg-linear-to-r from-muted/50 to-muted/30 rounded-lg p-1 -mb-3 h-auto gap-1 shadow-sm">
                     <TabsTrigger
                       value="weight"
-                      className="flex flex-col text-gray-500 items-center gap-1 py-2.5 px-1 text-xs sm:text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
+                      className="flex flex-col text-gray-500 items-center gap-1 py-2.5 px-1 text-xs sm:text-sm font-medium transition-all duration-200"
                     >
                       <span className="uppercase">Pesagem</span>
                     </TabsTrigger>
                     <TabsTrigger
                       value="ce"
-                      className="flex flex-col text-gray-500 items-center gap-1 py-2.5 px-1 text-xs sm:text-sm font-medium data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all duration-200"
+                      className="flex flex-col text-gray-500 items-center gap-1 py-2.5 px-1 text-xs sm:text-sm font-medium transition-all duration-200"
                     >
                       <span className="uppercase">Per. Escrotal</span>
                     </TabsTrigger>
@@ -615,7 +692,7 @@ const DetailsAnimalLayout = ({ rgn }: { rgn: string }) => {
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-4 py-12 text-center">
-                    <p className="text-muted-foreground text-sm">
+                    <p className="text-primary text-sm">
                       Nenhum evento de reprodução registrado
                     </p>
                     <Link

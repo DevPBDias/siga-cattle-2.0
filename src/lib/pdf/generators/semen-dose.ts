@@ -3,12 +3,13 @@ import autoTable from "jspdf-autotable";
 import { SemenDoseReportData } from "../types";
 import { DEFAULT_TABLE_STYLES } from "../core/base-styles";
 import { drawHeader, drawFooter } from "../core/branding-utils";
+import { todayISO } from "@/utils/dates";
 
 export const generateSemenDosePDF = async (reportData: SemenDoseReportData) => {
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
-    format: "a4",
+    format: "a3",
   });
 
   const brandingOptions = {
@@ -54,8 +55,6 @@ export const generateSemenDosePDF = async (reportData: SemenDoseReportData) => {
   drawFooter(doc);
 
   // 4. Download
-  const filename = `estoque-semen-${
-    new Date().toISOString().split("T")[0]
-  }.pdf`;
+  const filename = `estoque-semen-${todayISO()}.pdf`;
   doc.save(filename);
 };

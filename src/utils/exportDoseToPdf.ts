@@ -3,6 +3,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { saveBlobAsFile } from "./saveBlobFile";
 import { SelectedDoseReportFields } from "@/types/dose_report_field.type";
+import { formatDateTime } from "@/utils/dates";
 
 const doseFieldMap: Record<
   keyof SelectedDoseReportFields,
@@ -57,13 +58,7 @@ export async function generateDoseReportPDF(
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(255, 255, 255);
-  const dateStr = new Date().toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatDateTime(new Date());
   doc.text(`Gerado em: ${dateStr}`, pageWidth / 2, 15, {
     align: "center",
   });

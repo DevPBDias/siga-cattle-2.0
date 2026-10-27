@@ -3,6 +3,7 @@ import { Animal } from "@/types/animal.type";
 import { AnimalMetric } from "@/types/animal_metrics.type";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { generateWeightPerformancePDF } from "../generators/weight-performance";
+import { formatDate, getTodayFormatted, diffInDays } from "@/utils/dates";
 
 /**
  * Fetches weight data and generates the PDF report.
@@ -98,10 +99,7 @@ async function generateWeightReport(
         if (animalWeights.length >= 2) {
           const firstW = animalWeights[animalWeights.length - 1];
           const lastW = animalWeights[0];
-          const days = Math.abs(
-            (new Date(lastW.date).getTime() - new Date(firstW.date).getTime()) /
-              (1000 * 60 * 60 * 24),
-          );
+          const days = diffInDays(firstW.date, lastW.date);
           if (days > 0) {
             gmd = (lastW.value - firstW.value) / days;
           }
@@ -111,7 +109,7 @@ async function generateWeightReport(
           w
             ? {
                 weight: w.value,
-                date: new Date(w.date).toLocaleDateString("pt-BR"),
+                date: formatDate(w.date),
               }
             : undefined;
 
@@ -127,7 +125,7 @@ async function generateWeightReport(
           gmd: gmd,
         };
       }),
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    reportDate: getTodayFormatted(),
     systemName: "Rico Ouro",
   };
 

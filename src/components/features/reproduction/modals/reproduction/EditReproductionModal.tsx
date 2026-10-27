@@ -11,6 +11,9 @@ import { useUpdateReproductionEvent } from "@/hooks/db/reproduction_event/useUpd
 import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { useSemenDoses } from "@/hooks/db/doses/useSemenDoses";
 import { useUpdateDose } from "@/hooks/db/doses/useUpdateDose";
+import { toast } from "sonner";
+import { X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface EditReproductionModalProps {
   isOpen: boolean;
@@ -100,20 +103,32 @@ export function EditReproductionModal({
       await updateEvent(event.event_id, {
         ...data,
       });
+      toast.success("Evento de reprodução atualizado com sucesso!");
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error("Erro ao atualizar evento:", error);
+      toast.error("Erro ao atualizar evento de reprodução.");
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" hideDefaultClose>
+        <DialogHeader className="flex flex-row items-center justify-between pr-0">
           <DialogTitle className="text-primary font-bold uppercase">
             Editar Evento de Reprodução
           </DialogTitle>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            aria-label="Fechar"
+            className="h-8 w-8 p-0 rounded-md text-destructive border border-destructive/40 hover:bg-destructive hover:text-white transition-all"
+          >
+            <X className="h-4 w-4" />
+          </Button>
         </DialogHeader>
         <ReproductionForm
           initialData={event}

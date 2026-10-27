@@ -2,9 +2,16 @@
 
 import type React from "react";
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, GitFork, Dna } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Accordion,
+  AccordionItem,
+  AccordionTrigger,
+  AccordionContent,
+} from "@/components/ui/accordion";
 import { Animal } from "@/types/animal.type";
+import { todayISO } from "@/utils/dates";
 import { BasicInfoSection } from "./sections/BasicInfoSection";
 import { GenealogySection } from "./sections/GenealogySection";
 import { GeneticDataSection } from "./sections/GeneticDataSection";
@@ -27,9 +34,10 @@ export function AnimalForm({
   const [formData, setFormData] = useState({
     rgn: initialData?.rgn || "",
     serie_rgd: initialData?.serie_rgd || "INDI",
+    breed: initialData?.breed || "Nelore",
     name: initialData?.name || "",
     sex: initialSex || initialData?.sex || "",
-    born_date: initialData?.born_date || new Date().toISOString().split("T")[0],
+    born_date: initialData?.born_date || todayISO(),
     father_name: initialData?.father_name || "",
     mother_rgn: initialData?.mother_rgn || "",
     mother_serie_rgd: initialData?.mother_serie_rgd || "INDI",
@@ -47,9 +55,10 @@ export function AnimalForm({
       setFormData({
         rgn: initialData.rgn || "",
         serie_rgd: initialData.serie_rgd || "INDI",
+        breed: initialData.breed || "Nelore",
         name: initialData.name || "",
         sex: initialSex || initialData.sex || "",
-        born_date: initialData.born_date || new Date().toISOString().split("T")[0],
+        born_date: initialData.born_date || todayISO(),
         father_name: initialData.father_name || "",
         mother_rgn: initialData.mother_rgn || "",
         mother_serie_rgd: initialData.mother_serie_rgd || "INDI",
@@ -68,6 +77,7 @@ export function AnimalForm({
     e.preventDefault();
     const cleanData: Partial<Animal> = {
       ...formData,
+      breed: formData.breed || "Nelore",
       sex: formData.sex as any,
       status: formData.status as any,
       genotyping: formData.genotyping,
@@ -82,23 +92,67 @@ export function AnimalForm({
       onSubmit={handleSubmit}
       className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
     >
-      <div className="space-y-4">
-        <BasicInfoSection 
-          formData={formData} 
-          setFormData={setFormData} 
-          isEditMode={isEditMode} 
+      <div className="space-y-6">
+        <BasicInfoSection
+          formData={formData}
+          setFormData={setFormData}
+          isEditMode={isEditMode}
           initialSex={initialSex}
         />
-        
-        <GenealogySection 
-          formData={formData} 
-          setFormData={setFormData} 
-        />
-        
-        <GeneticDataSection 
-          formData={formData} 
-          setFormData={setFormData} 
-        />
+
+        <Accordion
+          type="multiple"
+          defaultValue={[]}
+          className="space-y-4"
+        >
+          <AccordionItem
+            value="genealogia"
+            className="rounded-2xl border border-border/60 bg-card px-4 shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3.5">
+              <div className="flex items-center gap-2">
+                <GitFork className="h-4 w-4 text-primary/70" />
+                <span className="font-bold text-sm text-primary uppercase">
+                  Genealogia
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  (Opcional)
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 border-t border-border/40 text-sm space-y-3">
+              <GenealogySection
+                formData={formData}
+                setFormData={setFormData}
+                hideTitle
+              />
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem
+            value="dados-geneticos"
+            className="rounded-2xl border border-border/60 bg-card px-4 shadow-sm"
+          >
+            <AccordionTrigger className="hover:no-underline py-3.5">
+              <div className="flex items-center gap-2">
+                <Dna className="h-4 w-4 text-primary/70" />
+                <span className="font-bold text-sm text-primary uppercase">
+                  Dados Genéticos
+                </span>
+                <span className="text-[10px] text-muted-foreground font-normal">
+                  (Opcional)
+                </span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 border-t border-border/40 text-sm space-y-3">
+              <GeneticDataSection
+                formData={formData}
+                setFormData={setFormData}
+                hideTitle
+              />
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
       </div>
 
       <Button

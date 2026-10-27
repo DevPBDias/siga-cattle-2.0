@@ -13,6 +13,7 @@ import { Client } from "@/types/client.type";
 import { Sale } from "@/types/sale.type";
 import { Death } from "@/types/death.type";
 import { Exchange } from "@/types/exchange.type";
+import { UserProfile } from "@/types/user_profile.type";
 
 import { Movement } from "@/types/movement.type";
 
@@ -31,11 +32,13 @@ export type MovementCollection = RxCollection<Movement>;
 export type SaleCollection = RxCollection<Sale>;
 export type DeathCollection = RxCollection<Death>;
 export type ExchangeCollection = RxCollection<Exchange>;
+export type UserProfileCollection = RxCollection<UserProfile>;
 
 export type MyDatabaseCollections = {
   animals: AnimalCollection;
   vaccines: VaccineCollection;
   farms: FarmCollection;
+  user_profiles: UserProfileCollection;
   animal_metrics_weight: AnimalMetricWeightCollection;
   animal_metrics_ce: AnimalMetricCECollection;
   animal_vaccines: AnimalVaccineCollection;
@@ -55,6 +58,7 @@ export type MyDatabase = RxDatabase<MyDatabaseCollections> & {
     animals: RxReplicationState<Animal, any>;
     vaccines: RxReplicationState<Vaccine, any>;
     farms: RxReplicationState<Farm, any>;
+    user_profiles: RxReplicationState<UserProfile, any>;
     animal_metrics_weight: RxReplicationState<AnimalMetric, any>;
     animal_metrics_ce: RxReplicationState<AnimalMetric, any>;
     animal_vaccines: RxReplicationState<AnimalVaccine, any>;

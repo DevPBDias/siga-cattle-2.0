@@ -8,8 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import { DoseSortOption } from "@/types/semen_dose.type";
 
-export type SortOption = "name-asc" | "name-desc" | "qty-asc" | "qty-desc";
+export type SortOption = DoseSortOption;
 
 interface FilterBottomSheetProps {
   open: boolean;

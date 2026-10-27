@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import { AnimalMetric } from "@/types/animal_metrics.type";
-import { formatDate } from "@/utils/formatDates";
+import { formatDate } from "@/utils/dates";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { SuccessModal } from "@/components/modals/SuccessModal";
 

@@ -3,6 +3,7 @@ import { Animal } from "@/types/animal.type";
 import { AnimalVaccine, Vaccine } from "@/types/vaccine.type";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { generateSanitaryByFarmPDF } from "../generators/sanitary-by-farm";
+import { formatDate, getTodayFormatted, todayISO } from "@/utils/dates";
 
 async function generateSanitaryReport(
   params: ReportGeneratorParams,
@@ -61,7 +62,7 @@ async function generateSanitaryReport(
         rgn: { $in: animalRgns },
         date: {
           $gte: filters.startDate || "",
-          $lte: filters.endDate || new Date().toISOString().split("T")[0],
+          $lte: filters.endDate || todayISO(),
         },
       },
       sort: [{ date: "desc" as const }],
@@ -79,12 +80,8 @@ async function generateSanitaryReport(
       filters.farmNames && filters.farmNames.length > 0
         ? filters.farmNames.join(", ")
         : filters.farmName || "Todas as Fazendas",
-    startDate: filters.startDate
-      ? new Date(filters.startDate).toLocaleDateString("pt-BR")
-      : "",
-    endDate: filters.endDate
-      ? new Date(filters.endDate).toLocaleDateString("pt-BR")
-      : "",
+    startDate: formatDate(filters.startDate),
+    endDate: formatDate(filters.endDate),
     data: vaccinations.map((vac) => {
       const animal = animalMap.get(vac.rgn);
       return {
@@ -92,11 +89,11 @@ async function generateSanitaryReport(
         rgn: vac.rgn || "",
         animalName: animal?.name || "---",
         vaccineName: vaccineMap.get(vac.vaccine_id) || "---",
-        date: vac.date ? new Date(vac.date).toLocaleDateString("pt-BR") : "---",
+        date: formatDate(vac.date, "---"),
         observations: "---",
       };
     }),
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    reportDate: getTodayFormatted(),
     systemName: "Rico Ouro",
   };
 

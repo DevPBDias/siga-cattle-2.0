@@ -1,30 +1,33 @@
 import { Links } from "@/types/links.type";
-import consult2 from "@/assets/icons/consult2.png";
-import vaccine2 from "@/assets/icons/vaccine2.png";
-import farm2 from "@/assets/icons/farm2.png";
-import weigths2 from "@/assets/icons/weigths2.png";
-import reports2 from "@/assets/icons/reports2.png";
-import reproduction from "@/assets/icons/reproduction_bov.png";
-import semen from "@/assets/icons/semen.png";
-import movimentacoes from "@/assets/icons/movimentacoes.png";
-import borns2 from "@/assets/icons/borns2.png";
-import sales_clients from "@/assets/icons/sales_clients.png";
+import consult2 from "@/assets/btn-icons/consult.png";
+import vaccine2 from "@/assets/btn-icons/vaccine.png";
+import farm2 from "@/assets/btn-icons/management.png";
+import weigths2 from "@/assets/btn-icons/metrics.png";
+import reports2 from "@/assets/btn-icons/data.png";
+import reproduction from "@/assets/btn-icons/reproductions.png";
+import semen from "@/assets/btn-icons/semen.png";
+import movimentacoes from "@/assets/btn-icons/movements.png";
+import borns2 from "@/assets/btn-icons/borns.png";
+import sales_clients from "@/assets/btn-icons/sales.png";
+import rfidReader from "@/assets/btn-icons/earrings.png";
+import moveCattle from "@/assets/btn-icons/move-cattle.png";
+
 
 export const homeLinks: Links[] = [
   {
     id: 1,
-    name: "Consulta Animal",
+    name: "Consulta",
     href: "/consulta",
     iconSrc: consult2,
-    className: "h-14 w-14 object-cover",
+    className: "h-12 w-12 object-cover",
     fontSize: "text-[9px]",
   },
   {
     id: 2,
-    name: "Gestão Animal",
+    name: "Gestão animal",
     href: "/gerenciar",
     iconSrc: farm2,
-    className: "h-14 w-14 object-cover",
+    className: "h-12 w-14 object-cover",
     fontSize: "text-[9px]",
   },
   {
@@ -32,15 +35,15 @@ export const homeLinks: Links[] = [
     name: "Medidas",
     href: "/pesagem-ce",
     iconSrc: weigths2,
-    className: "h-14 w-14 object-cover",
+    className: "h-12 w-14 object-cover",
     fontSize: "text-[9px]",
   },
   {
     id: 4,
-    name: "Nascimento",
+    name: "Nascimentos",
     href: "/nascimentos",
     iconSrc: borns2,
-    className: "h-14 w-14 object-cover",
+    className: "h-12 w-13 object-cover",
     fontSize: "text-[9px]",
   },
   {
@@ -48,7 +51,7 @@ export const homeLinks: Links[] = [
     name: "Vacinas",
     href: "/vacinas",
     iconSrc: vaccine2,
-    className: "h-13 w-13 object-cover",
+    className: "h-11 w-11 object-cover",
     fontSize: "text-[9px]",
   },
   {
@@ -56,39 +59,55 @@ export const homeLinks: Links[] = [
     name: "Movimentações",
     href: "/movimentacoes",
     iconSrc: movimentacoes,
-    className: "h-14 w-18 object-cover",
-    fontSize: "text-[8px]",
+    className: "h-11 w-11 object-cover",
+    fontSize: "text-[8.5px]",
   },
   {
     id: 7,
     name: "Reprodução",
     href: "/reproducao",
     iconSrc: reproduction,
-    className: "h-14 w-14 object-cover",
+    className: "h-11 w-14 object-cover",
     fontSize: "text-[9px]",
   },
   {
     id: 8,
-    name: "Estoque de Sêmen",
+    name: "Touros / Semen",
     href: "/gerenciar/doses-semen",
     iconSrc: semen,
-    className: "h-14 w-12 object-cover",
+    className: "h-10 w-7 object-cover",
     fontSize: "text-[9px]",
   },
   {
     id: 9,
-    name: "Vendas Clientes",
+    name: "Gestão comercial",
     href: "/comercial",
     iconSrc: sales_clients,
-    className: "h-16 w-14 object-cover",
-    fontSize: "text-[9px]",
+    className: "h-10 w-12 object-cover",
+    fontSize: "text-[8px]",
   },
   {
     id: 10,
     name: "Relatórios",
     href: "/geral",
     iconSrc: reports2,
-    className: "h-12 w-12 object-cover",
+    className: "h-11 w-10 object-cover",
+    fontSize: "text-[9px]",
+  },
+  {
+    id: 11,
+    name: "Leitura",
+    href: "/leitor-brinco",
+    iconSrc: rfidReader,
+    className: "h-11 w-13 object-cover",
+    fontSize: "text-[9px]",
+  },
+  {
+    id: 12,
+    name: "Mover rebanho",
+    href: "/mover-rebanho",
+    iconSrc: moveCattle,
+    className: "h-10 w-9 object-cover",
     fontSize: "text-[9px]",
   },
 ];

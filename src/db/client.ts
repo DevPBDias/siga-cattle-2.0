@@ -10,8 +10,8 @@ import { wrappedValidateAjvStorage } from "rxdb/plugins/validate-ajv";
 import { animalSchema } from "./schemas/animal.schema";
 import { vaccineSchema } from "./schemas/vaccine.schema";
 import { farmSchema } from "./schemas/farm.schema";
+import { userProfileSchema } from "./schemas/user_profile.schema";
 import { MyDatabase, MyDatabaseCollections } from "./collections";
-import { setupReplication } from "./replication";
 import { animalMetricCESchema } from "./schemas/animal_metric_ce.schema";
 import { animalMetricWeightSchema } from "./schemas/animal_metric_weight.schema";
 import { animalVaccineSchema } from "./schemas/animal_vaccines.type";
@@ -49,7 +49,7 @@ async function loadDevModePlugin(): Promise<void> {
   }
 }
 
-const DB_VERSION = "v15";
+const DB_VERSION = "v1";
 const DB_NAME = `indi_ouro_db_${DB_VERSION}`;
 
 let storageInstance: RxStorage<any, any> | null = null;
@@ -85,6 +85,26 @@ async function createDatabase(): Promise<MyDatabase> {
 
     const collectionsCount = Object.keys(db.collections).length;
     if (collectionsCount > 0) {
+      if (!db.user_profiles) {
+        await db.addCollections({
+          user_profiles: {
+            schema: userProfileSchema,
+            conflictHandler: {
+              isEqual: defaultConflictHandler.isEqual,
+              resolve: async (i: any) =>
+                lastWriteWins(i.newDocumentState, i.realMasterState),
+            },
+            migrationStrategies: {
+              1: (oldDocument: Record<string, unknown>) => ({
+                ...oldDocument,
+                role: oldDocument.role ?? "owner",
+                permissions: oldDocument.permissions ?? {},
+              }),
+            },
+          },
+        });
+        console.log("[RxDB] user_profiles migrated to v1 in existing database");
+      }
       console.log(
         `[RxDB] Database already has ${collectionsCount} collections, skipping addCollections`,
       );
@@ -103,12 +123,39 @@ async function createDatabase(): Promise<MyDatabase> {
         animals: {
           schema: animalSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              is_natural_bull: oldDocument.is_natural_bull === true,
+            }),
+            2: (oldDocument: Record<string, unknown>) => oldDocument,
+            3: (oldDocument: Record<string, unknown>) => oldDocument,
+            4: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              breed: (oldDocument.breed as string) || "Nelore",
+            }),
+            5: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              animal_image: oldDocument.animal_image ?? undefined,
+            }),
+          },
         },
         vaccines: {
           schema: vaccineSchema,
           conflictHandler: customConflictHandler,
         },
         farms: { schema: farmSchema, conflictHandler: customConflictHandler },
+        user_profiles: {
+          schema: userProfileSchema,
+          conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              role: oldDocument.role ?? "owner",
+              permissions: oldDocument.permissions ?? {},
+            }),
+          },
+        },
         animal_metrics_ce: {
           schema: animalMetricCESchema,
           conflictHandler: customConflictHandler,
@@ -144,6 +191,12 @@ async function createDatabase(): Promise<MyDatabase> {
         movements: {
           schema: movementSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              event_date: oldDocument.event_date ?? oldDocument.date,
+            }),
+          },
         },
         sales: {
           schema: saleSchema,
@@ -152,6 +205,15 @@ async function createDatabase(): Promise<MyDatabase> {
         deaths: {
           schema: deathSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              photos: Array.isArray(oldDocument.photos) ? oldDocument.photos : [],
+              photo_paths: Array.isArray(oldDocument.photo_paths)
+                ? oldDocument.photo_paths
+                : [],
+            }),
+          },
         },
         exchanges: {
           schema: exchangeSchema,
@@ -177,10 +239,6 @@ async function createDatabase(): Promise<MyDatabase> {
       }
       throw err;
     }
-
-    setupReplication(db).catch((err: Error) => {
-      console.error("[RxDB] Replication setup failed:", err);
-    });
 
     return db;
   } catch (err) {
@@ -233,8 +291,21 @@ export async function clearAllDatabases(): Promise<void> {
   }
 
   try {
+    const preservedLocalStorageKeys = ["rico_ouro_market_quotes"];
+    const preservedLocalStorage = Object.fromEntries(
+      preservedLocalStorageKeys
+        .map((key) => [key, localStorage.getItem(key)] as const)
+        .filter(([, value]) => value !== null),
+    );
     localStorage.clear();
+    Object.entries(preservedLocalStorage).forEach(([key, value]) => {
+      if (typeof value === "string") localStorage.setItem(key, value);
+    });
     console.log("[RxDB] LocalStorage cleared");
+  } catch (e) {}
+
+  try {
+    sessionStorage.clear();
   } catch (e) {}
 
   try {
@@ -270,6 +341,9 @@ export async function clearAllDatabases(): Promise<void> {
                 name,
                 "- close other tabs if possible.",
               );
+              // Outra aba pode manter uma conexÃ£o aberta. O logout nÃ£o pode
+              // ficar aguardando indefinidamente por essa exclusÃ£o.
+              setTimeout(resolve, 300);
             };
           });
         }
@@ -300,6 +374,9 @@ export async function clearAllDatabases(): Promise<void> {
     console.log("[RxDB] Full purge complete.");
   } catch (err) {
     console.error("[RxDB] Critical error during database cleanup:", err);
+  } finally {
+    // Informa o provider mesmo quando algum banco nÃ£o pÃ´de ser excluÃ­do.
+    window.dispatchEvent(new Event("rxdb-cleared"));
   }
 }
 

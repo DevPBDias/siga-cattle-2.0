@@ -39,7 +39,7 @@ export function SemenDoseSelector({
         </label>
       )}
       <Select value={value} onValueChange={handleValueChange}>
-        <SelectTrigger className="bg-muted/40 border-0 h-11 w-full text-sm">
+        <SelectTrigger className="bg-muted/40 border-0 w-full text-sm">
           {isLoading ? (
             <div className="flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />

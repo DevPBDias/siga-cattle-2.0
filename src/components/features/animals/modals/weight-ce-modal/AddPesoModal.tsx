@@ -15,7 +15,9 @@ import {
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { FormRow } from "@/components/ui/FormRow";
+
+import { isFutureDate, toISODate } from "@/utils/dates";
 
 interface AddPesoModalProps {
   onAddPeso: (mes: string, valor: number) => void;
@@ -41,30 +43,34 @@ export function AddPesoModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (valor.trim() && data.trim()) {
-      const selectedDate = new Date(data);
-      const today = new Date();
-      today.setHours(23, 59, 59, 999); // Final do dia de hoje
-
-      if (selectedDate > today) {
+      if (isFutureDate(data)) {
         alert("A data da medição não pode ser no futuro.");
         return;
       }
 
-      const [ano, mes, dia] = data.split("-");
-      const dataFormatada = `${dia}/${mes}/${ano}`;
-
-      onAddPeso(dataFormatada, Number(valor));
+      const isoDate = toISODate(data);
+      onAddPeso(isoDate, Number(valor));
       setValor("");
       setData("");
       setOpen(false);
     }
   };
 
+  const handleBornChange = (checked: boolean) => {
+    setIsBorn?.(checked);
+
+    if (checked && bornDate) {
+      setData(toISODate(bornDate));
+    } else {
+      setData("");
+    }
+  };
+
   const isPeso = type === "peso";
   const title = isPeso ? "Adicionar Peso" : "Adicionar Circunferência Escrotal";
   const description = isPeso
-    ? "Informe o peso em kg e selecione a data da pesagem."
-    : "Informe a circunferência em cm e selecione a data da medição.";
+    ? "Informe o peso em kg e a data da pesagem."
+    : "Informe a circunferência em cm e a data da medição.";
   const unit = isPeso ? "kg" : "cm";
 
   return (
@@ -75,91 +81,66 @@ export function AddPesoModal({
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="w-[95%] max-h-[90vh] rounded-lg overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="w-full text-xl text-left font-bold text-primary">
+          <DialogTitle className="text-left text-primary font-bold uppercase">
             {title}
           </DialogTitle>
-          <DialogDescription className="w-full text-base text-left flex justify-between items-center">
+          <DialogDescription className="flex w-full items-center justify-between gap-2 text-left text-sm">
             <span>{description}</span>
             {lastValue !== undefined && lastValue > 0 && (
-              <span className="bg-primary/10 text-primary px-2 py-1 rounded text-xs font-bold border border-primary/20">
+              <span className="shrink-0 rounded border border-primary/20 bg-primary/10 px-2 py-1 text-xs font-bold text-primary">
                 LTC: {lastValue} {unit}
               </span>
             )}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label
-              htmlFor="valor"
-              className="text-lg font-semibold text-primary"
-            >
-              Valor ({unit})
-            </label>
-            <Input
-              id="valor"
-              type="number"
-              step="0.1"
-              value={valor}
-              className="my-2 h-10"
-              onChange={(e) => setValor(e.target.value)}
-              placeholder={`Digite o valor em ${unit}`}
-              required
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="space-y-3">
+            <FormRow label={`Valor (${unit})`} htmlFor="valor" required>
+              <Input
+                id="valor"
+                type="number"
+                step="0.1"
+                value={valor}
+                className="h-11 placeholder:text-xs border-0 bg-muted/40"
+                onChange={(e) => setValor(e.target.value)}
+                placeholder={`Valor em ${unit}`}
+                required
+              />
+            </FormRow>
 
-          <DatePicker
-            label="Data da medição"
-            value={data}
-            onChange={setData}
-            required
-          />
+            <FormRow label="Data da medição" required>
+              <DatePicker value={data} onChange={setData} required />
+            </FormRow>
 
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="born_metric"
-              checked={isBorn}
-              onCheckedChange={(checked) => {
-                const isChecked = checked as boolean;
-                setIsBorn?.(isChecked);
-                if (isChecked && bornDate) {
-                  // Preencher a data com a data de nascimento
-                  // bornDate pode ser DD/MM/YYYY ou ISO
-                  let formattedDate = "";
-                  if (bornDate.includes("/")) {
-                    const [dia, mes, ano] = bornDate.split("/");
-                    formattedDate = `${ano}-${mes}-${dia}`;
-                  } else {
-                    formattedDate = bornDate.split("T")[0];
-                  }
-                  setData(formattedDate);
-                } else {
-                  setData("");
-                }
-              }}
-            />
-            <Label
+            <FormRow
+              label={isPeso ? "Peso nascimento?" : "Medição inicial?"}
               htmlFor="born_metric"
-              className="text-base font-semibold text-primary"
             >
-              {isPeso ? "Peso Nascimento?" : "Medição Inicial?"}
-            </Label>
+              <Checkbox
+                id="born_metric"
+                checked={isBorn}
+                onCheckedChange={(checked) =>
+                  handleBornChange(checked === true)
+                }
+              />
+            </FormRow>
           </div>
 
-          <DialogFooter className="grid grid-cols-2 gap-2">
+          <DialogFooter className="grid grid-cols-2 gap-4">
             <Button
               type="button"
               variant="outline"
-              className="w-full text-base"
+              className="h-11 w-full text-xs font-bold uppercase tracking-wider"
               onClick={() => setOpen(false)}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              className="w-full text-base bg-primary"
+              className="h-11 w-full bg-primary text-xs font-black uppercase tracking-wider shadow-md hover:bg-primary/90"
               disabled={!valor.trim() || !data.trim()}
             >
               Adicionar

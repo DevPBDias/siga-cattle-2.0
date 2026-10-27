@@ -17,15 +17,21 @@ import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useDeathById } from "@/hooks/db/deaths/useDeathById";
 import { useSaleById } from "@/hooks/db/sales/useSaleById";
 import { useExchangeById } from "@/hooks/db/exchanges/useExchangeById";
+import { FormRow } from "@/components/ui/FormRow";
+import { todayISO, toISODate } from "@/utils/dates";
 
 interface MovementFormProps {
   onSuccess?: () => void;
   initialMovement?: Movement | null;
+  initialType?: MovementType;
+  hideTypeSelector?: boolean;
 }
 
 export function MovementForm({
   onSuccess,
   initialMovement,
+  initialType,
+  hideTypeSelector = false,
 }: MovementFormProps) {
   const {
     actions: { createMovement, updateMovement },
@@ -38,15 +44,15 @@ export function MovementForm({
 
   // Initialize state based on initialMovement if editing
   const [movementType, setMovementType] = useState<MovementType | "">(
-    initialMovement?.type || "",
+    initialMovement?.type || initialType || "",
   );
 
   // Common fields (for morte, venda, troca)
   const [animalId, setAnimalId] = useState(initialMovement?.animal_id || "");
   const [date, setDate] = useState(
     initialMovement?.date
-      ? initialMovement.date.split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      ? toISODate(initialMovement.date)
+      : todayISO(),
   );
 
   // Animal Validation
@@ -239,20 +245,33 @@ export function MovementForm({
       ? (!!initialMovement || !!clientId) && !!substitute_animal_rgn
       : true);
 
+  const formTitle = initialMovement
+    ? "Editar Movimentação"
+    : movementType === "venda"
+      ? "Nova Venda"
+      : movementType === "troca"
+        ? "Nova Troca"
+        : "Nova Movimentação";
+  const formSubtitle = initialMovement
+    ? "Altere os dados da movimentação selecionada."
+    : movementType === "venda"
+      ? "Registre a venda de um animal e os dados do pagamento."
+      : movementType === "troca"
+        ? "Registre a troca de um animal por outro."
+        : "Registre morte, venda ou troca de animal.";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6" autoComplete="off">
       <div className="mb-6">
         <h2 className="text-lg font-bold text-primary uppercase">
-          {initialMovement ? "Editar Movimentação" : "Nova Movimentação"}
+          {formTitle}
         </h2>
         <p className="text-muted-foreground text-sm">
-          {initialMovement
-            ? "Altere os dados da movimentação selecionada."
-            : "Registre morte, venda ou troca de animal."}
+          {formSubtitle}
         </p>
       </div>
 
-      <div className="space-y-2 w-full">
+      {!hideTypeSelector && <div className="space-y-2 w-full">
         <label className="text-xs uppercase font-bold text-primary">
           Tipo de Movimentação
         </label>
@@ -270,15 +289,12 @@ export function MovementForm({
             <SelectItem value="troca">Troca</SelectItem>
           </SelectContent>
         </Select>
-      </div>
+      </div>}
 
       {movementType && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs uppercase font-bold text-primary px-1">
-                Animal (RGN)
-              </label>
+          <div className="space-y-3">
+            <FormRow label="Animal (RGN)" htmlFor="animal-rgn-input" required>
               <div className="relative">
                 <Input
                   id="animal-rgn-input"
@@ -299,16 +315,15 @@ export function MovementForm({
                   </p>
                 )}
               </div>
-            </div>
+            </FormRow>
 
-            <DatePicker label="Data" value={date} onChange={setDate} required />
+            <FormRow label="Data" required>
+              <DatePicker value={date} onChange={setDate} required />
+            </FormRow>
           </div>
 
           {movementType === "morte" && (
-            <div className="space-y-2">
-              <label className="text-xs uppercase font-bold text-primary px-1">
-                Motivo
-              </label>
+            <FormRow label="Motivo" htmlFor="death-reason" required>
               <Input
                 id="death-reason"
                 name="reason"
@@ -320,16 +335,13 @@ export function MovementForm({
                 placeholder="Ex: Picada de cobra"
                 required
               />
-            </div>
+            </FormRow>
           )}
 
           {movementType === "venda" && (
             <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    Tipo de Venda
-                  </label>
+              <div className="space-y-3">
+                <FormRow label="Tipo de Venda">
                   <Select
                     value={saleType}
                     onValueChange={(v) =>
@@ -344,15 +356,9 @@ export function MovementForm({
                       <SelectItem value="abate">Abate</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormRow>
 
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    Cliente{" "}
-                    {movementType === "venda" && (
-                      <span className="text-red-500">*</span>
-                    )}
-                  </label>
+                <FormRow label="Cliente" required>
                   <Select value={clientId} onValueChange={setClientId}>
                     <SelectTrigger
                       className={`bg-muted border-0 rounded-sm mt-1 w-full text-left ${movementType === "venda" && !clientId ? "ring-1 ring-orange-400" : ""}`}
@@ -377,14 +383,11 @@ export function MovementForm({
                       Obrigatório selecionar um cliente.
                     </p>
                   )}
-                </div>
+                </FormRow>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    Valor Total (R$)
-                  </label>
+              <div className="space-y-3">
+                <FormRow label="Valor Total (R$)">
                   <Input
                     id="sale-total-value"
                     name="totalValue"
@@ -395,12 +398,9 @@ export function MovementForm({
                     className="bg-muted border-0 rounded-sm mt-1"
                     placeholder="0,00"
                   />
-                </div>
+                </FormRow>
 
-                <div className="space-y-2 w-full">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    Tipo Pagamento
-                  </label>
+                <FormRow label="Tipo Pagamento">
                   <Select
                     value={paymentMethod}
                     onValueChange={setPaymentMethod}
@@ -413,16 +413,13 @@ export function MovementForm({
                       <SelectItem value="Boleto">Boleto</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
+                </FormRow>
               </div>
 
               {paymentMethod === "Boleto" && (
                 <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase font-bold text-primary px-1">
-                        Entrada (R$)
-                      </label>
+                  <div className="space-y-3">
+                    <FormRow label="Entrada (R$)">
                       <Input
                         id="sale-down-payment"
                         name="downPayment"
@@ -433,11 +430,8 @@ export function MovementForm({
                         className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                         placeholder="0,00"
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs uppercase font-bold text-primary px-1">
-                        Parcelas
-                      </label>
+                    </FormRow>
+                    <FormRow label="Parcelas">
                       <Input
                         id="sale-installments"
                         name="installments"
@@ -448,12 +442,9 @@ export function MovementForm({
                         className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                         placeholder="0"
                       />
-                    </div>
+                    </FormRow>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs uppercase font-bold text-primary px-1">
-                      Valor da Parcela (R$)
-                    </label>
+                  <FormRow label="Valor da Parcela (R$)">
                     <Input
                       id="sale-installment-value"
                       name="installmentValue"
@@ -464,15 +455,12 @@ export function MovementForm({
                       className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                       placeholder="0,00"
                     />
-                  </div>
+                  </FormRow>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    GTA
-                  </label>
+              <div className="space-y-3">
+                <FormRow label="GTA" htmlFor="sale-gta-number">
                   <Input
                     id="sale-gta-number"
                     name="gtaNumber"
@@ -483,11 +471,8 @@ export function MovementForm({
                     className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                     placeholder="Nº GTA"
                   />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs uppercase font-bold text-primary px-1">
-                    Nota Fiscal
-                  </label>
+                </FormRow>
+                <FormRow label="Nota Fiscal" htmlFor="sale-invoice-number">
                   <Input
                     id="sale-invoice-number"
                     name="invoiceNumber"
@@ -498,18 +483,16 @@ export function MovementForm({
                     className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                     placeholder="Nº NF"
                   />
-                </div>
+                </FormRow>
               </div>
             </>
           )}
 
           {movementType === "troca" && (
             <>
-              <div className="space-y-2 w-full">
-                <label className="text-xs uppercase font-bold text-primary px-1">
-                  Cliente
-                </label>
-                <Select value={clientId} onValueChange={setClientId}>
+              <div className="space-y-3">
+                <FormRow label="Cliente">
+                  <Select value={clientId} onValueChange={setClientId}>
                   <SelectTrigger className="bg-muted border-0 rounded-sm mt-1 w-full">
                     <SelectValue placeholder="Selecione o cliente" />
                   </SelectTrigger>
@@ -521,12 +504,9 @@ export function MovementForm({
                     ))}
                   </SelectContent>
                 </Select>
-              </div>
+                </FormRow>
 
-              <div className="space-y-2">
-                <label className="text-xs uppercase font-bold text-primary px-1">
-                  Animal Substituto (RGN)
-                </label>
+              <FormRow label="Animal Substituto (RGN)" htmlFor="substitute-animal-rgn" required>
                 <Input
                   id="substitute-animal-rgn"
                   name="substituteAnimalRgn"
@@ -539,6 +519,7 @@ export function MovementForm({
                   className="bg-muted border-0 rounded-sm mt-1 placeholder:text-xs"
                   placeholder="RGN do animal"
                 />
+              </FormRow>
               </div>
             </>
           )}

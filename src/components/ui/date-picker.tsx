@@ -13,8 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { DateOnly } from "@/utils/date_only";
-import { parseToDate } from "@/utils/formatDates";
+import { DateOnly, parseToDate } from "@/utils/dates";
 
 export interface DatePickerProps {
   value?: string | Date;
@@ -34,7 +33,6 @@ export function DatePicker({
   placeholder = "Selecione uma data",
   id,
   className,
-  required,
   disabled,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
@@ -63,11 +61,11 @@ export function DatePicker({
             id={id}
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left font-normal py-5 px-4 bg-muted/50 border-0 rounded-sm focus:ring-2 focus:ring-primary/20 shadow-sm",
+              "w-full justify-start text-left text-xs font-normal h-6 px-2.5 bg-background border border-border/80 rounded-md focus:ring-2 focus:ring-primary/20 shadow-xs",
               !date && "text-muted-foreground",
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4" />
+            <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
             {date ? format(date, "P", { locale: ptBR }) : placeholder}
           </Button>
         </PopoverTrigger>

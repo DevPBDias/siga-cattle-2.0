@@ -1,21 +1,25 @@
 import { Links } from "@/types/links.type";
 import Image from "next/image";
 import Link from "next/link";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
 interface RedirectButtonsProps {
   data: Links[];
 }
 
 const HomeButtons = ({ data }: RedirectButtonsProps) => {
+  const { canAccessPath } = useUserAccess();
+  const allowedLinks = data.filter((link) => canAccessPath(link.href));
+
   return (
-    <section className="grid w-full grid-cols-5 gap-1 px-2">
-      {data.map((link: Links) => (
+    <section className="relative z-20 grid w-full grid-cols-4 gap-1 mt-2">
+      {allowedLinks.map((link: Links) => (
         <Link
           key={link.id}
           href={link.href}
-          className="flex h-28 w-full flex-col items-center justify-center gap-2 rounded-lg bg-white p-2 shadow-xl active:scale-95 transition-all duration-300"
+          className="flex w-full flex-col items-center justify-center gap-1 rounded-lg bg-white p-2 shadow-xl active:scale-95 transition-all duration-300"
         >
-          <div className="flex items-center justify-center h-16 w-full">
+          <div className="flex items-center justify-center w-full">
             {link.icon ? (
               typeof link.icon === "string" ? (
                 <span className="text-2xl">{link.icon}</span>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { useState } from "react";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { StandardTabList } from "@/components/ui/StandardTabList";
 import {
   ShoppingCart,
@@ -8,20 +9,23 @@ import {
   ClipboardList,
   LineChart,
   BarChart3,
+  Plus,
+  ArrowRightLeft,
+  ArrowLeft,
+  X,
 } from "lucide-react";
-import { useState } from "react";
 import { SalesList } from "./SalesList";
 import { SalesDetails } from "./SalesDetails";
 import { SalesSummary } from "./SalesSummary";
 import { ClientList } from "../clients/ClientList";
 import { ClientDetails } from "../clients/ClientDetails";
 import { ClientForm } from "../clients/ClientForm";
+import { MovementForm } from "../movements/MovementForm";
 import { useClientById } from "@/hooks/db/clients/useClientById";
 import { useClients } from "@/hooks/db/clients/useClients";
 import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { SuccessModal } from "@/components/modals/SuccessModal";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, X } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 type MainTab = "vendas" | "clientes";
@@ -30,8 +34,9 @@ type SalesSubTab = "detalhes" | "graficos" | "resumo";
 export function CommercialDashboard() {
   const [mainTab, setMainTab] = useState<MainTab>("vendas");
   const [salesSubTab, setSalesSubTab] = useState<SalesSubTab>("detalhes");
+  const [movementModalType, setMovementModalType] = useState<"venda" | "troca" | null>(null);
 
-  // Client management state (migrated from clientes page)
+  // Client management state
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -76,8 +81,8 @@ export function CommercialDashboard() {
   };
 
   return (
-    <div className="space-y-4">
-      {/* Main Tabs: Vendas | Clientes */}
+    <div className="space-y-2">
+      {/* Abas Principais: Vendas | Clientes */}
       <Tabs
         value={mainTab}
         onValueChange={(v) => setMainTab(v as MainTab)}
@@ -93,8 +98,8 @@ export function CommercialDashboard() {
           onTabChange={(v) => setMainTab(v as MainTab)}
         />
 
-        <TabsContent value="vendas" className="mt-4">
-          {/* Sales Sub-Tabs: Detalhes | Gráficos | Resumo */}
+        <TabsContent value="vendas">
+          {/* Abas Secundárias: Detalhes | Gráficos | Resumo */}
           <Tabs
             value={salesSubTab}
             onValueChange={(v) => setSalesSubTab(v as SalesSubTab)}
@@ -111,21 +116,21 @@ export function CommercialDashboard() {
               onTabChange={(v) => setSalesSubTab(v as SalesSubTab)}
             />
 
-            <TabsContent value="detalhes" className="mt-4">
+            <TabsContent value="detalhes" className="mt-1">
               <SalesList />
             </TabsContent>
 
-            <TabsContent value="graficos" className="mt-4">
+            <TabsContent value="graficos" className="mt-1">
               <SalesDetails />
             </TabsContent>
 
-            <TabsContent value="resumo" className="mt-4">
+            <TabsContent value="resumo" className="mt-1">
               <SalesSummary />
             </TabsContent>
           </Tabs>
         </TabsContent>
 
-        <TabsContent value="clientes" className="mt-4">
+        <TabsContent value="clientes" className="mt-2">
           {selectedClientId ? (
             <div className="space-y-4">
               <div className="flex items-center mb-2">
@@ -140,25 +145,25 @@ export function CommercialDashboard() {
               </div>
 
               {isClientLoading ? (
-                <div className="space-y-6">
-                  <Skeleton className="h-64 w-full rounded-3xl" />
-                  <Skeleton className="h-40 w-full rounded-3xl" />
+                <div className="space-y-4">
+                  <Skeleton className="h-64 w-full rounded-2xl" />
+                  <Skeleton className="h-40 w-full rounded-2xl" />
                 </div>
               ) : client ? (
                 <>
                   {isEditing ? (
-                    <div className="bg-white rounded-3xl p-6 border border-white animate-in zoom-in-95 duration-300">
-                      <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-lg font-black text-primary uppercase tracking-tight">
+                    <div className="bg-white rounded-2xl p-5 border border-border shadow-xs animate-in zoom-in-95 duration-200">
+                      <div className="flex justify-between items-center mb-5">
+                        <h2 className="text-base font-extrabold text-primary uppercase tracking-tight">
                           Editar Cliente
                         </h2>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => setIsEditing(false)}
-                          className="rounded-xl h-10 w-10"
+                          className="rounded-xl h-9 w-9"
                         >
-                          <X size={20} />
+                          <X size={18} />
                         </Button>
                       </div>
                       <ClientForm
@@ -177,7 +182,7 @@ export function CommercialDashboard() {
                 </>
               ) : (
                 <div className="text-center py-10">
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     Cliente não encontrado.
                   </p>
                   <Button
@@ -194,6 +199,31 @@ export function CommercialDashboard() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Registro de Venda / Troca */}
+      {movementModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in-0 duration-200">
+          <div className="bg-white w-full max-w-lg rounded-2xl p-5 shadow-2xl max-h-[90vh] overflow-y-auto no-scrollbar border border-border">
+            <div className="flex justify-between items-center mb-4 border-b border-border pb-3">
+              <h2 className="text-base font-extrabold uppercase text-primary">
+                {movementModalType === "venda" ? "Registrar Venda" : "Registrar Troca"}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setMovementModalType(null)}
+                className="p-1 rounded-lg text-muted-foreground hover:bg-muted transition-colors"
+                aria-label="Fechar modal"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <MovementForm
+              initialType={movementModalType}
+              onSuccess={() => setMovementModalType(null)}
+            />
+          </div>
+        </div>
+      )}
 
       <ConfirmModal
         open={showDeleteConfirm}

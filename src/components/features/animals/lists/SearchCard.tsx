@@ -1,12 +1,9 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { calculateAgeInMonths } from "@/hooks/utils/useAnimalsByAgeAndSex";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Beef } from "lucide-react";
 import { Animal } from "@/types/animal.type";
 import { useFarms } from "@/hooks/db/farms/useFarms";
-import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 
 interface SearchCardProps {
   animal: Animal;
@@ -25,12 +22,6 @@ export default function SearchCard({
     return farm ? farm.farm_name : "SEM DADO";
   }, [animal.farm_id, farms]);
 
-  const isFemale = animal?.sex === "F";
-  const getMonths = calculateAgeInMonths(animal?.born_date);
-  const animalAge = getMonths >= 25;
-  const isMatriz = animalAge && isFemale;
-  const pathName = isMatriz ? "matrizes" : "animals";
-
   const handleDetailsClick = (e: React.MouseEvent) => {
     if (onDetailsClick) {
       e.preventDefault();
@@ -40,67 +31,67 @@ export default function SearchCard({
   };
 
   return (
-    <div className="relative w-full text-left bg-card border border-border rounded-lg p-4 hover:shadow-md hover:border-primary/30 transition-all duration-200 group">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="mb-2">
-            <h3 className="font-bold text-lg text-primary leading-tight">
-              {animal?.serie_rgd} {animal?.rgn}
+    <article
+      className="relative flex items-stretch justify-between gap-2.5 min-h-[126px] p-3 border border-[#dfe6df] rounded-2xl bg-gradient-to-br from-white to-[#f5f9f5] shadow-[0_5px_14px_rgba(30,59,43,0.07)] hover:border-field-green/50 transition-all cursor-pointer"
+      aria-label={`Resultado ${animal?.serie_rgd} ${animal?.rgn}`}
+      onClick={handleDetailsClick}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center justify-between gap-2 mb-2">
+          <div>
+            <h3 className="text-primary text-[17px] font-bold tracking-tight m-0 leading-tight">
+              {animal?.serie_rgd || "INDI"} {animal?.rgn}
             </h3>
-          </div>
-
-          <div className="flex items-end gap-2 border-b border-border pb-0.5 w-fit">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide w-20">
-              Status
-            </span>
-            <span className={cn("font-medium text-primary uppercase text-xs")}>
-              {animal?.status}
+            <span className="block text-muted-foreground text-[9px] -mt-0.5">
+              {animal?.name || "Registro cadastrado"}
             </span>
           </div>
-
-          <div className="flex items-end gap-2 border-b border-border pb-0.5 w-fit">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide w-20">
-              Fazenda
-            </span>
-            <span className="text-sm font-medium text-primary">{farmName}</span>
-          </div>
-
-          <div className="flex items-end gap-2 border-b border-border pb-0.5 w-fit">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide w-20">
-              Atividade
-            </span>
-            <span className={cn("font-medium text-primary uppercase text-xs")}>
-              {animal?.animal_state}
-            </span>
-          </div>
-
-          <div className="flex items-end gap-2 border-b border-border pb-0.5 w-fit">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide w-20">
-              Classe
-            </span>
-            <span className="text-sm font-medium text-primary">
-              {animal?.classification}
-            </span>
-          </div>
-
-          <div className="flex items-end gap-2 border-b border-border pb-0.5 w-fit">
-            <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wide w-20">
-              Sexo
-            </span>
-            <span className="text-sm font-medium text-primary">
-              {animal?.sex}
-            </span>
-          </div>
+          <button
+            type="button"
+            className="self-end inline-flex items-center gap-0.5 shrink-0 mt-auto p-2 border-0 rounded-lg bg-primary text-white font-bold cursor-pointer hover:bg-field-green transition-colors"
+            aria-label={`Ver detalhes de ${animal?.serie_rgd} ${animal?.rgn}`}
+            onClick={handleDetailsClick}
+          >
+            <span className="uppeprcase text-xs">Detalhes</span>
+            <ChevronRight size={14} />
+          </button>
         </div>
 
-        <Button
-          onClick={handleDetailsClick}
-          className="absolute right-4 top-4 z-10 h-auto px-3 py-2 gap-1 bg-primary text-white text-[11px] font-semibold rounded-sm flex items-center hover:bg-primary/90 transition-colors"
-        >
-          Detalhes
-          <ChevronRight size={16} color="white" />
-        </Button>
+        <dl className="grid grid-cols-2 gap-x-2.5 gap-y-1 m-0">
+          <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Status</dt>
+            <dd className="m-0 overflow-hidden text-right">
+              <span className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
+                {animal?.status || "-"}
+              </span>
+            </dd>
+          </div>
+          <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Fazenda</dt>
+            <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
+              {farmName}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Atividade</dt>
+            <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
+              {animal?.animal_state || "-"}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Classe</dt>
+            <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
+              {animal?.classification || "-"}
+            </dd>
+          </div>
+          <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Sexo</dt>
+            <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
+              {animal?.sex || "-"}
+            </dd>
+          </div>
+        </dl>
       </div>
-    </div>
+    </article>
   );
 }

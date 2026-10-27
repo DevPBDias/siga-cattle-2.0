@@ -8,6 +8,7 @@ export function useCreateAnimal() {
 
   const createAnimal = async (data: Partial<Animal>): Promise<Animal> => {
     const animalData: Animal = {
+      breed: data.breed || "Nelore",
       ...data,
       animal_state: "ATIVO",
     } as Animal;

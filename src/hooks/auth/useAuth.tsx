@@ -11,6 +11,9 @@ import {
   getCachedAuth,
   clearAuthCache,
 } from "@/lib/auth/offlineAuthCache";
+import { clearPermissionsCache } from "@/lib/auth/permissionsCache";
+import { clearAllDatabases } from "@/db/client";
+
 
 /**
  * Enhanced authentication hook with offline support.
@@ -32,6 +35,15 @@ export function useAuth() {
     }
     return supabaseRef.current;
   }, []);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "production" && user) {
+      console.log("[Auth] Usuário logado:", {
+        user,
+        isOfflineAuth,
+      });
+    }
+  }, [user, isOfflineAuth]);
 
   useEffect(() => {
     let mounted = true;
@@ -116,8 +128,12 @@ export function useAuth() {
         if (!mounted) return;
 
         if (session?.user) {
-          setUser(session.user);
-          cacheAuth(session.user);
+          // Evita re-renders desnecessarios quando o mesmo usuario e re-emitido
+          setUser((prev) => {
+            if (prev?.id === session.user.id) return prev;
+            cacheAuth(session.user);
+            return session.user;
+          });
           setIsOfflineAuth(false);
         } else {
           // Only clear user if we're online (to preserve offline access)
@@ -198,21 +214,25 @@ export function useAuth() {
   );
 
   const signOut = useCallback(async () => {
-    // Clear cached auth first
-    clearAuthCache();
-
-    // Try to sign out from Supabase (may fail if offline)
     const supabase = getClient();
-    if (supabase) {
-      try {
-        await supabase.auth.signOut();
-      } catch (error) {
-        console.warn("[Auth] Supabase signOut failed (may be offline):", error);
-      }
-    }
+    const remoteSignOut = supabase
+      ? supabase.auth.signOut().catch((error) => {
+          console.warn("[Auth] Supabase signOut failed (may be offline):", error);
+        })
+      : Promise.resolve();
 
+    clearAuthCache();
+    clearPermissionsCache();
     setUser(null);
     setIsOfflineAuth(false);
+    await clearAllDatabases();
+
+    // A rede pode estar indisponível. O logout local não deve ficar preso
+    // esperando uma resposta do Supabase.
+    await Promise.race([
+      remoteSignOut,
+      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+    ]);
   }, [getClient]);
 
   return {

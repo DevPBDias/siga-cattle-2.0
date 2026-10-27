@@ -9,7 +9,7 @@ export default function InfoRow({ label, value }: InfoRowProps) {
       <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
         {label}:
       </span>
-      <span className={`text-sm font-semibold text-primary`}>{value}</span>
+      <span className={`text-sm font-medium text-primary`}>{value}</span>
     </div>
   );
 }

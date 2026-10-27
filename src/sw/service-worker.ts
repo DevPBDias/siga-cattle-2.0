@@ -6,8 +6,8 @@ declare const self: ServiceWorkerGlobalScope;
 // ============================================================================
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
-// v29: Removed manual Background Sync logic + Excluded /api/sync from cache
-const SCHEMA_VERSION = "v29"; 
+// v31: Update brand colors and new splash screen assets.
+const SCHEMA_VERSION = "v32";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
 
@@ -18,19 +18,35 @@ const APP_SHELL_ASSETS = [
   "/",
   "/manifest.json",
   "/offline.html",
-  "/logo.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/apple-touch-icon.png",
+  "/favicon.ico",
   "/splash.png",
   "/login",
   "/home",
   "/cadastro",
   "/consulta",
   "/reproducao",
+  "/reproducao/lote",
   "/vacinas",
   "/nascimentos",
+  "/mortes",
   "/calendario",
   "/pesagem-ce",
+  "/comercial",
+  "/movimentacoes",
+  "/movimentacoes/criar",
+  "/perfil",
   "/gerenciar",
+  "/gerenciar/clientes",
+  "/gerenciar/clientes/novo",
+  "/gerenciar/doses-semen",
   "/geral",
+  "/geral/planilhas",
+  "/geral/relatorios",
+  "/geral/relatorios/pdf",
+  "/geral/relatorios/planilhas",
 ];
 
 // ============================================================================

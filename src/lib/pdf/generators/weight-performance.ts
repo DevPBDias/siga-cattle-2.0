@@ -14,7 +14,7 @@ export const generateWeightPerformancePDF = async (
   const doc = new jsPDF({
     orientation: "landscape",
     unit: "mm",
-    format: "a4",
+    format: "a3",
   });
 
   const brandingOptions = {

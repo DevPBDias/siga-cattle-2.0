@@ -3,7 +3,7 @@
 import { Input } from "@/components/ui/input";
 import { CheckIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FeatureErrorBoundary } from "@/components/ui/FeatureErrorBoundary";
 
 export interface RgnOption {
@@ -16,6 +16,8 @@ interface RgnAutocompleteProps {
   value: string;
   onSelect: (rgn: string) => void;
   placeholder?: string;
+  requireSearchTerm?: boolean;
+  emptyMessage?: string;
 }
 
 export function RgnAutocomplete(props: RgnAutocompleteProps) {
@@ -31,9 +33,12 @@ function RgnAutocompleteContent({
   value,
   onSelect,
   placeholder = "Digite o RGN do animal...",
+  requireSearchTerm = false,
+  emptyMessage = "Nenhum animal encontrado.",
 }: RgnAutocompleteProps) {
   const [open, setOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(value);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!open) {
@@ -41,17 +46,32 @@ function RgnAutocompleteContent({
     }
   }, [value, open]);
 
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const filtered = useMemo(() => {
-    if (!searchTerm) return options;
-    const q = searchTerm.toLowerCase();
+    if (!searchTerm?.trim()) {
+      return requireSearchTerm ? [] : options;
+    }
+    const q = searchTerm.toLowerCase().trim();
     return options.filter(
       (o) =>
         o.value.toLowerCase().includes(q) || o.label.toLowerCase().includes(q),
     );
-  }, [options, searchTerm]);
+  }, [options, searchTerm, requireSearchTerm]);
 
   return (
-    <div className="w-full relative">
+    <div ref={containerRef} className="w-full relative">
       <Input
         type="text"
         name="rgn"
@@ -83,10 +103,15 @@ function RgnAutocompleteContent({
             >
               <div className="flex items-center gap-2">
                 {value === option.value && <CheckIcon className="h-4 w-4" />}
-                <span>{option.value}</span>
+                <span>{option.label || option.value}</span>
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {open && requireSearchTerm && searchTerm.trim().length > 0 && filtered.length === 0 && (
+        <div className="absolute top-full left-0 w-full mt-1 bg-white rounded-md border shadow-lg z-50 p-3 text-center text-xs text-muted-foreground">
+          {emptyMessage}
         </div>
       )}
     </div>

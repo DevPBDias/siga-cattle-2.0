@@ -63,7 +63,6 @@ export function BuyList({ clientId }: BuyListProps) {
         <Accordion
           type="single"
           collapsible
-          defaultValue={clientSales[0].id}
           className="w-full"
         >
           {clientSales.map((sale) => (

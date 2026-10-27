@@ -114,6 +114,66 @@ describe("createReplication", () => {
   });
 
   describe("push handler", () => {
+    it("prepares remote documents and preserves local-only fields", async () => {
+      const localPhoto = "data:image/jpeg;base64,local-photo";
+      const preparePushDocument = vi.fn(
+        async (_doc: any, mappedDocument: any) => ({
+          document: {
+            ...mappedDocument,
+            photos: ["https://storage.example/death-photo.jpg"],
+          },
+        }),
+      );
+      const replicationFactory = createReplication({
+        ...config,
+        mapToSupabase: (doc: any) => ({ id: doc.id, photos: [] }),
+        preparePushDocument,
+        mapFromSupabase: (doc: any) => doc,
+        mergePushResponse: (remote: any, local: any) => ({
+          ...remote,
+          photos: local.photos,
+          photo_paths: remote.photos,
+        }),
+      } as any);
+      await replicationFactory(mockDb, "https://test.supabase.co", "key");
+
+      const { replicateRxCollection } =
+        await import("rxdb/plugins/replication");
+      const pushHandler = (replicateRxCollection as any).mock.calls[0][0].push
+        .handler;
+
+      vi.mocked(authHelper.getAuthHeaders).mockResolvedValue({
+        Authorization: "Bearer token",
+      });
+      const remoteDocuments = [
+        { id: "death-1", photos: ["https://storage.example/death-photo.jpg"] },
+      ];
+      mockFetch.mockResolvedValue({
+        ok: true,
+        clone: () => ({ json: async () => remoteDocuments }),
+        json: async () => remoteDocuments,
+      });
+
+      const result = await pushHandler([
+        {
+          newDocumentState: {
+            id: "death-1",
+            photos: [localPhoto],
+            photo_paths: [],
+          },
+        },
+      ]);
+
+      expect(preparePushDocument).toHaveBeenCalledWith(
+        expect.objectContaining({ id: "death-1", photos: [localPhoto] }),
+        { id: "death-1", photos: [] },
+      );
+      expect(result[0].photos).toEqual([localPhoto]);
+      expect(result[0].photo_paths).toEqual([
+        "https://storage.example/death-photo.jpg",
+      ]);
+    });
+
     it("should push documents to Supabase correctly", async () => {
       const replicationFactory = createReplication(config);
       await replicationFactory(mockDb, "https://test.supabase.co", "key");

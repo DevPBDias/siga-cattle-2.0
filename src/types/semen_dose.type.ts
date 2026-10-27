@@ -1,3 +1,5 @@
+export type DoseSortOption = "name-asc" | "name-desc" | "qty-asc" | "qty-desc";
+
 export interface SemenDose {
   id: string;
   animal_name: string;

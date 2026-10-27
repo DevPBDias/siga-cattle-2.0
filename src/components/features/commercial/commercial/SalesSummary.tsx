@@ -18,6 +18,7 @@ import {
 import { RadialBarChart, RadialBar, PolarAngleAxis } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertTriangle } from "lucide-react";
+import { parseDateParts } from "@/utils/dates";
 
 export function SalesSummary() {
   const { allSales, loading: isSalesLoading, availableYears } = useSales();
@@ -39,7 +40,7 @@ export function SalesSummary() {
   // Summary stats
   const summaryData = useMemo(() => {
     const yearSales = allSales.filter(
-      (s) => new Date(s.date).getFullYear() === selectedYear,
+      (s) => parseDateParts(s.date)?.year === selectedYear,
     );
 
     const totalValue = yearSales.reduce(
@@ -85,7 +86,7 @@ export function SalesSummary() {
 
     return years.map((year, idx) => {
       const yearMaleSales = allSales.filter((s) => {
-        const isYear = new Date(s.date).getFullYear() === year;
+        const isYear = parseDateParts(s.date)?.year === year;
         if (!isYear) return false;
         const animal = animalMap.get(s.animal_rgn);
         return animal?.sex === "M";
@@ -104,10 +105,10 @@ export function SalesSummary() {
     const prevYear = currentYear - 1;
 
     const prevYearSales = allSales.filter(
-      (s) => new Date(s.date).getFullYear() === prevYear,
+      (s) => parseDateParts(s.date)?.year === prevYear,
     );
     const currYearSales = allSales.filter(
-      (s) => new Date(s.date).getFullYear() === currentYear,
+      (s) => parseDateParts(s.date)?.year === currentYear,
     );
 
     return {

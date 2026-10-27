@@ -33,6 +33,8 @@ export const DEFAULT_SELECTED_COLUMNS: TableColumn[] = [
 export const REPRODUCTION_REPORT_AVAILABLE_COLUMNS: TableColumn[] = [
   { header: "NOME", dataKey: "animalName" },
   { header: "MANEJO", dataKey: "managementType" },
+  { header: "TIPO DE EVENTO", dataKey: "event_type" },
+  { header: "STATUS PRODUTIVO", dataKey: "productive_status" },
   { header: "DATA D10", dataKey: "date" },
   { header: "ECC", dataKey: "body_score" },
   { header: "CICLO", dataKey: "cycle_stage" },

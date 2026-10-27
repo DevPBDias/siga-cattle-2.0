@@ -1,72 +1,18 @@
 "use client";
 
-import { useState } from "react";
-import Header from "@/components/layout/Header";
+import ShortHeader from "@/components/layout/ShortHeader";
 import { MovementList } from "@/components/features/commercial/movements/MovementList";
-import { Button } from "@/components/ui/button";
-import { Plus, ArrowLeft } from "lucide-react";
-import { MovementForm } from "@/components/features/commercial/movements";
-import { Movement } from "@/types/movement.type";
-
-type ViewMode = "list" | "create" | "edit";
 
 export default function MovimentacoesPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
-  const [editingMovement, setEditingMovement] = useState<Movement | null>(null);
-
-  const handleCreateSuccess = () => {
-    setViewMode("list");
-    setEditingMovement(null);
-  };
-
-  const handleEdit = (movement: Movement) => {
-    setEditingMovement(movement);
-    setViewMode("edit");
-  };
-
-  const handleBackToList = () => {
-    setViewMode("list");
-    setEditingMovement(null);
-  };
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Header title={viewMode === "list" ? "Movimentações" : "Movimentação"} />
+    <div className="flex h-dvh min-h-screen flex-col overflow-hidden bg-background pb-12">
+      <ShortHeader title="Movimentações" />
 
-      <main className="flex-1 px-4 py-6 pb-24 max-w-2xl mx-auto w-full">
-        {viewMode === "list" && (
-          <>
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-bold text-primary uppercase">
-                Histórico
-              </h2>
-              <Button
-                onClick={() => setViewMode("create")}
-                className="rounded-md h-10 px-4 gap-2 shadow-lg shadow-primary/20"
-              >
-                <Plus className="h-4 w-4" />
-                Criar
-              </Button>
-            </div>
-            <MovementList onEdit={handleEdit} />
-          </>
-        )}
-
-        {(viewMode === "create" || viewMode === "edit") && (
-          <>
-            <button
-              onClick={handleBackToList}
-              className="border border-primary/50 rounded-sm px-2 py-1 flex items-center gap-2 text-muted-foreground text-sm mb-6 hover:text-foreground transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Voltar
-            </button>
-            <MovementForm
-              onSuccess={handleCreateSuccess}
-              initialMovement={editingMovement}
-            />
-          </>
-        )}
+      <main className="mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-3 py-3">
+        <h2 className="mb-3 text-base font-bold uppercase text-primary tracking-tight">
+          Histórico
+        </h2>
+        <MovementList />
       </main>
     </div>
   );

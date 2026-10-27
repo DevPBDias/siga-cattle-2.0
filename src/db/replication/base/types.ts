@@ -78,12 +78,21 @@ export interface ReplicationConfig<T extends ReplicableEntity> {
    */
   mapToSupabase?: (doc: T) => Record<string, unknown>;
 
+  /** Prepara arquivos ou outros dados assíncronos antes de enviar ao Supabase. */
+  preparePushDocument?: (
+    doc: T,
+    mappedDocument: Record<string, unknown>,
+  ) => Promise<{ document: Record<string, unknown> }>;
+
   /**
    * Função que mapeia o documento do Supabase para o formato RxDB.
    * Use para transformar campos após receber.
    * Se não fornecida, usa cleanSupabaseDocument para remover nulls.
    */
   mapFromSupabase?: (doc: Record<string, unknown>) => T;
+
+  /** Preserva campos locais ao mesclar a resposta de um push bem-sucedido. */
+  mergePushResponse?: (remoteDocument: T, localDocument: T) => T;
 
   /**
    * Tempo em ms para retry após erro

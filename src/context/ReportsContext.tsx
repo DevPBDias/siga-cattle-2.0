@@ -48,7 +48,7 @@ const initialFilters: ReportFilters = {
   farmIds: [],
   farmName: undefined,
   farmNames: [],
-  farmFilterMode: undefined,
+  farmFilterMode: "all",
   sex: "Ambos" as GenderFilterValue,
   sexFilterMode: undefined,
   animalState: "ATIVO",
@@ -60,6 +60,8 @@ const initialFilters: ReportFilters = {
   status: "Todos",
   statusFilterMode: undefined,
   managementDates: [],
+  birthForecastSortBy: "rgn",
+  eventType: "Todos",
   sortBy: "rgn", // Padrão: ordenar por RGN
   classes: [],
   classFilterMode: undefined,
@@ -107,9 +109,13 @@ export function ReportsProvider({ children }: ReportsProviderProps) {
         ? REPRODUCTION_DEFAULT_COLUMNS
         : DEFAULT_SELECTED_COLUMNS;
 
+    const currentYear = String(new Date().getFullYear());
+
     setFilters({
       ...initialFilters,
       selectedColumns: defaultCols,
+      year: report.id === "birth-forecast" ? currentYear : undefined,
+      farmFilterMode: "all",
     });
     setValidationErrors([]);
   }, []);

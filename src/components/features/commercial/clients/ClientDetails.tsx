@@ -26,7 +26,7 @@ export function ClientDetails({
   onDelete,
 }: ClientDetailsProps) {
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Client Info Card */}
       <div className="bg-white rounded-xl px-2 py-4 shadow-sm border border-border/50 relative overflow-hidden">
         <div className="flex items-center justify-between mb-3">

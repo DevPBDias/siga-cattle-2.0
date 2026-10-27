@@ -1,4 +1,4 @@
-export type EventType = "IATF" | "FIV";
+export type EventType = "IATF" | "FIV" | "Monta natural";
 
 export type ReproductionStatus = "parida" | "solteira";
 
@@ -6,9 +6,9 @@ export type GestationalStatus = "prenha" | "vazia";
 
 export type OvarySize = "normal" | "pequeno" | "grande";
 
-export type OvaryStructure = "foliculo" | "corpo_luteo" | "cisto";
+export type OvaryStructure = "Folículo" | "Corpo Lúteo" | "Cisto";
 
-export type CycleStage = "estro" | "anestro 1" | "anestro 2";
+export type CycleStage = "Estro" | "Anestro 1" | "Anestro 2";
 
 export type Diagnostic = "prenha" | "vazia";
 
@@ -45,6 +45,7 @@ export interface ReproductionEvent {
   d8_date?: string;
   d10_date?: string;
   bull_name?: string;
+  bull_image?: string;
 
   /** Resync / Diagnostics */
   d22_date?: string;

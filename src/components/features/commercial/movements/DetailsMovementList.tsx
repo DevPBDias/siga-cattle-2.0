@@ -1,5 +1,4 @@
 import { useMovementsByAnimal } from "@/hooks/db/movements/useMovementsByAnimal";
-import { useMovements } from "@/hooks/db/movements/useMovements";
 import { MovementListItem } from "./MovementListItem";
 import { Loader2 } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
@@ -9,9 +8,6 @@ interface DetailsMovementListProps {
 }
 
 export function DetailsMovementList({ rgn }: DetailsMovementListProps) {
-  const {
-    actions: { deleteMovement },
-  } = useMovements();
   const { data: movements = [], loading: isLoading } =
     useMovementsByAnimal(rgn);
 
@@ -38,7 +34,6 @@ export function DetailsMovementList({ rgn }: DetailsMovementListProps) {
           <MovementListItem
             key={movement.id}
             movement={movement}
-            onDelete={deleteMovement}
           />
         ))}
       </div>

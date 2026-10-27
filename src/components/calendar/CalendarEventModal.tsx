@@ -7,7 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { CalendarEvent, STAGE_METADATA } from "@/types/calendar.types";
-import { formatDate } from "@/utils/formatDates";
+import { formatDate } from "@/utils/dates";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface CalendarEventModalProps {
@@ -34,7 +34,7 @@ export function CalendarEventModal({
               Eventos Sugeridos para
             </span>
             <DialogTitle className="text-2xl font-black uppercase tracking-tighter">
-              {formatDate(date.toISOString().split("T")[0])}
+              {formatDate(date)}
             </DialogTitle>
           </div>
         </DialogHeader>

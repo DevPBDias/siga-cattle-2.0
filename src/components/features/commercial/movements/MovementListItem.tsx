@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Movement, SalePayload } from "@/types/movement.type";
-import { Skull, Banknote, ArrowRightLeft, Edit2, Trash2 } from "lucide-react";
-import { formatDate } from "@/utils/formatDates";
+import { Skull, Banknote, ArrowRightLeft } from "lucide-react";
+import { formatDate } from "@/utils/dates";
 import { useClientById } from "@/hooks/db/clients/useClientById";
 import {
   AccordionContent,
@@ -9,15 +8,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
-import { ConfirmModal } from "@/components/modals/ConfirmModal";
 import { useDeathById } from "@/hooks/db/deaths/useDeathById";
 import { useSaleById } from "@/hooks/db/sales/useSaleById";
 import { useExchangeById } from "@/hooks/db/exchanges/useExchangeById";
+import { useUserProfiles } from "@/hooks/db/user_profiles/useUserProfiles";
 
 interface MovementListItemProps {
   movement: Movement;
-  onEdit?: (movement: Movement) => void;
-  onDelete?: (id: string) => void;
 }
 
 const typeConfig = {
@@ -179,12 +176,13 @@ const TrocaDetails = ({ details_id }: { details_id: string }) => {
 
 export function MovementListItem({
   movement,
-  onEdit,
-  onDelete,
 }: MovementListItemProps) {
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const config = (typeConfig as any)[movement.type] || typeConfig.morte;
   const Icon = config.icon;
+  const { data: profiles = [] } = useUserProfiles();
+  const responsibleUser = movement.created_by
+    ? profiles.find((profile) => profile.id === movement.created_by)
+    : undefined;
 
   const renderContent = () => {
     switch (movement.type) {
@@ -202,25 +200,25 @@ export function MovementListItem({
   return (
     <AccordionItem
       value={movement.id}
-      className="border-2 border-primary/20 bg-card/50 rounded-xl overflow-hidden mb-3 shadow-sm"
+      className="border border-border bg-white rounded-xl overflow-hidden shadow-xs"
     >
-      <AccordionTrigger className="flex flex-1 items-center justify-between px-4 py-3 hover:no-underline transition-all hover:bg-primary/5">
-        <div className="flex items-center gap-4">
+      <AccordionTrigger className="flex flex-1 items-center justify-between px-3 py-2 hover:no-underline transition-all hover:bg-primary/5">
+        <div className="flex items-center gap-2.5">
           <div
             className={cn(
-              "p-2 rounded-lg flex items-center justify-center shrink-0",
+              "p-1.5 rounded-lg flex items-center justify-center shrink-0",
               config.bg,
               config.color,
             )}
           >
             {(() => {
               const IconComponent = Icon as any;
-              return <IconComponent className="w-5 h-5" />;
+              return <IconComponent className="w-4 h-4" />;
             })()}
           </div>
 
           <div className="flex flex-col items-start truncate">
-            <span className="font-bold text-base text-foreground tracking-tight">
+            <span className="font-bold text-sm text-foreground tracking-tight">
               {movement.animal_id}
             </span>
             <span className="text-[10px] text-muted-foreground font-medium uppercase">
@@ -241,62 +239,22 @@ export function MovementListItem({
             {config.label}
           </span>
         </div>
-
-        <div className="flex items-center px-2 mr-1 gap-2">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit?.(movement);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.stopPropagation();
-                onEdit?.(movement);
-              }
-            }}
-            className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all rounded-md border border-border bg-background shadow-xs hover:border-primary/30 cursor-pointer"
-            title="Editar Movimentação"
-          >
-            <Edit2 size={16} />
-          </div>
-
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsDeleteModalOpen(true);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.stopPropagation();
-                setIsDeleteModalOpen(true);
-              }
-            }}
-            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all rounded-md border border-border bg-background shadow-xs hover:border-destructive/30 cursor-pointer"
-            title="Excluir Movimentação"
-          >
-            <Trash2 size={16} />
-          </div>
-        </div>
       </AccordionTrigger>
 
       <AccordionContent className="px-4 pb-4">
         <div className="pt-2 border-t border-border/50">{renderContent()}</div>
+        <div className="mt-2 border-t border-border/50 pt-2">
+          <InfoRow
+            label="Usuário responsável"
+            value={
+              responsibleUser?.full_name ||
+              (movement.created_by
+                ? `${movement.created_by.slice(0, 8)}...`
+                : "Não informado")
+            }
+          />
+        </div>
       </AccordionContent>
-
-      <ConfirmModal
-        open={isDeleteModalOpen}
-        title="Excluir Movimentação"
-        description={`Tem certeza que deseja excluir esta movimentação de ${config.label} do animal ${movement.animal_id}?`}
-        onClose={() => setIsDeleteModalOpen(false)}
-        onConfirm={() => {
-          onDelete?.(movement.id);
-          setIsDeleteModalOpen(false);
-        }}
-      />
     </AccordionItem>
   );
 }

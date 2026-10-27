@@ -29,6 +29,7 @@ import {
 } from "@/hooks/reproduction/useBulkReproduction";
 import { EventType } from "@/types/reproduction_event.type";
 import { toast } from "sonner";
+import { todayISO } from "@/utils/dates";
 
 const eventTypes: EventType[] = ["IATF", "FIV"];
 const protocolOptions = ["Sync D10", "Sync D11"] as const;
@@ -47,7 +48,6 @@ export function BulkReproductionPanel() {
     isProcessing,
     error,
     hasErrors,
-    progressPercentage,
   } = useBulkReproduction();
   const anchor = useComboboxAnchor();
 
@@ -77,9 +77,7 @@ export function BulkReproductionPanel() {
   };
 
   const [query, setQuery] = useState("");
-  const [eventDate, setEventDate] = useState(
-    new Date().toISOString().slice(0, 10),
-  );
+  const [eventDate, setEventDate] = useState(todayISO());
   const [eventType, setEventType] = useState<EventType>("IATF");
   const [protocolType, setProtocolType] = useState<ProtocolOption>("Sync D10");
 
@@ -175,7 +173,7 @@ export function BulkReproductionPanel() {
   };
 
   return (
-    <section className="bg-card p-5 shadow-sm space-y-4">
+    <section className="p-5 space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="space-y-4">
           <label className="flex items-center gap-3">
@@ -227,7 +225,7 @@ export function BulkReproductionPanel() {
 
                     return (
                       <ComboboxItem key={cow.rgn} value={cow.rgn}>
-                          <span className="font-semibold">{cow.rgn}</span>
+                        <span className="font-semibold">{cow.rgn}</span>
                       </ComboboxItem>
                     )
                   }}

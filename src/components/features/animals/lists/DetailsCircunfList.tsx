@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimalMetric } from "@/types/animal_metrics.type";
-import { formatDate, diffInDays } from "@/utils/formatDates";
+import { formatDate, diffInDays } from "@/utils/dates";
 import { TrendingUp, TrendingDown } from "lucide-react";
 
 interface DetailsCircunfListProps {

@@ -23,15 +23,17 @@ interface ReplicableAnimal extends Omit<Animal, "_deleted" | "updated_at"> {
 export const animalReplication = createReplication<ReplicableAnimal>({
   collectionName: "animals",
   tableName: "animals",
-  replicationIdentifier: "animals-replication-v13",
+  replicationIdentifier: "animals-replication-v14",
 
   // Mapeia documento RxDB → Supabase
   mapToSupabase: (doc) => ({
     rgn: doc.rgn,
     name: doc.name ?? null,
     sex: doc.sex ?? null,
+    is_natural_bull: doc.is_natural_bull ?? false,
     born_date: doc.born_date ?? null,
     serie_rgd: doc.serie_rgd,
+    breed: doc.breed ?? "Nelore",
     born_color: doc.born_color ?? null,
     iabcgz: doc.iabcgz ?? null,
     deca: doc.deca ?? null,

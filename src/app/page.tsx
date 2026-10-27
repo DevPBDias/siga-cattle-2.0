@@ -1,85 +1,64 @@
 "use client";
 
-import Image from "next/image";
-import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import openingImg from "@/assets/images/opening-page.png";
+import { useEffect, useState, useRef, useCallback } from "react";
+import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/auth/useAuth";
+import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
+import { activeBrand } from "@/config/branding";
+import { NeloreIndiOuroSplash } from "@/components/splash/NeloreIndiOuroSplash";
+import { SigaCattleSplash } from "@/components/splash/SigaCattleSplash";
 
 export default function OpeningPage() {
   const router = useRouter();
+  const { data: user, loading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
+  const redirectTriggered = useRef(false);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
+  const triggerRedirect = useCallback(() => {
+    if (redirectTriggered.current) return;
+    redirectTriggered.current = true;
+
+    setIsExiting(true);
+    setTimeout(() => {
+      const isAuthenticated = (!authLoading && !!user) || hasCachedAuth();
+      router.push(isAuthenticated ? "/home" : "/login");
+    }, 600);
+  }, [authLoading, user, router]);
+
   useEffect(() => {
     if (!isMounted) return;
 
-    const minWait = 3000;
-    const startTime = Date.now();
+    // Splash duration: 2.8 seconds
+    const timer = setTimeout(() => {
+      triggerRedirect();
+    }, 2800);
 
-    const checkAndRedirect = () => {
-      const elapsed = Date.now() - startTime;
-      const remaining = Math.max(0, minWait - elapsed);
-
-      setTimeout(() => {
-        setIsExiting(true);
-        setTimeout(() => {
-          router.push("/login");
-        }, 800);
-      }, remaining);
-    };
-
-    if (imageLoaded) {
-      checkAndRedirect();
-    } else {
-      const fallbackTimer = setTimeout(() => {
-        checkAndRedirect();
-      }, minWait);
-
-      return () => clearTimeout(fallbackTimer);
-    }
-  }, [isMounted, imageLoaded, router]);
+    return () => clearTimeout(timer);
+  }, [isMounted, triggerRedirect]);
 
   if (!isMounted) {
     return (
-      <main className="relative top-0 left-0 h-dvh w-full overflow-hidden bg-primary" />
+      <main
+        className="relative h-dvh w-full overflow-hidden"
+        style={{ backgroundColor: activeBrand.colors.primary }}
+      />
     );
   }
 
   return (
     <AnimatePresence mode="wait">
-      {!isExiting && (
-        <motion.main
-          key="opening"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{
-            duration: 0.8,
-            ease: "easeInOut",
-          }}
-          className="relative top-0 left-0 h-dvh w-full overflow-hidden bg-primary"
-        >
-          <Image
-            src={openingImg}
-            alt="INDI Ouro"
-            fill
-            className="w-full h-full object-cover"
-            priority
-            onLoad={() => setImageLoaded(true)}
-            onError={() => {
-              console.warn("[Splash] Image failed to load, proceeding anyway");
-              setImageLoaded(true);
-            }}
-          />
-        </motion.main>
-      )}
+      {!isExiting &&
+        (activeBrand.id === "nelore-indi-ouro" ? (
+          <NeloreIndiOuroSplash key="indi-ouro" onSkip={triggerRedirect} />
+        ) : (
+          <SigaCattleSplash key="siga-cattle" onSkip={triggerRedirect} />
+        ))}
     </AnimatePresence>
   );
 }
-

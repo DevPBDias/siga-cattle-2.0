@@ -1,30 +1,64 @@
+import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useMovements } from "@/hooks/db/movements/useMovements";
 import { MovementListItem } from "./MovementListItem";
 import { Input } from "@/components/ui/input";
 import { Tabs } from "@/components/ui/tabs";
 import { StandardTabList } from "@/components/ui/StandardTabList";
-import { Search, X as XIcon } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
 import { Movement } from "@/types/movement.type";
-import { DatePicker } from "@/components/ui/date-picker";
+import { useLocalQuery } from "@/hooks/core";
+import { Sale } from "@/types/sale.type";
+import { Death } from "@/types/death.type";
+import { Exchange } from "@/types/exchange.type";
+import type { MangoQuery } from "rxdb";
 
-interface MovementListProps {
-  onEdit?: (movement: Movement) => void;
-}
-
-export function MovementList({ onEdit }: MovementListProps) {
+export function MovementList() {
   const {
     data: movements = [],
     loading,
-    actions: { deleteMovement },
   } = useMovements();
+  const recordsQuery = useMemo<MangoQuery<any>>(
+    () => ({ selector: { _deleted: { $eq: false } } }),
+    [],
+  );
+  const { data: sales = [], loading: salesLoading } = useLocalQuery<Sale>(
+    "sales",
+    recordsQuery as MangoQuery<Sale>,
+  );
+  const { data: deaths = [], loading: deathsLoading } = useLocalQuery<Death>(
+    "deaths",
+    recordsQuery as MangoQuery<Death>,
+  );
+  const { data: exchanges = [], loading: exchangesLoading } = useLocalQuery<Exchange>(
+    "exchanges",
+    recordsQuery as MangoQuery<Exchange>,
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
-  const [dateFilter, setDateFilter] = useState<Date | undefined>(undefined);
 
   const filteredMovements = useMemo(() => {
-    return movements
+    const represented = (type: Movement["type"], detailsId: string, animal: string, date: string) =>
+      movements.some((movement) => movement.type === type && (
+        (detailsId && movement.details_id === detailsId) ||
+        (!movement.details_id && movement.animal_id === animal && movement.date.slice(0, 10) === date.slice(0, 10))
+      ));
+    const missingRecords: Movement[] = [
+      ...sales.filter((record) => !represented("venda", record.id, record.animal_rgn, record.date)).map((record) => ({
+        id: `legacy-venda-${record.id}`, type: "venda" as const, animal_id: record.animal_rgn, date: record.date,
+        details_id: record.id, created_at: record.created_at, updated_at: record.updated_at, _deleted: false,
+      })),
+      ...deaths.filter((record) => !represented("morte", record.id, record.animal_rgn, record.date)).map((record) => ({
+        id: `legacy-morte-${record.id}`, type: "morte" as const, animal_id: record.animal_rgn, date: record.date,
+        details_id: record.id, created_at: record.created_at, updated_at: record.updated_at, _deleted: false,
+      })),
+      ...exchanges.filter((record) => !represented("troca", record.id, record.animal_rgn, record.date)).map((record) => ({
+        id: `legacy-troca-${record.id}`, type: "troca" as const, animal_id: record.animal_rgn, date: record.date,
+        details_id: record.id, created_at: record.created_at, updated_at: record.updated_at, _deleted: false,
+      })),
+    ];
+    return [...movements, ...missingRecords]
       .filter((movement) => {
         // Filter by Tab (Type)
         if (activeTab !== "all" && movement.type !== activeTab) {
@@ -39,21 +73,12 @@ export function MovementList({ onEdit }: MovementListProps) {
 
         if (!matchesSearch) return false;
 
-        // Filter by Date
-        if (dateFilter) {
-          const movementDate = new Date(movement.date)
-            .toISOString()
-            .split("T")[0];
-          const filterDate = dateFilter.toISOString().split("T")[0];
-          if (movementDate !== filterDate) return false;
-        }
-
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [movements, activeTab, searchTerm, dateFilter]);
+  }, [movements, sales, deaths, exchanges, activeTab, searchTerm]);
 
-  if (loading) {
+  if (loading || salesLoading || deathsLoading || exchangesLoading) {
     return (
       <div className="flex flex-col gap-3">
         {[1, 2, 3].map((i) => (
@@ -67,9 +92,9 @@ export function MovementList({ onEdit }: MovementListProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2.5">
       {/* Filters */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -79,27 +104,13 @@ export function MovementList({ onEdit }: MovementListProps) {
             className="pl-9 bg-muted border-0 rounded-md h-10 placeholder:text-sm"
           />
         </div>
-
-        <div className="flex gap-1">
-          <div className="relative w-4/5">
-            <DatePicker
-              value={dateFilter ? dateFilter.toISOString().split("T")[0] : ""}
-              onChange={(value) =>
-                setDateFilter(value ? new Date(value) : undefined)
-              }
-              placeholder="Data"
-              className="h-10"
-            />
-          </div>
-          {dateFilter && (
-            <button
-              onClick={() => setDateFilter(undefined)}
-              className="h-10 px-3 bg-destructive/50 rounded-md text-destructive-foreground flex items-center justify-center hover:bg-destructive"
-            >
-              <XIcon className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+        <Link
+          href="/movimentacoes/criar"
+          className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-primary px-3 text-xs font-bold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Criar
+        </Link>
       </div>
 
       {/* Tabs */}
@@ -125,8 +136,6 @@ export function MovementList({ onEdit }: MovementListProps) {
             <MovementListItem
               key={movement.id}
               movement={movement}
-              onEdit={onEdit}
-              onDelete={deleteMovement}
             />
           ))
         ) : (

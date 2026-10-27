@@ -10,7 +10,7 @@ export const generateReproductionByCowPDF = async (
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
-    format: "a4",
+    format: "a3",
   });
 
   const brandingOptions = {
@@ -26,7 +26,9 @@ export const generateReproductionByCowPDF = async (
     { header: "RGN", dataKey: "rgn" },
     { header: "idade", dataKey: "idade" },
     { header: "qtde", dataKey: "quantity" },
-    { header: "datas d10", dataKey: "d10_dates" },
+    { header: "datas de manejo", dataKey: "management_dates" },
+    { header: "protocolos", dataKey: "protocol_names" },
+    { header: "tipos de evento", dataKey: "event_types" },
     { header: "touros", dataKey: "bull_names" },
   ];
 
@@ -38,7 +40,9 @@ export const generateReproductionByCowPDF = async (
     rgn: item.rgn || "---",
     idade: item.idade || "---",
     quantity: item.quantity != null ? String(item.quantity) : "0",
-    d10_dates: item.d10_dates || "---",
+    management_dates: item.management_dates || "---",
+    protocol_names: item.protocol_names || "---",
+    event_types: item.event_types || "---",
     bull_names: item.bull_names || "---",
   }));
 
@@ -50,7 +54,9 @@ export const generateReproductionByCowPDF = async (
       rgn: { cellWidth: 20 },
       idade: { cellWidth: 25 },
       quantity: { cellWidth: 20 },
-      d10_dates: { cellWidth: 60 },
+      management_dates: { cellWidth: 55 },
+      protocol_names: { cellWidth: 35 },
+      event_types: { cellWidth: 35 },
       bull_names: { cellWidth: 60 },
     },
     styles: {

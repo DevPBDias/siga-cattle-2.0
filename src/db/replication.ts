@@ -2,6 +2,7 @@ import { MyDatabase } from "./collections";
 import { replicateAnimalsNew as replicateAnimals } from "./replication/animal.replication";
 import { replicateSemenDosesNew as replicateSemenDoses } from "./replication/semenDose.replication";
 import { replicateFarmsNew as replicateFarms } from "./replication/farm.replication";
+import { replicateUserProfilesNew as replicateUserProfiles } from "./replication/userProfile.replication";
 import { replicateVaccinesNew as replicateVaccines } from "./replication/vaccine.replication";
 import { replicateAnimalMetricWeightNew as replicateAnimalMetricWeight } from "./replication/metric.replication";
 import { replicateAnimalMetricCENew as replicateAnimalMetricCE } from "./replication/metric.replication";
@@ -15,6 +16,7 @@ import { replicateSalesNew as replicateSales } from "./replication/sale.replicat
 import { replicateDeathsNew as replicateDeaths } from "./replication/death.replication";
 import { replicateExchangesNew as replicateExchanges } from "./replication/exchange.replication";
 import { SyncLogger } from "@/lib/sync/syncLogger";
+import { setupRealtimeSync } from "@/lib/sync/realtimeSync";
 
 function getSupabaseConfig() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -68,12 +70,53 @@ async function checkSupabaseHealth(url: string, key: string): Promise<boolean> {
   }
 }
 
+let realtimeTeardown: (() => void) | null = null;
+let isSettingUp = false;
+
+export async function stopReplication(db: MyDatabase): Promise<void> {
+  if (!db || !(db as any).replications) return;
+
+  SyncLogger.info("setup", "Stopping all replications...");
+
+  if (realtimeTeardown) {
+    try {
+      realtimeTeardown();
+    } catch (e) {
+      console.warn("[Replication] Error tearing down realtime sync:", e);
+    }
+    realtimeTeardown = null;
+  }
+
+  const replications = (db as any).replications;
+  await Promise.all(
+    Object.values(replications).map((rep: any) => {
+      if (rep && typeof rep.cancel === "function") {
+        return rep.cancel().catch((err: any) => {
+          console.warn("[Replication] Error cancelling replication:", err);
+        });
+      }
+      return Promise.resolve();
+    })
+  );
+
+  delete (db as any).replications;
+  SyncLogger.info("setup", "All replications stopped.");
+}
+
 export async function setupReplication(db: MyDatabase) {
+  if (!db) return;
+  if ((db as any).replications || isSettingUp) {
+    SyncLogger.info("setup", "Replication already set up or in progress, skipping.");
+    return;
+  }
+
+  isSettingUp = true;
   SyncLogger.info("setup", "Setting up replication...");
 
   const config = getSupabaseConfig();
 
   if (!config) {
+    isSettingUp = false;
     SyncLogger.warn(
       "setup",
       "Supabase not configured properly. Replication disabled. " +
@@ -132,6 +175,12 @@ export async function setupReplication(db: MyDatabase) {
     );
 
     const farmsReplication = await replicateFarms(
+      db,
+      SUPABASE_URL,
+      SUPABASE_KEY,
+    );
+
+    const userProfilesReplication = await replicateUserProfiles(
       db,
       SUPABASE_URL,
       SUPABASE_KEY,
@@ -215,6 +264,7 @@ export async function setupReplication(db: MyDatabase) {
           animals: typeof animalsReplication;
           vaccines: typeof vaccinesReplication;
           farms: typeof farmsReplication;
+          user_profiles: typeof userProfilesReplication;
           animal_metrics_weight: typeof animalMetricsWeightReplication;
           animal_metrics_ce: typeof animalMetricsCEReplication;
           animal_vaccines: typeof animalVaccinesReplication;
@@ -233,6 +283,7 @@ export async function setupReplication(db: MyDatabase) {
       animals: animalsReplication,
       vaccines: vaccinesReplication,
       farms: farmsReplication,
+      user_profiles: userProfilesReplication,
       animal_metrics_weight: animalMetricsWeightReplication,
       animal_metrics_ce: animalMetricsCEReplication,
       animal_vaccines: animalVaccinesReplication,
@@ -248,6 +299,10 @@ export async function setupReplication(db: MyDatabase) {
     };
 
     SyncLogger.info("setup", "Replication setup complete");
+
+    // RxDB live replication retries local changes, but does not learn about
+    // writes made by other devices. Supabase Realtime triggers incremental pulls.
+    realtimeTeardown = setupRealtimeSync((db as any).replications);
 
     // Inicia a replicação manualmente após um delay para garantir que o banco local esteja pronto
     setTimeout(() => {
@@ -268,6 +323,7 @@ export async function setupReplication(db: MyDatabase) {
       animalsReplication.start();
       vaccinesReplication.start();
       farmsReplication.start();
+      userProfilesReplication.start();
       animalMetricsWeightReplication.start();
       animalMetricsCEReplication.start();
       animalVaccinesReplication.start();
@@ -281,7 +337,7 @@ export async function setupReplication(db: MyDatabase) {
       deathsReplication.start();
       exchangesReplication.start();
 
-      SyncLogger.info("setup", "All 15 replications started ✅");
+      SyncLogger.info("setup", "All 16 replications started ✅");
     }, 500);
 
     // Monitoramento de erros por coleção
@@ -289,6 +345,7 @@ export async function setupReplication(db: MyDatabase) {
       { name: "animals", rep: animalsReplication },
       { name: "vaccines", rep: vaccinesReplication },
       { name: "farms", rep: farmsReplication },
+      { name: "user_profiles", rep: userProfilesReplication },
       { name: "metrics_weight", rep: animalMetricsWeightReplication },
       { name: "metrics_ce", rep: animalMetricsCEReplication },
       { name: "animal_vaccines", rep: animalVaccinesReplication },
@@ -336,6 +393,8 @@ export async function setupReplication(db: MyDatabase) {
   } catch (error) {
     SyncLogger.error("setup", "Replication setup error", error);
     console.warn("⚠️ App will continue in offline-only mode");
+  } finally {
+    isSettingUp = false;
   }
 }
 

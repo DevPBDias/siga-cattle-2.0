@@ -193,7 +193,7 @@ export function createReplication<T extends ReplicableEntity>(
             PendingQueue.markSyncing(colName, docId);
           });
 
-          const documents = rows.map((row) => {
+          const preparedRows = await Promise.all(rows.map(async (row) => {
             const doc = row.newDocumentState as T;
 
             // Garantir que updated_at existe
@@ -209,6 +209,11 @@ export function createReplication<T extends ReplicableEntity>(
               ? mapToSupabase(doc)
               : { ...(doc as Record<string, any>) };
 
+            if (config.preparePushDocument) {
+              const prepared = await config.preparePushDocument(doc, mapped);
+              mapped = prepared.document;
+            }
+
             // CORREÇÃO: Supabase usa bigint para timestamps.
             // NÃO converter para ISO string — manter como número.
             // Garantir que são números válidos.
@@ -219,8 +224,9 @@ export function createReplication<T extends ReplicableEntity>(
               mapped.created_at = Number(mapped.created_at);
             }
 
-            return mapped;
-          });
+            return { document: mapped, localDocument: doc };
+          }));
+          const documents = preparedRows.map(({ document }) => document);
 
           const headers = await getAuthHeaders();
 
@@ -291,6 +297,12 @@ export function createReplication<T extends ReplicableEntity>(
           );
 
           if (updatedDocs.length > 0) {
+            const localDocuments = new Map(
+              preparedRows.map(({ localDocument }) => [
+                String((localDocument as any)[primaryKey]),
+                localDocument,
+              ]),
+            );
             const mappedResults = updatedDocs.map((doc) => {
               if (mapFromSupabase) return mapFromSupabase(doc);
               const cleaned = cleanSupabaseDocument(doc);
@@ -299,7 +311,14 @@ export function createReplication<T extends ReplicableEntity>(
                 _deleted: cleaned._deleted ?? false,
               } as T;
             });
-            return mappedResults;
+            return mappedResults.map((remoteDocument) => {
+              const localDocument = localDocuments.get(
+                String((remoteDocument as any)[primaryKey]),
+              );
+              return localDocument && config.mergePushResponse
+                ? config.mergePushResponse(remoteDocument, localDocument)
+                : remoteDocument;
+            });
           }
 
           return [];

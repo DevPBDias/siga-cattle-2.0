@@ -3,38 +3,7 @@ import { Animal } from "@/types/animal.type";
 import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { generateReproductionPDF } from "../generators/reproduction";
-
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return "---";
-  try {
-    return new Date(dateStr).toLocaleDateString("pt-BR", { timeZone: "UTC" });
-  } catch {
-    return "---";
-  }
-}
-
-function calculateAge(birthDate: string | Date | undefined): string {
-  if (!birthDate) return "---";
-  const date = typeof birthDate === "string" ? new Date(birthDate) : birthDate;
-  if (isNaN(date.getTime())) return "---";
-
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMonths = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30.44));
-
-  if (diffMonths < 12) {
-    return `${diffMonths} meses`;
-  }
-
-  const years = Math.floor(diffMonths / 12);
-  const months = diffMonths % 12;
-
-  if (months === 0) {
-    return `${years} ${years === 1 ? "ano" : "anos"}`;
-  }
-
-  return `${years}a ${months}m`;
-}
+import { formatDate, formatAge, getTodayFormatted } from "@/utils/dates";
 
 async function generateReproductionReport(
   params: ReportGeneratorParams,
@@ -121,6 +90,10 @@ async function generateReproductionReport(
     if (filters.endDate) selector.d10_date.$lte = filters.endDate;
   }
 
+  if (filters.eventType && filters.eventType !== "Todos") {
+    selector.event_type = { $eq: filters.eventType };
+  }
+
   const eventDocs = await db.reproduction_events
     .find({
       selector,
@@ -145,8 +118,15 @@ async function generateReproductionReport(
         return {
           rgn: event.rgn || "---",
           farmName: showFarmColumn ? animal?.farmName || "---" : undefined,
-          idade: calculateAge(animal?.born_date),
+          idade: formatAge(animal?.born_date, { short: true }),
           classification: animal?.classification || "---",
+          event_type: event.event_type || "---",
+          productive_status: event.productive_status || "---",
+          body_score: event.body_score?.toString() || "---",
+          ovary_size: event.ovary_size || "---",
+          ovary_structure: event.ovary_structure || "---",
+          cycle_stage: event.cycle_stage || "---",
+          protocol_name: event.protocol_name || "---",
           bull_name: event.bull_name || "---",
           d0_date: formatDate(event.d0_date),
           d8_date: formatDate(event.d8_date),
@@ -158,7 +138,7 @@ async function generateReproductionReport(
           resync_d10: formatDate(event.d32_date),
         };
       }),
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    reportDate: getTodayFormatted(),
     systemName: "Rico Ouro",
   };
 

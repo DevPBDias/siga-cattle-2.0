@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/button";
 import { useDeleteReproductionEvent } from "@/hooks/db/reproduction_event/useDeleteReproductionEvent";
 import { Loader2, Trash2 } from "lucide-react";
 import { ReproductionEvent } from "@/types/reproduction_event.type";
-import { formatDate } from "@/utils/formatDates";
+import { formatDate } from "@/utils/dates";
+import { toast } from "sonner";
 
 interface DeleteReproductionModalProps {
   isOpen: boolean;
@@ -35,12 +36,16 @@ export function DeleteReproductionModal({
   const handleDelete = async () => {
     try {
       await deleteEvent(event.event_id);
+      toast.success("Evento de reprodução excluído com sucesso!");
       onSuccess?.();
       onClose();
     } catch (error) {
       console.error("Erro ao deletar evento:", error);
+      toast.error("Erro ao excluir evento de reprodução.");
     }
   };
+
+  const d10Date = event.d10_date || event.d0_date;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -66,10 +71,10 @@ export function DeleteReproductionModal({
           </div>
           <div className="flex justify-between">
             <span className="font-bold text-muted-foreground uppercase text-xs">
-              Data D0
+              Data D10
             </span>
             <span className="font-semibold text-foreground">
-              {event.d0_date && formatDate(event.d0_date)}
+              {d10Date ? formatDate(d10Date) : "-"}
             </span>
           </div>
           <div className="flex justify-between">

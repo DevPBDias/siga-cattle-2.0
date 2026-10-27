@@ -58,7 +58,7 @@ function formatValue(val: any): string {
   return String(val);
 }
 
-import { formatDate } from "@/utils/formatDates";
+import { formatDate, getTodayFormatted } from "@/utils/dates";
 
 export async function generateAnimalReportPDFPixelPerfect(
   data: Animal[],
@@ -324,11 +324,7 @@ export async function generateAnimalReportPDFPixelPerfect(
         doc.setFont(LAYOUT.fonts.base, "normal");
         doc.setTextColor(...LAYOUT.colors.textGray);
 
-        const now = new Date().toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-        });
+        const now = getTodayFormatted();
 
         doc.text(
           `Nelore Indi Ouro - Valoriza rebanhos - Impresso em: ${now}`,

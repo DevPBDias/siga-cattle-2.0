@@ -13,7 +13,7 @@ import {
   Hash,
   Dna,
 } from "lucide-react";
-import { formatDate } from "@/utils/formatDates";
+import { formatDate } from "@/utils/dates";
 import { useAnimalById } from "@/hooks/db/animals/useAnimalById";
 
 interface BuyListItemProps {

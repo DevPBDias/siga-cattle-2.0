@@ -70,9 +70,28 @@ export interface ReproductionByCowReportData extends ReportBaseData {
     rgn: string;
     idade: string;
     quantity: number;
-    d10_dates: string;
+    management_dates: string;
+    protocol_names: string;
+    event_types: string;
     bull_names: string;
   }>;
+}
+
+export interface BirthReportItem {
+  animal: string;
+  sex: string;
+  birth_date: string;
+  weight: string;
+  mother: string;
+  farm_name: string;
+  registration_date: string;
+  created_by: string;
+  [key: string]: string;
+}
+
+export interface BirthForecastReportData extends ReportBaseData {
+  yearFilter?: string;
+  data: BirthReportItem[];
 }
 
 export interface SemenDoseReportData extends ReportBaseData {

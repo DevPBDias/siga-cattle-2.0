@@ -3,21 +3,7 @@ import { Animal } from "@/types/animal.type";
 import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { generateReproductionByCowPDF } from "../generators/reproduction-by-cow";
-import { calculateAgeInMonths, formatDate } from "@/utils/formatDates";
-
-function formatAge(birthDate?: string): string {
-  if (!birthDate) return "---";
-  const months = calculateAgeInMonths(birthDate);
-  if (months < 12) {
-    return `${months} meses`;
-  }
-  const years = Math.floor(months / 12);
-  const remainder = months % 12;
-  if (remainder === 0) {
-    return `${years} ${years === 1 ? "ano" : "anos"}`;
-  }
-  return `${years}a ${remainder}m`;
-}
+import { calculateAgeInMonths, formatDate, formatAge, getTodayFormatted } from "@/utils/dates";
 
 async function generateReproductionByCowReport(
   params: ReportGeneratorParams,
@@ -49,14 +35,14 @@ async function generateReproductionByCowReport(
   const animals = animalDocs.map((doc) => doc.toJSON() as Animal);
   const animalMap = new Map(animals.map((animal) => [animal.rgn, animal]));
   const animalRgns = animals.map((animal) => animal.rgn);
-
+  const farmName =
+    filters.farmNames?.join(", ") ||
+    filters.farmName ||
+    "Todas as Fazendas";
   if (animalRgns.length === 0) {
     await generateReproductionByCowPDF({
-      farmName:
-        filters.farmNames && filters.farmNames.length > 0
-          ? filters.farmNames.join(", ")
-          : filters.farmName || "Todas as Fazendas",
-      reportDate: new Date().toLocaleDateString("pt-BR"),
+      farmName,
+      reportDate: getTodayFormatted(),
       systemName: "Rico Ouro",
       data: [],
     });
@@ -80,6 +66,10 @@ async function generateReproductionByCowReport(
     };
   }
 
+  if (filters.eventType && filters.eventType !== "Todos") {
+    eventSelector.event_type = { $eq: filters.eventType };
+  }
+
   const eventDocs = await db.reproduction_events
     .find({ selector: eventSelector })
     .exec();
@@ -91,7 +81,9 @@ async function generateReproductionByCowReport(
       rgn: string;
       birth_date?: string;
       quantity: number;
-      d10Dates: Set<string>;
+      managementDates: Set<string>;
+      protocolNames: Set<string>;
+      eventTypes: Set<string>;
       bullNames: Set<string>;
     }
   >();
@@ -100,14 +92,22 @@ async function generateReproductionByCowReport(
     const existing = cowMap.get(event.rgn);
     if (existing) {
       existing.quantity += 1;
-      if (event.d10_date) existing.d10Dates.add(event.d10_date);
+      if (event.d10_date) existing.managementDates.add(event.d10_date);
+      if (event.protocol_name) existing.protocolNames.add(event.protocol_name);
+      if (event.event_type) existing.eventTypes.add(event.event_type);
       if (event.bull_name) existing.bullNames.add(event.bull_name);
     } else {
       cowMap.set(event.rgn, {
         rgn: event.rgn,
         birth_date: animalMap.get(event.rgn)?.born_date,
         quantity: 1,
-        d10Dates: event.d10_date ? new Set([event.d10_date]) : new Set(),
+        managementDates: event.d10_date
+          ? new Set([event.d10_date])
+          : new Set(),
+        protocolNames: event.protocol_name
+          ? new Set([event.protocol_name])
+          : new Set(),
+        eventTypes: event.event_type ? new Set([event.event_type]) : new Set(),
         bullNames: event.bull_name ? new Set([event.bull_name]) : new Set(),
       });
     }
@@ -119,22 +119,21 @@ async function generateReproductionByCowReport(
       rgn: cow.rgn,
       idade: formatAge(cow.birth_date),
       quantity: cow.quantity,
-      d10_dates: Array.from(cow.d10Dates)
+      management_dates: Array.from(cow.managementDates)
         .sort()
         .map((date) => formatDate(date))
         .filter(Boolean)
         .join(", "),
+      protocol_names: Array.from(cow.protocolNames).join(", "),
+      event_types: Array.from(cow.eventTypes).join(", "),
       bull_names: Array.from(cow.bullNames)
         .map((bull) => bull.toUpperCase())
         .join(", "),
     }));
 
   await generateReproductionByCowPDF({
-    farmName:
-      filters.farmNames && filters.farmNames.length > 0
-        ? filters.farmNames.join(", ")
-        : filters.farmName || "Todas as Fazendas",
-    reportDate: new Date().toLocaleDateString("pt-BR"),
+    farmName,
+    reportDate: getTodayFormatted(),
     systemName: "Rico Ouro",
     data,
   });

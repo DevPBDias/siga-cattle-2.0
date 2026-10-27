@@ -1,29 +1,9 @@
 import * as XLSX from "xlsx";
 import { Animal } from "@/types/animal.type";
+import { parseImportedDate } from "@/utils/dates";
 
 function convertDateToISO(dateValue: unknown): string | undefined {
-  if (dateValue === null || dateValue === undefined) return undefined;
-
-  if (typeof dateValue === "number") {
-    const excelEpoch = new Date(1899, 11, 30);
-    const jsDate = new Date(
-      excelEpoch.getTime() + dateValue * 24 * 60 * 60 * 1000
-    );
-
-    if (isNaN(jsDate.getTime())) return undefined;
-
-    const y = jsDate.getFullYear();
-    const m = jsDate.getMonth() + 1;
-    const d = jsDate.getDate();
-    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  }
-
-  const dateStr = String(dateValue).trim();
-  if (dateStr === "") return undefined;
-
-  const [d, m, y] = dateStr.split("/").map((x) => parseInt(x, 10));
-  if (!d || !m || !y) return undefined;
-  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  return parseImportedDate(dateValue);
 }
 
 function cleanStringValue(value: unknown): string | undefined {

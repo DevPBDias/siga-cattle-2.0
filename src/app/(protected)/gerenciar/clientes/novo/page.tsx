@@ -1,46 +1,28 @@
 "use client";
 
-import Header from "@/components/layout/Header";
+import ShortHeader from "@/components/layout/ShortHeader";
 import { ClientForm } from "@/components/features/commercial/clients/ClientForm";
-import { useClients } from "@/hooks/db/clients/useClients";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { SuccessModal } from "@/components/modals/SuccessModal";
-import { v4 as uuidv4 } from "uuid";
+import { useNovoCliente } from "@/hooks/forms/useNovoCliente";
 
 export default function NovoClientePage() {
-  const {
-    actions: { createClient },
-    loading: isLoading,
-  } = useClients();
-  const router = useRouter();
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  const handleSubmit = async (data: any) => {
-    try {
-      await createClient({
-        id: uuidv4(),
-        ...data,
-      });
-      setShowSuccess(true);
-    } catch (error) {
-      console.error("Erro ao criar cliente:", error);
-    }
-  };
+  const { data, loading, actions } = useNovoCliente();
 
   return (
-    <main className="min-h-screen bg-background pb-10">
-      <Header title="Novo Cliente" />
+    <main className="min-h-screen bg-background pb-12">
+      <ShortHeader title="Novo Cliente" />
       <div className="p-5">
-        <div className="bg-white/50 rounded-3xl p-6 border border-white scroll-mt-20">
-            <h2 className="text-lg font-black text-primary mb-6 uppercase tracking-tight">Cadastro de Cliente</h2>
-            <ClientForm onSubmit={handleSubmit} isLoading={isLoading} />
-        </div>
+        <section className="bg-card rounded-2xl p-6 border border-border/60">
+          <h2 className="text-base font-bold text-primary mb-6 uppercase tracking-tight">
+            Cadastro de Cliente
+          </h2>
+          <ClientForm onSubmit={actions.handleSubmit} isLoading={loading} />
+        </section>
       </div>
 
       <SuccessModal
-        open={showSuccess}
-        onClose={() => router.push("/gerenciar/clientes")}
+        open={data.showSuccess}
+        onClose={actions.handleCloseSuccess}
         title="Cliente cadastrado!"
         message="O novo cliente foi salvo com sucesso e já está disponível."
       />

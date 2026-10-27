@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Animal } from "@/types/animal.type";
-import { calculateAgeInMonths, getAgeRange } from "@/utils/formatDates";
+import { calculateAgeInMonths, getAgeRange } from "@/utils/dates";
 
 interface AnimalsByAgeAndSex {
   male: {

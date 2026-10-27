@@ -3,15 +3,17 @@ import { RxJsonSchema } from "rxdb";
 
 export const animalSchema: RxJsonSchema<Animal> = {
   title: "animals",
-  version: 0,
+  version: 5,
   primaryKey: "rgn",
   type: "object",
   properties: {
     rgn: { type: "string", maxLength: 10 },
     name: { type: "string" },
     sex: { type: "string" },
+    is_natural_bull: { type: "boolean" },
     born_date: { type: "string", format: "date" },
     serie_rgd: { type: "string" },
+    breed: { type: "string" },
     born_color: { type: "string" },
     iabcgz: { type: "string" },
     deca: { type: "string" },
@@ -39,6 +41,7 @@ export const animalSchema: RxJsonSchema<Animal> = {
     maternal_grandfather_name: { type: "string" },
     paternal_grandfather_name: { type: "string" },
     partnership: { type: "string" },
+    animal_image: { type: "string" },
     created_at: { type: "number" },
     updated_at: { type: "number" },
     _deleted: { type: "boolean" },

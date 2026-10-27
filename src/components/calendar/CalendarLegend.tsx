@@ -1,6 +1,7 @@
 "use client";
 
 import { STAGE_METADATA, EventStage } from "@/types/calendar.types";
+import { formatDate } from "@/utils/dates";
 
 interface CalendarLegendProps {
   activeCycles: { date: string; color: string }[];
@@ -50,9 +51,7 @@ export function CalendarLegend({ activeCycles }: CalendarLegendProps) {
                 />
                 <span className="text-[10px] font-black">
                   Ciclo{" "}
-                  {new Date(cycle.date + "T12:00:00").toLocaleDateString(
-                    "pt-BR",
-                  )}
+                  {formatDate(cycle.date)}
                 </span>
               </div>
             ))

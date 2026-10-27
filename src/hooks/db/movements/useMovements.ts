@@ -15,6 +15,7 @@ import { getDatabase } from "@/db/client";
 import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import type { MangoQuery } from "rxdb";
+import { getSupabase } from "@/lib/supabase/client";
 
 export function useMovements() {
   const query = useMemo<MangoQuery<Movement>>(
@@ -53,13 +54,18 @@ export function useMovements() {
         const db = await getDatabase();
         const id = uuidv4();
         const timestamp = Date.now();
+        const {
+          data: { user },
+        } = await getSupabase().auth.getUser();
 
         // 1. Create the Movement record
         await movementActions.create({
           type: data.type,
           animal_id: data.animal_id,
           date: data.date,
+          event_date: data.event_date ?? data.date,
           details_id: "", // Will be patched later
+          created_by: user?.id,
           id,
           created_at: timestamp,
           updated_at: timestamp,
@@ -131,6 +137,9 @@ export function useMovements() {
                 animal_rgn: data.animal_id,
                 date: data.date,
                 reason: morteDetails.reason || "",
+                mother_name: morteDetails.mother_name,
+                photos: morteDetails.photos || [],
+                photo_paths: [],
                 created_at: timestamp,
                 updated_at: timestamp,
                 _deleted: false,

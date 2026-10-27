@@ -8,6 +8,7 @@ export {
   replicateSemenDosesNew,
 } from "./semenDose.replication";
 export { farmReplication, replicateFarmsNew } from "./farm.replication";
+export { userProfileReplication, replicateUserProfilesNew } from "./userProfile.replication";
 export {
   vaccineReplication,
   replicateVaccinesNew,

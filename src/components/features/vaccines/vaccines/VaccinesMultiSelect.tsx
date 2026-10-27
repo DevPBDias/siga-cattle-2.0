@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox } from "@/components/ui/checkbox";
+import { Check } from "lucide-react";
 import { Vaccine } from "@/types/vaccine.type";
 
 interface VaccinesMultiSelectProps {
@@ -16,44 +16,50 @@ export function VaccinesMultiSelect({
   selected,
   onToggle,
 }: VaccinesMultiSelectProps) {
-  return (
-    <div className="flex items-start gap-2 w-full">
-      <div className="flex-1 rounded-md px-4 py-3 w-full border-0">
-        {loading && (
-          <div className="text-sm text-foreground/70">
-            Carregando vacinas...
-          </div>
-        )}
-        {!loading && vaccines.length === 0 && (
-          <div className="text-sm text-foreground/70">
-            Nenhuma vacina cadastrada
-          </div>
-        )}
-        {!loading && vaccines.length > 0 && (
-          <div className="grid grid-cols-2 gap-3">
-            {vaccines.map((vaccine) => {
-              const name = vaccine.vaccine_name;
-              const checked = selected.includes(name);
-              return (
-                <label
-                  key={`${vaccine.id ?? name}`}
-                  className="flex items-center bg-muted rounded-md px-3 py-2 gap-3 text-sm cursor-pointer select-none"
-                >
-                  <Checkbox
-                    checked={checked}
-                    className="border-primary"
-                    onCheckedChange={(val) => onToggle(name, Boolean(val))}
-                    aria-label={name}
-                  />
-                  <span className="text-xs uppercase text-primary font-medium">
-                    {name}
-                  </span>
-                </label>
-              );
-            })}
-          </div>
-        )}
+  if (loading) {
+    return (
+      <div className="text-xs text-muted-foreground py-2 font-medium">
+        Carregando catálogo de vacinas...
       </div>
+    );
+  }
+
+  if (vaccines.length === 0) {
+    return (
+      <div className="text-xs text-muted-foreground py-2 italic">
+        Nenhuma vacina cadastrada. Clique no botão "+" para adicionar.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2 w-full">
+      {vaccines.map((vaccine) => {
+        const name = vaccine.vaccine_name;
+        const isSelected = selected.includes(name);
+
+        return (
+          <button
+            key={vaccine.id ?? name}
+            type="button"
+            onClick={() => onToggle(name, !isSelected)}
+            className={`flex items-center gap-2 p-2.5 rounded-xl border text-xs font-bold transition-all text-left cursor-pointer active:scale-98 ${isSelected
+              ? "bg-primary border-field-green text-white shadow-xs"
+              : "bg-background border-border text-primary hover:border-field-green/40"
+              }`}
+          >
+            <span
+              className={`p-1 rounded-md flex items-center justify-center border shrink-0 transition-colors ${isSelected
+                ? "bg-field-green border-white text-white"
+                : "border-border bg-white"
+                }`}
+            >
+              {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
+            </span>
+            <span className="truncate">{name}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

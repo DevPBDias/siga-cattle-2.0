@@ -9,7 +9,7 @@ import {
   PregnancyOrigin,
   ReproductionEvent,
 } from "@/types/reproduction_event.type";
-import { DateOnly } from "@/utils/date_only";
+import { DateOnly } from "@/utils/dates";
 import { v4 as uuidv4 } from "uuid";
 
 export interface BulkReproductionPayload {

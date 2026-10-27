@@ -6,8 +6,8 @@
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1162ae",
-  "theme_color": "#1162ae",
+  "background_color": "#1e3b2b",
+  "theme_color": "#1e3b2b",
   "categories": ["business", "productivity"],
   "lang": "pt-BR",
   "dir": "ltr",
@@ -25,12 +25,11 @@
       "purpose": "any maskable"
     },
     {
-      "src": "/logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
       "purpose": "any"
     }
   ],
   "screenshots": []
-
 }

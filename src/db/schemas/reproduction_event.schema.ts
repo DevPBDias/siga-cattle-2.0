@@ -23,6 +23,7 @@ export const reproductionEventSchema: RxJsonSchema<ReproductionEvent> = {
     d8_date: { type: "string", format: "date" },
     d10_date: { type: "string", format: "date" },
     bull_name: { type: "string" },
+    bull_image: { type: "string" },
     d22_date: { type: "string", format: "date" },
     d30_date: { type: "string", format: "date" },
     diagnostic_d30: { type: "string", maxLength: 20 },

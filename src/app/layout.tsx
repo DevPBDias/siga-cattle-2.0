@@ -4,7 +4,7 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import ServiceWorkerUpdater from "@/components/sync/ServiceWorkerUpdater";
 import RegisterSW from "@/components/sync/RegisterSW";
-import { SyncStatusIndicator } from "@/components/sync/SyncStatusIndicator";
+import AgendaReminderNotifier from "@/components/sync/AgendaReminderNotifier";
 import { LocalFirstProvider } from "@/providers";
 
 export const metadata: Metadata = {
@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     icon: [
       { url: "/icon-192.png", type: "image/png", sizes: "192x192" },
       { url: "/icon-512.png", type: "image/png", sizes: "512x512" },
-      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "48x48" },
     ],
     apple: [
       { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  themeColor: "#1162ae",
+  themeColor: "#1e3b2b",
 };
 
 export default function RootLayout({
@@ -48,7 +48,7 @@ export default function RootLayout({
         />
         <meta name="apple-mobile-web-app-title" content="INDI Ouro" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="icon" href="/logo.svg" type="image/svg+xml" />
+        <link rel="icon" href="/icon-192.png" type="image/png" />
         <link
           rel="apple-touch-icon"
           sizes="180x180"
@@ -103,7 +103,7 @@ export default function RootLayout({
       >
         <LocalFirstProvider>
           <RegisterSW />
-          <SyncStatusIndicator />
+          <AgendaReminderNotifier />
           {children}
           <ServiceWorkerUpdater />
         </LocalFirstProvider>

@@ -31,3 +31,20 @@ export function getSupabase(): SupabaseClient {
 }
 
 export const supabase = getSupabase();
+
+/**
+ * Standalone Supabase client for registering users without
+ * overriding or persisting over the current admin session.
+ */
+export function createIsolatedAuthClient(): SupabaseClient {
+  const url = supabaseUrl || "https://placeholder.supabase.co";
+  const key = supabaseAnonKey || "placeholder-key";
+
+  return createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+}

@@ -5,6 +5,7 @@ import { Sale } from "@/types/sale.type";
 import { useMemo, useState } from "react";
 import type { MangoQuery } from "rxdb";
 import { useLocalDocument } from "@/hooks/core/useLocalDocument";
+import { parseDateParts } from "@/utils/dates";
 
 /**
  * Hook reativo para gerenciar a lista de vendas.
@@ -56,9 +57,10 @@ export function useSales() {
     if (!allSales) return [];
 
     return allSales.filter((sale) => {
-      const saleDate = new Date(sale.date);
-      if (yearFilter && saleDate.getFullYear() !== yearFilter) return false;
-      if (monthFilter && saleDate.getMonth() + 1 !== monthFilter) return false;
+      const parts = parseDateParts(sale.date);
+      if (!parts) return false;
+      if (yearFilter && parts.year !== yearFilter) return false;
+      if (monthFilter && parts.month !== monthFilter) return false;
       return true;
     });
   }, [allSales, yearFilter, monthFilter]);
@@ -73,7 +75,9 @@ export function useSales() {
   const availableYears = useMemo(() => {
     if (!allSales) return [];
     const years = new Set(
-      allSales.map((sale) => new Date(sale.date).getFullYear()),
+      allSales
+        .map((sale) => parseDateParts(sale.date)?.year)
+        .filter((y): y is number => y !== undefined),
     );
     return Array.from(years).sort((a, b) => b - a);
   }, [allSales]);

@@ -15,3 +15,9 @@ export interface AnimalVaccine {
   updated_at: number;
   _deleted: boolean;
 }
+
+export interface VaccineHistoryEntry {
+  id: string;
+  name: string;
+  date?: string;
+}

@@ -7,6 +7,7 @@ import { fieldMap } from "@/constants/dynamicFields";
 import { getDatabase } from "@/db/client";
 import { AnimalMetric } from "@/types/animal_metrics.type";
 import { AnimalVaccine } from "@/types/vaccine.type";
+import { formatDate, formatDateTime } from "@/utils/dates";
 
 export async function generateAnimalReportPDF(
   data: Animal[],
@@ -47,13 +48,7 @@ export async function generateAnimalReportPDF(
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(255, 255, 255);
-  const dateStr = new Date().toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const dateStr = formatDateTime(new Date());
   doc.text(`Gerado em: ${dateStr}`, pageWidth / 2, 15, {
     align: "center",
   });
@@ -165,8 +160,6 @@ export async function generateAnimalReportPDF(
     condition: string;
   };
 
-  const formatDate = (d?: string) =>
-    d ? new Date(d).toLocaleDateString("pt-BR") : "";
 
   const formatWeight = (value?: number) =>
     value ? `${value.toFixed(1)} kg` : "";

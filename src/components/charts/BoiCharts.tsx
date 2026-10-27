@@ -17,7 +17,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ChartConfig, ChartContainer } from "@/components/ui/chart";
-import { formatDate } from "@/utils/formatDates";
+import { formatDate } from "@/utils/dates";
 
 type SerieItem = { date: string; value: number };
 

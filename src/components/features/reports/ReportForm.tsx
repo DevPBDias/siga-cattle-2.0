@@ -2,7 +2,6 @@
 
 import React, { useMemo } from "react";
 import { useReports } from "@/context/ReportsContext";
-import { useFarms } from "@/hooks/db/farms/useFarms";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -20,6 +19,8 @@ import {
 import { useReproductionEvents } from "@/hooks/db/reproduction_event/useReproductionEvents";
 import { useStatuses } from "@/hooks/db/statuses/useStatuses";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
+import { useFarms } from "@/hooks/db/farms/useFarms";
+import { useMovements } from "@/hooks/db/movements/useMovements";
 import { Checkbox } from "@/components/ui/checkbox";
 import { reproductionByCowDefinition } from "@/lib/pdf/definitions/reproductionByCow.definition";
 import {
@@ -28,15 +29,24 @@ import {
   MAX_SELECTABLE_COLUMNS,
 } from "@/lib/pdf/definitions/availableColumns";
 import { ReportCheckboxItem } from "./ReportCheckboxItem";
-import { FarmFilterModal } from "./FarmFilterModal";
 import { SexFilterModal } from "./SexFilterModal";
 import { StatusFilterModal } from "./StatusFilterModal";
 import { ClassFilterModal } from "./ClassFilterModal";
 import { SocietyFilterModal } from "./SocietyFilterModal";
 import { AnimalStateFilterModal } from "./AnimalStateFilterModal";
 import { TableColumn } from "@/lib/pdf/types";
+import { EventType } from "@/types/reproduction_event.type";
+import { formatDate } from "@/utils/dates";
 
-export function ReportForm() {
+interface ReportFormProps {
+  showGenerateActions?: boolean;
+  compact?: boolean;
+}
+
+export function ReportForm({
+  showGenerateActions = true,
+  compact = false,
+}: ReportFormProps = {}) {
   const {
     selectedReport,
     filters,
@@ -48,12 +58,12 @@ export function ReportForm() {
   } = useReports();
 
   // Hooks must be called unconditionally (before any early returns)
-  const { data: farms = [] } = useFarms();
   const { data: statuses = [] } = useStatuses();
   const { data: allEvents = [] } = useReproductionEvents();
   const { data: animals = [] } = useAnimals();
+  const { data: farms = [] } = useFarms();
+  const { data: movements = [] } = useMovements();
 
-  const [farmModalOpen, setFarmModalOpen] = React.useState(false);
   const [sexModalOpen, setSexModalOpen] = React.useState(false);
   const [statusModalOpen, setStatusModalOpen] = React.useState(false);
   const [classModalOpen, setClassModalOpen] = React.useState(false);
@@ -63,19 +73,29 @@ export function ReportForm() {
 
   // Filter animals by selected farm (or all if no farm selected or filterMode is "all")
   const farmAnimals = useMemo(() => {
-    if (
-      (!filters.farmId && (!filters.farmIds || filters.farmIds.length === 0)) ||
-      filters.farmFilterMode === "all"
-    ) {
-      return animals;
-    }
-    // Multi-farm support
-    if (filters.farmIds && filters.farmIds.length > 0) {
+    let selectedAnimals = animals;
+    const hasFarmFilter =
+      filters.farmFilterMode !== "all" &&
+      Boolean(filters.farmId || filters.farmIds?.length);
+
+    if (hasFarmFilter && filters.farmIds?.length) {
       const farmIdSet = new Set(filters.farmIds);
-      return animals.filter((a) => a.farm_id && farmIdSet.has(a.farm_id));
+      selectedAnimals = selectedAnimals.filter(
+        (animal) => animal.farm_id && farmIdSet.has(animal.farm_id),
+      );
+    } else if (hasFarmFilter && filters.farmId) {
+      selectedAnimals = selectedAnimals.filter(
+        (animal) => animal.farm_id === filters.farmId,
+      );
     }
-    return animals.filter((a) => a.farm_id === filters.farmId);
-  }, [animals, filters.farmId, filters.farmIds, filters.farmFilterMode]);
+
+    return selectedAnimals;
+  }, [
+    animals,
+    filters.farmId,
+    filters.farmIds,
+    filters.farmFilterMode,
+  ]);
 
   const farmAnimalRgns = useMemo(
     () => new Set(farmAnimals.map((a) => a.rgn)),
@@ -84,11 +104,26 @@ export function ReportForm() {
 
   // Filter events by farm animals (or all if no farm selected or filterMode is "all")
   const farmEvents = useMemo(() => {
-    if (!filters.farmId || filters.farmFilterMode === "all") {
-      return allEvents;
+    const hasFarmFilter =
+      filters.farmFilterMode !== "all" &&
+      Boolean(filters.farmId || filters.farmIds?.length);
+    const events = hasFarmFilter
+      ? allEvents.filter((e) => farmAnimalRgns.has(e.rgn))
+      : allEvents;
+
+    if (!filters.eventType || filters.eventType === "Todos") {
+      return events;
     }
-    return allEvents.filter((e) => farmAnimalRgns.has(e.rgn));
-  }, [allEvents, farmAnimalRgns, filters.farmId, filters.farmFilterMode]);
+
+    return events.filter((event) => event.event_type === filters.eventType);
+  }, [
+    allEvents,
+    farmAnimalRgns,
+    filters.farmId,
+    filters.farmIds,
+    filters.farmFilterMode,
+    filters.eventType,
+  ]);
 
   // Available Years from Events of the current farm
   const availableYears = useMemo(
@@ -109,6 +144,9 @@ export function ReportForm() {
       farmEvents
         .filter(
           (e) =>
+            // Sync D10 e Sync D11 armazenam a data do manejo no mesmo campo.
+            // Portanto, a lista deve considerar todos os eventos, sem filtrar
+            // pelo nome do protocolo.
             e.d10_date && (!filters.year || e.d10_date.startsWith(filters.year)),
         )
         .map((e) => e.d10_date!)
@@ -126,21 +164,6 @@ export function ReportForm() {
   );
 
   if (!selectedReport) return null;
-
-  // Handle farm filter from modal
-  const handleFarmFilterConfirm = (
-    farmIds: string[],
-    farmNames: string[],
-    filterMode: "all" | "specific" | "multiple",
-  ) => {
-    updateFilters({
-      farmId: farmIds.length === 1 ? farmIds[0] : undefined,
-      farmIds,
-      farmName: farmNames.length === 1 ? farmNames[0] : undefined,
-      farmNames,
-      farmFilterMode: filterMode,
-    });
-  };
 
   // Handle sex filter from modal
   const handleSexFilterConfirm = (
@@ -200,22 +223,7 @@ export function ReportForm() {
   // Custom toggle for filter columns - opens modal instead
   const handleColumnToggle = (column: TableColumn) => {
     if (column.dataKey === "farmName") {
-      // Se está desmarcando, remover filtro
-      const isChecked =
-        filters.selectedColumns?.some((c) => c.dataKey === "farmName") ?? false;
-      if (isChecked) {
-        updateFilters({
-          farmId: undefined,
-          farmIds: [],
-          farmName: undefined,
-          farmNames: [],
-          farmFilterMode: undefined,
-        });
-        toggleColumn(column);
-      } else {
-        // Se está marcando, abrir modal
-        setFarmModalOpen(true);
-      }
+      toggleColumn(column);
     } else if (column.dataKey === "sex") {
       // Se está desmarcando, remover filtro
       const isChecked =
@@ -304,12 +312,17 @@ export function ReportForm() {
   const isSocietyColumnSelected =
     filters.selectedColumns?.some((c) => c.dataKey === "society") ?? false;
 
-  const effectiveMaxColumns = MAX_SELECTABLE_COLUMNS;
+  const effectiveMaxColumns =
+    selectedReport.id === "animals-by-farm" ? 16 : MAX_SELECTABLE_COLUMNS;
   const columnCount = filters.selectedColumns?.length || 0;
   const maxColumnsReached = columnCount >= effectiveMaxColumns;
 
   const handleYearChange = (year: string) => {
     updateFilters({ year, managementDates: [] });
+  };
+
+  const handleEventTypeChange = (eventType: string) => {
+    updateFilters({ eventType: eventType as EventType | "Todos", managementDates: [] });
   };
 
   const toggleManagementDate = (date: string) => {
@@ -323,6 +336,17 @@ export function ReportForm() {
     }
   };
 
+  const toggleAllManagementDates = () => {
+    const currentDates = filters.managementDates || [];
+    const allDatesAreSelected =
+      availableDatesForYear.length > 0 &&
+      availableDatesForYear.every((date) => currentDates.includes(date));
+
+    updateFilters({
+      managementDates: allDatesAreSelected ? [] : availableDatesForYear,
+    });
+  };
+
   const handleGenerateReproductionByCowReport = async () => {
     setIsGeneratingCowReport(true);
     try {
@@ -334,10 +358,75 @@ export function ReportForm() {
     }
   };
 
+  
+  const birthYears = useMemo(() => {
+    const yearsSet = new Set<number>();
+    const currentYear = new Date().getFullYear();
+    yearsSet.add(currentYear);
+    for (const m of movements) {
+      if (m.type === "nascimento" && !m._deleted) {
+        const rawDate = m.event_date || m.date;
+        if (rawDate) {
+          const y = parseInt(rawDate.slice(0, 4), 10);
+          if (!isNaN(y)) yearsSet.add(y);
+        } else if (m.created_at) {
+          yearsSet.add(new Date(m.created_at).getFullYear());
+        }
+      }
+    }
+    return Array.from(yearsSet).sort((a, b) => b - a);
+  }, [movements]);
+
+  const matchingBirthCount = useMemo(() => {
+    const targetYear = filters.year ? Number(filters.year) : undefined;
+    const targetFarmId =
+      filters.farmFilterMode === "specific"
+        ? filters.farmId || filters.farmIds?.[0]
+        : undefined;
+
+    const animalMap = new Map(animals.map((a) => [a.rgn, a]));
+
+    return movements.filter((m) => {
+      if (m.type !== "nascimento" || m._deleted || !m.animal_id) return false;
+      const animal = animalMap.get(m.animal_id);
+      if (!animal) return false;
+
+      if (targetFarmId) {
+        if (animal.farm_id !== targetFarmId) return false;
+      }
+
+      if (targetYear) {
+        const rawDate = m.event_date || m.date || animal.born_date;
+        let movYear: number | null = null;
+        if (rawDate) {
+          const y = parseInt(rawDate.slice(0, 4), 10);
+          if (!isNaN(y)) movYear = y;
+        }
+        if (!movYear && m.created_at) {
+          movYear = new Date(m.created_at).getFullYear();
+        }
+        if (movYear !== targetYear) return false;
+      }
+
+      return true;
+    }).length;
+  }, [
+    movements,
+    animals,
+    filters.year,
+    filters.farmFilterMode,
+    filters.farmId,
+    filters.farmIds,
+  ]);
+
   return (
-    <div className="w-full border border-border rounded-xl p-6 space-y-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 bg-card">
-      <div className="space-y-1 text-center">
-        <h2 className="text-xl font-black text-primary uppercase tracking-tight">
+    <div
+      className={`w-full border border-border shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500 bg-card ${
+        compact ? "rounded-lg p-3 space-y-3" : "rounded-xl p-6 space-y-6"
+      }`}
+    >
+      <div className={`${compact ? "space-y-0.5" : "space-y-1"} text-center`}>
+        <h2 className={`${compact ? "text-lg" : "text-xl"} font-black text-primary uppercase tracking-tight`}>
           {selectedReport.title}
         </h2>
         <p className="text-xs text-muted-foreground italic">
@@ -345,12 +434,14 @@ export function ReportForm() {
         </p>
       </div>
 
-      <div className="space-y-4 w-full">
-        <h3 className="font-bold text-[11px] uppercase text-muted-foreground border-b border-border/60 pb-1 mb-2">
-          Filtros do Relatório
-        </h3>
+      <div className={`${compact ? "space-y-3" : "space-y-4"} w-full`}>
+        {selectedReport.id === "reproduction" && (
+          <h3 className="font-bold text-[11px] uppercase text-muted-foreground border-b border-border/60 pb-1 mb-2">
+            Filtros do Relatório
+          </h3>
+        )}
 
-        <div className="flex flex-col md:flex-row gap-4 w-full">
+        <div className="flex flex-col gap-4 md:flex-row w-full">
           {/* Reproduction Year Filter */}
           {selectedReport.id === "reproduction" && (
             <div className="space-y-1 md:w-32">
@@ -380,24 +471,67 @@ export function ReportForm() {
               </Select>
             </div>
           )}
+
+          {selectedReport.id === "reproduction" && (
+            <div className="space-y-1 md:w-48">
+              <Label
+                htmlFor="event-type"
+                className="text-[10px] font-bold uppercase text-primary tracking-tight"
+              >
+                Tipo de evento
+              </Label>
+              <Select
+                value={filters.eventType || "Todos"}
+                onValueChange={handleEventTypeChange}
+              >
+                <SelectTrigger
+                  id="event-type"
+                  className="w-full h-11 bg-muted/40 border-0 focus:ring-primary"
+                >
+                  <SelectValue placeholder="Todos os eventos" />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border shadow-xl">
+                  <SelectItem value="Todos" className="rounded-lg">
+                    Todos os eventos
+                  </SelectItem>
+                  <SelectItem value="IATF" className="rounded-lg">IATF</SelectItem>
+                  <SelectItem value="FIV" className="rounded-lg">FIV</SelectItem>
+                  <SelectItem value="Monta natural" className="rounded-lg">Monta natural</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
+
 
         {/* Reproduction Management Dates Checklist */}
         {selectedReport.id === "reproduction" &&
           filters.year &&
           availableDatesForYear.length > 0 && (
-            <div className="space-y-3 pt-2">
-              <div className="flex justify-between items-center px-1">
+            <div className={`${compact ? "space-y-2 pt-1" : "space-y-3 pt-2"}`}>
+              <div className="flex items-center justify-between gap-2 px-1">
                 <Label className="text-[10px] font-bold uppercase text-primary tracking-tight">
                   Datas de Manejo
                 </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-8 px-2 text-[10px] font-bold uppercase"
+                  onClick={toggleAllManagementDates}
+                >
+                  {availableDatesForYear.every((date) =>
+                    filters.managementDates?.includes(date),
+                  )
+                    ? "Desmarcar todas"
+                    : "Marcar todas"}
+                </Button>
               </div>
 
-              <div className="bg-muted/30 rounded-xl p-3 grid grid-cols-2 sm:grid-cols-3 gap-3 border border-border/30 max-h-48 overflow-y-auto">
+              <div className={`grid grid-cols-2 ${compact ? "gap-2" : "gap-3"}`}>
                 {availableDatesForYear.map((date) => (
                   <div
                     key={date}
-                    className="flex items-center space-x-2 bg-white/50 dark:bg-zinc-800/50 p-2 rounded-lg border border-border/40 transition-colors hover:border-primary/40"
+                    className="flex items-center space-x-2 rounded-lg border border-primary/15 bg-primary/10 p-2 transition-colors hover:border-primary/40"
                   >
                     <Checkbox
                       id={`date-${date}`}
@@ -409,9 +543,7 @@ export function ReportForm() {
                       htmlFor={`date-${date}`}
                       className="text-[11px] font-bold text-muted-foreground cursor-pointer select-none"
                     >
-                      {new Date(date).toLocaleDateString("pt-BR", {
-                        timeZone: "UTC",
-                      })}
+                      {formatDate(date)}
                     </Label>
                   </div>
                 ))}
@@ -428,7 +560,7 @@ export function ReportForm() {
 
       {/* Sorting Option - Only for animals-by-farm report */}
       {selectedReport.id === "animals-by-farm" && (
-        <div className="space-y-2 pt-2">
+        <div className={`${compact ? "space-y-1.5 pt-1" : "space-y-2 pt-2"}`}>
           <Label className="text-[10px] font-bold uppercase text-primary tracking-tight">
             Ordenar por
           </Label>
@@ -471,9 +603,47 @@ export function ReportForm() {
         </div>
       )}
 
+      {selectedReport.id === "birth-forecast" && (
+        <div className={`${compact ? "space-y-1.5 pt-1" : "space-y-2 pt-2"}`}>
+          <Label className="text-[10px] font-bold uppercase text-primary tracking-tight">
+            Ordenar por
+          </Label>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { value: "rgn", label: "Animal" },
+              { value: "farm", label: "Fazenda" },
+              { value: "birthDate", label: "Nascimento" },
+            ].map((option) => (
+              <label
+                key={option.value}
+                className={`flex min-h-10 cursor-pointer items-center justify-center rounded-lg border px-2 py-2 text-center transition-colors ${
+                  (filters.birthForecastSortBy ?? "rgn") === option.value
+                    ? "border-primary bg-primary/10 font-bold text-primary"
+                    : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="birthForecastSortBy"
+                  value={option.value}
+                  checked={(filters.birthForecastSortBy ?? "rgn") === option.value}
+                  onChange={() =>
+                    updateFilters({
+                      birthForecastSortBy: option.value as "rgn" | "farm" | "birthDate",
+                    })
+                  }
+                  className="sr-only"
+                />
+                <span className="text-[10px] uppercase leading-tight">{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Column Selection */}
       {selectedReport.allowColumnSelection && (
-        <div className="space-y-4 pt-4 border-t border-border/40">
+        <div className={`border-t border-border/40 ${compact ? "space-y-2 pt-3" : "space-y-4 pt-4"}`}>
           <div className="flex justify-between items-end">
             <div>
               <Label className="text-[10px] font-bold uppercase text-primary tracking-tight">
@@ -525,25 +695,6 @@ export function ReportForm() {
       )}
 
       {/* Filter Modals */}
-      <FarmFilterModal
-        open={farmModalOpen}
-        onOpenChange={setFarmModalOpen}
-        farms={farms}
-        currentFarmIds={
-          filters.farmIds || (filters.farmId ? [filters.farmId] : [])
-        }
-        currentFilterMode={filters.farmFilterMode || "all"}
-        onConfirm={(farmIds, farmNames, filterMode) => {
-          handleFarmFilterConfirm(farmIds, farmNames, filterMode);
-          const isFarmColumnSelected =
-            filters.selectedColumns?.some((c) => c.dataKey === "farmName") ??
-            false;
-          if (!isFarmColumnSelected) {
-            toggleColumn({ header: "FAZENDA", dataKey: "farmName" });
-          }
-        }}
-      />
-
       <SexFilterModal
         open={sexModalOpen}
         onOpenChange={setSexModalOpen}
@@ -619,7 +770,8 @@ export function ReportForm() {
         }}
       />
 
-      <div className="pt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]">
+      {showGenerateActions && (
+        <div className={`${compact ? "pt-3" : "pt-4"} grid gap-3 md:grid-cols-[minmax(0,1fr)_auto]`}>
         <Button
           onClick={generateReport}
           disabled={isGenerating || isGeneratingCowReport}
@@ -652,7 +804,8 @@ export function ReportForm() {
             )}
           </Button>
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

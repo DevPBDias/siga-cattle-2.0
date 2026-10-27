@@ -9,7 +9,9 @@ import React, {
 } from "react";
 import { useRxDB } from "./RxDBProvider";
 import { combineLatest } from "rxjs";
-import { forceSyncAll } from "../db/replication";
+import { setupReplication, stopReplication, forceSyncAll } from "../db/replication";
+import { getSupabase } from "@/lib/supabase/client";
+import type { Session } from "@supabase/supabase-js";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { PendingQueue } from "@/lib/sync/pendingQueue";
 import type { SyncLogEntry } from "@/lib/sync/syncLogger";
@@ -63,6 +65,7 @@ export function ReplicationProvider({
   children: React.ReactNode;
 }) {
   const { db, isLoading } = useRxDB();
+  const [replicationsReady, setReplicationsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [online, setOnline] = useState(true);
@@ -93,6 +96,74 @@ export function ReplicationProvider({
     };
   }, []);
 
+  // Controla o ciclo de vida da replicação baseado na autenticação
+  useEffect(() => {
+    if (isLoading || !db) return;
+
+    let isMounted = true;
+    const supabase = getSupabase();
+
+    const handleSession = async (session: Session | null) => {
+      if (!isMounted) return;
+
+      if (session?.user) {
+        if (!(db as any).replications) {
+          try {
+            SyncLogger.info(
+              "provider",
+              "Authenticated user detected, setting up replication...",
+            );
+            await setupReplication(db);
+            if (isMounted) {
+              setReplicationsReady(true);
+            }
+          } catch (err) {
+            SyncLogger.error(
+              "provider",
+              "Failed to setup replication for authenticated user",
+              err,
+            );
+          }
+        } else {
+          if (isMounted) setReplicationsReady(true);
+        }
+      } else {
+        if ((db as any).replications) {
+          SyncLogger.info(
+            "provider",
+            "No authenticated session, stopping replication...",
+          );
+          await stopReplication(db);
+          if (isMounted) {
+            setReplicationsReady(false);
+            setEntityStatus({});
+            setIsSyncing(false);
+            setReplicationErrors([]);
+          }
+        } else {
+          if (isMounted) setReplicationsReady(false);
+        }
+      }
+    };
+
+    // Verifica a sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleSession(session);
+    });
+
+    // Escuta mudanças de auth (login, logout, refresh)
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        handleSession(session);
+      },
+    );
+
+    return () => {
+      isMounted = false;
+      authListener.subscription.unsubscribe();
+    };
+  }, [db, isLoading]);
+
   // Atualização periódica das stats do PendingQueue
   useEffect(() => {
     const interval = setInterval(() => {
@@ -104,7 +175,7 @@ export function ReplicationProvider({
   }, []);
 
   useEffect(() => {
-    if (!isLoading && db && (db as any).replications) {
+    if (!isLoading && db && replicationsReady && (db as any).replications) {
       const replicationsMap = (db as any).replications;
       const replicationEntries = Object.entries(replicationsMap);
 
@@ -182,9 +253,16 @@ export function ReplicationProvider({
         subscriptions.forEach((sub) => sub.unsubscribe());
       };
     }
-  }, [isLoading, db, (db as any)?.replications]);
+  }, [isLoading, db, replicationsReady]);
 
   const triggerSync = useCallback(() => {
+    if (!db || !(db as any).replications) {
+      SyncLogger.warn(
+        "provider",
+        "Cannot trigger sync: replication not active or user not logged in",
+      );
+      return;
+    }
     SyncLogger.info("provider", "Manual sync triggered by user");
     forceSyncAll(db as any);
   }, [db]);

@@ -1,21 +1,13 @@
+import { diffInDays, parseDate, compareDates } from "@/utils/dates";
+
 export function parseData(dataStr: string): Date {
-  const s = (dataStr || "").trim();
-  if (!s) throw new Error("Formato de data inválido: " + dataStr);
-  if (s.includes("/")) {
-    const [dia, mes, ano] = s.split("/").map(Number);
-    return new Date(ano, mes - 1, dia);
-  } else if (s.includes("-")) {
-    const [ano, mes, dia] = s.split("-").map(Number);
-    return new Date(ano, mes - 1, dia);
-  }
-  throw new Error("Formato de data inválido: " + dataStr);
+  const parsed = parseDate(dataStr);
+  if (!parsed) throw new Error("Formato de data inválido: " + dataStr);
+  return parsed;
 }
 
 export function diferencaEmDias(data1: string, data2: string): number {
-  const d1 = parseData(data1);
-  const d2 = parseData(data2);
-  const diffMs = Math.abs(d2.getTime() - d1.getTime());
-  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return diffInDays(data1, data2);
 }
 
 export function calcularGanhoDiario(
@@ -35,14 +27,12 @@ export function calcularGanhoDiario(
 
   if (valid.length < 2) return [];
 
-  const ordenado = [...valid].sort(
-    (a, b) => parseData(a.mes).getTime() - parseData(b.mes).getTime()
-  );
+  const ordenado = [...valid].sort((a, b) => compareDates(a.mes, b.mes));
 
   const ganhos = ordenado.slice(1).map((pAtual, i) => {
     const pAnterior = ordenado[i];
 
-    const days = diferencaEmDias(pAnterior.mes, pAtual.mes);
+    const days = diffInDays(pAnterior.mes, pAtual.mes);
     const totalGain = pAtual.valor - pAnterior.valor;
     const dailyGain = days > 0 ? totalGain / days : 0;
 
