@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckSquare, Square } from "lucide-react";
 import {
   GenderFilterValue,
   AnimalStateFilterValue,
@@ -125,20 +125,21 @@ export function ReportForm({
     filters.eventType,
   ]);
 
-  // Available Years from Events of the current farm
   const availableYears = useMemo(
     () =>
       Array.from(
         new Set(
           farmEvents
-            .filter((e) => e.d10_date)
-            .map((e) => e.d10_date!.split("-")[0]),
+            .flatMap((e) => [
+              e.d10_date ? e.d10_date.split("-")[0] : null,
+              (e as any).d11_date ? (e as any).d11_date.split("-")[0] : null,
+            ])
+            .filter(Boolean) as string[],
         ),
       ).sort((a, b) => b.localeCompare(a)),
     [farmEvents],
   );
 
-  // Available Dates for the selected Year and Farm
   const availableDatesForYear = useMemo(
     () =>
       farmEvents

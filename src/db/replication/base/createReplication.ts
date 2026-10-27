@@ -56,14 +56,26 @@ export function createReplication<T extends ReplicableEntity>(
       replicationIdentifier,
 
       // ==================== PULL (Supabase → RxDB) ====================
+      //
+      // Checkpoint field: server_updated_at
+      //
+      // server_updated_at is stamped by the server (lww_merge trigger) at the
+      // moment of write. It is always monotonically increasing and safe to use
+      // as a pull cursor.
+      //
+      // updated_at is the device-side edit timestamp. It can be any value in
+      // the past (e.g. from an offline edit), so it must NOT be used as a
+      // cursor — doing so would cause the client to miss records that arrive
+      // with old updated_at but high server_updated_at.
       pull: {
         async handler(checkpoint, batchSize) {
-          const lastModified = checkpoint?.updated_at || 0;
+          // The checkpoint stores the last server_updated_at we received.
+          const lastServerUpdatedAt = checkpoint?.updated_at || 0;
           const lastId = checkpoint?.last_id || null;
           const effectiveBatchSize = batchSize || pullBatchSize;
 
-          SyncLogger.info(colName, "Pulling from Supabase...", {
-            lastModified,
+          SyncLogger.info(colName, "Pulling from Sync API...", {
+            lastServerUpdatedAt,
             lastId,
             batchSize: effectiveBatchSize,
           });
@@ -81,24 +93,25 @@ export function createReplication<T extends ReplicableEntity>(
           const primaryKey =
             (collection as any).schema.jsonSchema.primaryKey || "id";
 
-          // CORREÇÃO: Conversão segura de timestamp do checkpoint.
-          let lastModifiedNum: number;
-          if (typeof lastModified === "number") {
-            lastModifiedNum = lastModified;
+          // Safe numeric conversion of the checkpoint value.
+          let lastServerUpdatedAtNum: number;
+          if (typeof lastServerUpdatedAt === "number") {
+            lastServerUpdatedAtNum = lastServerUpdatedAt;
           } else {
-            const parsed = Date.parse(String(lastModified));
-            lastModifiedNum = isNaN(parsed) ? 0 : parsed;
+            const parsed = Date.parse(String(lastServerUpdatedAt));
+            lastServerUpdatedAtNum = isNaN(parsed) ? 0 : parsed;
           }
 
-          // Usar a Nova API Sync do Next.js
+          // The API route uses `lastModified` as the query param name for
+          // backward compatibility. The route now maps it to server_updated_at.
           const params = new URLSearchParams({
             table: tableName,
-            lastModified: String(lastModifiedNum),
+            lastModified: String(lastServerUpdatedAtNum),
             primaryKey,
             limit: String(effectiveBatchSize),
           });
 
-          if (lastId) params.append("lastId", String(lastId));
+          if (lastId && lastId !== "undefined" && lastId !== "null") params.append("lastId", String(lastId));
 
           const url = `/api/sync?${params.toString()}`;
 
@@ -114,7 +127,6 @@ export function createReplication<T extends ReplicableEntity>(
               errorText,
             );
 
-            // Notification so user knows why sync is failing instead of silent death
             if (response.status !== 401 && response.status !== 403) {
               toast.error(
                 `Falha ao sincronizar: ${colName}. Tentaremos novamente em breve.`,
@@ -127,7 +139,7 @@ export function createReplication<T extends ReplicableEntity>(
           const rawDocuments: Record<string, any>[] = await response.json();
           const data = Array.isArray(rawDocuments) ? rawDocuments : [];
 
-          // Processar documentos para o RxDB
+          // Map documents for RxDB.
           const processedDocuments = data.map((doc) => {
             let processed: T;
             if (mapFromSupabase) {
@@ -136,11 +148,10 @@ export function createReplication<T extends ReplicableEntity>(
               processed = cleanSupabaseDocuments([doc])[0] as T;
             }
 
-            // SEGURANÇA: RxDB exige _deleted, created_at e updated_at.
-            // Se vierem nulos do Supabase, garantimos valores válidos para evitar erro de schema.
+            // RxDB requires _deleted, created_at and updated_at to be present.
             return {
               ...processed,
-              _deleted: !!processed._deleted, // Força boolean
+              _deleted: !!processed._deleted,
               created_at: processed.created_at || Date.now(),
               updated_at: processed.updated_at || Date.now(),
             } as T;
@@ -151,19 +162,21 @@ export function createReplication<T extends ReplicableEntity>(
             `Received ${processedDocuments.length} documents`,
           );
 
-          // Checkpoint usa o updated_at numérico (bigint) do último documento RAW.
-          // Supabase retorna bigint como number no JSON, então não há perda de precisão.
+          // Advance the checkpoint using server_updated_at from the last raw doc.
+          // The checkpoint.updated_at field stores server_updated_at (not updated_at).
           const lastRawDoc = data.length > 0 ? data[data.length - 1] : null;
           const newCheckpoint: ReplicationCheckpoint = {
             updated_at: lastRawDoc
-              ? Number(lastRawDoc.updated_at)
-              : lastModifiedNum,
-            last_id: lastRawDoc ? String(lastRawDoc[primaryKey]) : lastId,
+              ? (typeof lastRawDoc.server_updated_at === 'string' ? new Date(lastRawDoc.server_updated_at).getTime() : Number(lastRawDoc.server_updated_at))
+              : lastServerUpdatedAtNum,
+            last_id: lastRawDoc
+              ? String(lastRawDoc[primaryKey] ?? lastRawDoc.id ?? "")
+              : lastId,
           };
 
           if (data.length > 0) {
             SyncLogger.info(colName, "Checkpoint advanced", {
-              updated_at: newCheckpoint.updated_at,
+              server_updated_at: newCheckpoint.updated_at,
               last_id: newCheckpoint.last_id,
               docsInBatch: data.length,
               hasMore: data.length >= effectiveBatchSize,
@@ -179,6 +192,10 @@ export function createReplication<T extends ReplicableEntity>(
       },
 
       // ==================== PUSH (RxDB → Supabase) ====================
+      //
+      // The push handler sends updated_at (device timestamp) to the server.
+      // The server (/api/sync POST) injects org_id and device_id.
+      // The lww_merge trigger on the server resolves conflicts using updated_at.
       push: {
         async handler(rows) {
           SyncLogger.info(colName, `PUSH triggered with ${rows.length} rows`);
@@ -186,7 +203,7 @@ export function createReplication<T extends ReplicableEntity>(
           const primaryKey =
             (collection as any).schema.jsonSchema.primaryKey || "id";
 
-          // Marcar docs como syncing no PendingQueue
+          // Mark docs as syncing in PendingQueue
           rows.forEach((row) => {
             const docId = String((row.newDocumentState as any)[primaryKey]);
             PendingQueue.add(colName, docId);
@@ -196,7 +213,7 @@ export function createReplication<T extends ReplicableEntity>(
           const preparedRows = await Promise.all(rows.map(async (row) => {
             const doc = row.newDocumentState as T;
 
-            // Garantir que updated_at existe
+            // Guarantee updated_at is present (defensive)
             if (!doc.updated_at) {
               SyncLogger.warn(
                 colName,
@@ -285,7 +302,7 @@ export function createReplication<T extends ReplicableEntity>(
           const responseData = await response.json();
           const updatedDocs = Array.isArray(responseData) ? responseData : [];
 
-          // Marcar todos como synced
+          // Mark all as synced
           rows.forEach((row) => {
             const docId = String((row.newDocumentState as any)[primaryKey]);
             PendingQueue.markSynced(colName, docId);
@@ -334,3 +351,4 @@ export function createReplication<T extends ReplicableEntity>(
     return replication;
   };
 }
+

@@ -26,6 +26,7 @@ import { movementSchema } from "./schemas/movement.schema";
 import { saleSchema } from "./schemas/sale.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
+import { organizationSettingsSchema } from "./schemas/organization_settings.schema";
 
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBQueryBuilderPlugin);
@@ -108,6 +109,11 @@ async function createDatabase(): Promise<MyDatabase> {
       console.log(
         `[RxDB] Database already has ${collectionsCount} collections, skipping addCollections`,
       );
+      // BUG-03 FIX: Don't return early — still need to set up replication
+      // (it's a no-op if already configured, but critical on hot-reload/multi-context)
+      setupReplication(db).catch((err: Error) => {
+        console.warn("[RxDB] Replication setup on existing db:", err);
+      });
       return db;
     }
 
@@ -171,6 +177,11 @@ async function createDatabase(): Promise<MyDatabase> {
         reproduction_events: {
           schema: reproductionEventSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDoc) => {
+              return { ...oldDoc, d11_date: oldDoc.d11_date ?? undefined };
+            },
+          },
         },
         animal_statuses: {
           schema: animalStatusSchema,
@@ -217,6 +228,10 @@ async function createDatabase(): Promise<MyDatabase> {
         },
         exchanges: {
           schema: exchangeSchema,
+          conflictHandler: customConflictHandler,
+        },
+        organization_settings: {
+          schema: organizationSettingsSchema,
           conflictHandler: customConflictHandler,
         },
       });
@@ -360,6 +375,14 @@ export async function clearAllDatabases(): Promise<void> {
         "indi_ouro_db_v7",
         "indi_ouro_db_v8",
         "indi_ouro_db_v9",
+        "indi_ouro_db_v10",
+        "indi_ouro_db_v11",
+        "indi_ouro_db_v12",
+        "indi_ouro_db_v13",
+        "indi_ouro_db_v14",
+        "indi_ouro_db_v15",
+        "indi_ouro_db_v16",
+        "indi_ouro_db_v17",
         "offline-sync-queue",
       ];
       for (const name of commonNames) {
