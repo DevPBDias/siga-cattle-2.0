@@ -34,6 +34,7 @@ export type SaleCollection = RxCollection<Sale>;
 export type DeathCollection = RxCollection<Death>;
 export type ExchangeCollection = RxCollection<Exchange>;
 export type UserProfileCollection = RxCollection<UserProfile>;
+export type OrganizationSettingsCollection = RxCollection<OrganizationSettings>;
 
 export type MyDatabaseCollections = {
   animals: AnimalCollection;

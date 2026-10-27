@@ -75,7 +75,6 @@ export function ReplicationProvider({
     Record<string, { isSyncing: boolean; error: Error | null }>
   >({});
   const [syncStats, setSyncStats] = useState<SyncStats>(defaultSyncStats);
-  const [replicationsReady, setReplicationsReady] = useState(false);
 
   useEffect(() => {
     SyncLogger.info("provider", "ReplicationProvider initialized", {

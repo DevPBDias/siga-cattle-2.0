@@ -27,6 +27,7 @@ import { saleSchema } from "./schemas/sale.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
 import { organizationSettingsSchema } from "./schemas/organization_settings.schema";
+import { setupReplication } from "./replication";
 
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBQueryBuilderPlugin);

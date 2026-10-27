@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
@@ -8,6 +11,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 const ALLOWED_TABLES = new Set([
   "animals",
   "farms",
+  "user_profiles",
   "clients",
   "animal_situations",
   "animal_statuses",
@@ -19,6 +23,8 @@ const ALLOWED_TABLES = new Set([
   "deaths",
   "sales",
   "exchanges",
+  "retreats",
+  "agenda_reminders",
   "movements",
   "semen_doses",
   "organization_settings",
@@ -46,26 +52,23 @@ async function getSupabaseForRequest(req: NextRequest) {
   return await createServerClient();
 }
 
-const ALLOWED_TABLES = new Set([
-  "animals",
-  "farms",
-  "vaccines",
-  "user_profiles",
-  "animal_metrics_weight",
-  "animal_metrics_ce",
-  "animal_vaccines",
-  "reproduction_events",
-  "animal_statuses",
-  "animal_situations",
-  "semen_doses",
-  "clients",
-  "movements",
-  "sales",
-  "deaths",
-  "exchanges",
-  "retreats",
-  "agenda_reminders",
-]);
+async function getOrgId(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<string | null> {
+  const { data: profile, error } = await supabase
+    .from("user_profiles")
+    .select("owner_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[SyncAPI] Failed to resolve organization:", error);
+    return null;
+  }
+
+  return profile?.owner_id ?? userId;
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -78,10 +81,6 @@ export async function GET(req: NextRequest) {
   if (!table) {
     return NextResponse.json({ error: "Table name is required" }, { status: 400 });
   }
-  if (!ALLOWED_TABLES.has(table)) {
-    return NextResponse.json({ error: "Table not allowed" }, { status: 403 });
-  }
-
   if (!ALLOWED_TABLES.has(table)) {
     console.warn(`[SyncAPI] Blocked unauthorized table access attempt: ${table}`);
     return NextResponse.json(
@@ -193,10 +192,6 @@ export async function POST(req: NextRequest) {
     if (!table || !documents || !Array.isArray(documents)) {
       return NextResponse.json({ error: "Table and documents are required" }, { status: 400 });
     }
-    if (!ALLOWED_TABLES.has(table)) {
-      return NextResponse.json({ error: "Table not allowed" }, { status: 403 });
-    }
-
     if (!ALLOWED_TABLES.has(table)) {
       console.warn(`[SyncAPI] Blocked unauthorized table write attempt: ${table}`);
       return NextResponse.json(
