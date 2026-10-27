@@ -82,7 +82,7 @@ export const BRANDS: Record<BrandId, BrandConfig> = {
  * Pode ser alterada aqui diretamente ou via variável de ambiente NEXT_PUBLIC_APP_BRAND.
  */
 export const ACTIVE_BRAND_ID: BrandId =
-  (process.env.NEXT_PUBLIC_APP_BRAND as BrandId) || "nelore-indi-ouro";
+  (process.env.NEXT_PUBLIC_APP_BRAND as BrandId) || "siga-cattle";
 
 export function getActiveBrand(): BrandConfig {
   return BRANDS[ACTIVE_BRAND_ID] || BRANDS["nelore-indi-ouro"];

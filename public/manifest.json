@@ -1,6 +1,6 @@
 {
-  "name": "INDI Ouro",
-  "short_name": "INDI Ouro",
+  "name": "SIGA Cattle",
+  "short_name": "SIGA Cattle",
   "description": "Gerencie o rebanho, pesos e vacinas da fazenda — mesmo offline.",
   "start_url": "/",
   "scope": "/",

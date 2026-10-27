@@ -6,8 +6,8 @@ declare const self: ServiceWorkerGlobalScope;
 // ============================================================================
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
-// v31: Update brand colors and new splash screen assets.
-const SCHEMA_VERSION = "v32";
+// v33: Use the SIGA Cattle splash screen in the app shell.
+const SCHEMA_VERSION = "v33";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
 
@@ -22,7 +22,7 @@ const APP_SHELL_ASSETS = [
   "/icon-512.png",
   "/apple-touch-icon.png",
   "/favicon.ico",
-  "/splash.png",
+  "/splash-siga-cattle.png",
   "/login",
   "/home",
   "/cadastro",
