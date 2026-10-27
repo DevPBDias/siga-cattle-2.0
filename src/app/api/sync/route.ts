@@ -27,7 +27,6 @@ const ALLOWED_TABLES = new Set([
   "agenda_reminders",
   "movements",
   "semen_doses",
-  "organization_settings",
 ]);
 
 // ---------------------------------------------------------------------------

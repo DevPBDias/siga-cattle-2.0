@@ -26,7 +26,6 @@ import { movementSchema } from "./schemas/movement.schema";
 import { saleSchema } from "./schemas/sale.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
-import { organizationSettingsSchema } from "./schemas/organization_settings.schema";
 import { setupReplication } from "./replication";
 
 addRxPlugin(RxDBUpdatePlugin);
@@ -229,10 +228,6 @@ async function createDatabase(): Promise<MyDatabase> {
         },
         exchanges: {
           schema: exchangeSchema,
-          conflictHandler: customConflictHandler,
-        },
-        organization_settings: {
-          schema: organizationSettingsSchema,
           conflictHandler: customConflictHandler,
         },
       });

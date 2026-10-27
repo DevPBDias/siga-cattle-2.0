@@ -15,7 +15,6 @@ import { replicateMovementsNew as replicateMovements } from "./replication/movem
 import { replicateSalesNew as replicateSales } from "./replication/sale.replication";
 import { replicateDeathsNew as replicateDeaths } from "./replication/death.replication";
 import { replicateExchangesNew as replicateExchanges } from "./replication/exchange.replication";
-import { replicateOrganizationSettingsNew as replicateOrganizationSettings } from "./replication/organization_settings.replication";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { setupRealtimeSync } from "@/lib/sync/realtimeSync";
 
@@ -245,12 +244,6 @@ export async function setupReplication(db: MyDatabase) {
       SUPABASE_KEY,
     );
 
-    const organizationSettingsReplication = await replicateOrganizationSettings(
-      db,
-      SUPABASE_URL,
-      SUPABASE_KEY,
-    );
-
     (
       db as {
         replications: {
@@ -270,7 +263,6 @@ export async function setupReplication(db: MyDatabase) {
           sales: typeof salesReplication;
           deaths: typeof deathsReplication;
           exchanges: typeof exchangesReplication;
-          organization_settings: typeof organizationSettingsReplication;
         };
       }
     ).replications = {
@@ -290,7 +282,6 @@ export async function setupReplication(db: MyDatabase) {
       sales: salesReplication,
       deaths: deathsReplication,
       exchanges: exchangesReplication,
-      organization_settings: organizationSettingsReplication,
     };
 
     SyncLogger.info("setup", "Replication setup complete");
@@ -331,7 +322,6 @@ export async function setupReplication(db: MyDatabase) {
       salesReplication.start();
       deathsReplication.start();
       exchangesReplication.start();
-      organizationSettingsReplication.start();
 
       SyncLogger.info("setup", "All 16 replications started ✅");
     }, 500);
@@ -354,7 +344,6 @@ export async function setupReplication(db: MyDatabase) {
       { name: "sales", rep: salesReplication },
       { name: "deaths", rep: deathsReplication },
       { name: "exchanges", rep: exchangesReplication },
-      { name: "organization_settings", rep: organizationSettingsReplication },
     ];
 
     const errorCounts: Record<string, number> = {};
