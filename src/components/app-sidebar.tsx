@@ -146,7 +146,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="px-2 pb-1">
           <Link
             href="/cadastro"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-field-green px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-field-green/90 active:scale-95"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-xs font-bold text-white border border-white/20 shadow-sm transition-all hover:bg-white/25 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             Novo Lançamento

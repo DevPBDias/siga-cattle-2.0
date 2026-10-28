@@ -39,14 +39,14 @@
 
   --cream: #EFE9E1;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1a241c;
-  --sidebar-primary: #1e3b2b;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e5f2e7;
-  --sidebar-accent-foreground: #1e3b2b;
-  --sidebar-border: #e0e7e1;
-  --sidebar-ring: #2d7d46;
+  --sidebar: #2d7d46;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #1e3b2b;
+  --sidebar-accent: rgba(255, 255, 255, 0.15);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.18);
+  --sidebar-ring: rgba(255, 255, 255, 0.5);
 
   --radius: 0.625rem;
 

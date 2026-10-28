@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { TrendingUp, TrendingDown, Beef, Baby, Scale, Syringe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,72 +10,23 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAnimals } from "@/hooks/db/animals/useAnimals";
-import { useAnimalWeights } from "@/hooks/db/animal_weights/useAnimalWeights";
-import { diffInDays, todayISO } from "@/utils/dates";
+import { useDashboardStats } from "@/hooks/dashboard/useDashboardStats";
 
 export function SectionCards() {
-  const { data: animals, loading: animalsLoading } = useAnimals();
-  const { data: weights, loading: weightsLoading } = useAnimalWeights(undefined);
-
-  const today = todayISO();
-
-  // KPI 1: Rebanho Ativo
-  const { activeTotal, entradaEsteMes } = useMemo(() => {
-    const active = animals.filter((a) => a.animal_state === "ATIVO");
-    const thisMonth = today.slice(0, 7); // "YYYY-MM"
-    const entradas = animals.filter(
-      (a) => a.created_at && new Date(a.created_at).toISOString().slice(0, 7) === thisMonth,
-    ).length;
-    return { activeTotal: active.length, entradaEsteMes: entradas };
-  }, [animals, today]);
-
-  // KPI 2: Nascimentos nos últimos 30 dias
-  const { nascimentos30d, femeasPrenhas } = useMemo(() => {
-    const nasc = animals.filter((a) => {
-      if (!a.born_date) return false;
-      return diffInDays(a.born_date, today) <= 30 && diffInDays(a.born_date, today) >= 0;
-    }).length;
-    const prenhas = animals.filter((a) => a.animal_state === "PRENHA").length;
-    return { nascimentos30d: nasc, femeasPrenhas: prenhas };
-  }, [animals, today]);
-
-  // KPI 3: GMD Médio (Ganho Médio Diário)
-  const { gmdMedio, totalPesagens } = useMemo(() => {
-    if (weights.length < 2) return { gmdMedio: null, totalPesagens: weights.length };
-    // Agrupar pesagens por animal e calcular GMD
-    const byAnimal: Record<string, typeof weights> = {};
-    for (const w of weights) {
-      if (!byAnimal[w.rgn]) byAnimal[w.rgn] = [];
-      byAnimal[w.rgn].push(w);
-    }
-    const gmds: number[] = [];
-    for (const [, ws] of Object.entries(byAnimal)) {
-      if (ws.length < 2) continue;
-      const sorted = [...ws].sort((a, b) => (a.date || "").localeCompare(b.date || ""));
-      const first = sorted[0];
-      const last = sorted[sorted.length - 1];
-      const dias = diffInDays(first.date, last.date);
-      if (dias > 0) {
-        const gmd = (last.value - first.value) / dias;
-        gmds.push(gmd);
-      }
-    }
-    const avg = gmds.length > 0 ? gmds.reduce((s, v) => s + v, 0) / gmds.length : null;
-    return { gmdMedio: avg, totalPesagens: weights.length };
-  }, [weights]);
-
-  // KPI 4: Alertas Sanitários (vacinações futuras em ≤30 dias com base em situações de alerta)
-  const { animalEmTratamento, animalEmAlerta } = useMemo(() => {
-    const tratamento = animals.filter((a) => a.animal_state === "EM_TRATAMENTO").length;
-    const alerta = animals.filter((a) => a.animal_state === "ALERTA").length;
-    return { animalEmTratamento: tratamento, animalEmAlerta: alerta };
-  }, [animals]);
-
-  const loading = animalsLoading || weightsLoading;
+  const { stats, loading } = useDashboardStats();
+  const {
+    activeTotal,
+    entradaEsteMes,
+    nascimentos30d,
+    femeasPrenhas,
+    gmdMedio,
+    totalPesagens,
+    animalEmTratamento,
+    animalEmAlerta,
+  } = stats;
 
   return (
-    <div className="grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 @5xl/main:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div className="grid grid-cols-2 gap-3 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
 
       {/* Card 1 — Rebanho Ativo */}
       <Card className="@container/card">

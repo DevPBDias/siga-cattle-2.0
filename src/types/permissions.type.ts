@@ -19,6 +19,30 @@ export const APP_PERMISSIONS = [
 export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
 export type UserPermissions = Partial<Record<PermissionKey, boolean>>;
 
+/**
+ * Mapeamento desktop <-> mobile:
+ * Rotas sob /dashboard/* equivalem a tela mobile de mesma permissao.
+ * Ex: /dashboard/consulta -> permissao "consulta"
+ *     /dashboard          -> permissao "home"
+ * Assim, se o dono libera "consulta" para um membro, ele acessa
+ * tanto /consulta (mobile) quanto /dashboard/consulta (desktop).
+ */
+export const DESKTOP_ROUTE_ALIASES: Record<string, PermissionKey> = {
+  "/dashboard": "home",
+  "/dashboard/consulta": "consulta",
+  "/dashboard/cadastro": "cadastro",
+  "/dashboard/calendario": "calendario",
+  "/dashboard/reproducao": "reproducao",
+  "/dashboard/vacinas": "vacinas",
+  "/dashboard/nascimentos": "nascimentos",
+  "/dashboard/pesagem-ce": "pesagem",
+  "/dashboard/comercial": "comercial",
+  "/dashboard/movimentacoes": "movimentacoes",
+  "/dashboard/gerenciar": "gerenciar",
+  "/dashboard/geral": "relatorios",
+  "/dashboard/geral/evolucao": "evolucao",
+};
+
 export const DEFAULT_MEMBER_PERMISSIONS: UserPermissions = {
   home: true,
   consulta: true,
@@ -29,7 +53,6 @@ export const OWNER_PERMISSIONS: UserPermissions = Object.fromEntries(
 ) as UserPermissions;
 
 export function getEffectiveRole(role?: UserRole): UserRole {
-  // Ausência de perfil/permissão nunca deve elevar privilégios.
   return role === "owner" ? "owner" : "member";
 }
 

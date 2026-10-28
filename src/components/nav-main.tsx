@@ -36,8 +36,8 @@ export function NavMain({ items }: { items: NavItem[] }) {
                   isActive={isActive}
                   className={
                     isActive
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "text-foreground hover:bg-muted"
+                      ? "bg-white/20 text-white font-semibold"
+                      : "text-white/80 hover:bg-white/10 hover:text-white"
                   }
                 >
                   <Link href={item.url}>
