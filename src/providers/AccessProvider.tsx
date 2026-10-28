@@ -42,10 +42,26 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     }
     void Promise.resolve(getSupabase().from("user_profiles").select("id, role, permissions").eq("id", user.id).maybeSingle())
       .then(({ data, error }) => {
-        if (!active || error) return;
-        const nextRole = getEffectiveRole(data?.role);
-        const nextPermissions = getEffectivePermissions(nextRole, data?.permissions);
-        setRole(nextRole); setPermissions(nextPermissions);
+        if (!active) return;
+
+        // Uma falha de rede/RLS ou um perfil ainda não sincronizado não pode
+        // rebaixar um dono já reconhecido pelo cache local para member.
+        if (error || !data) {
+          if (process.env.NODE_ENV !== "production" && error) {
+            console.warn("[Access] Não foi possível carregar user_profiles:", error.message);
+          }
+          const latestCached = getCachedPermissions(user.id);
+          if (latestCached) {
+            setRole(latestCached.role);
+            setPermissions(latestCached.permissions);
+          }
+          return;
+        }
+
+        const nextRole = getEffectiveRole(data.role);
+        const nextPermissions = getEffectivePermissions(nextRole, data.permissions);
+        setRole(nextRole);
+        setPermissions(nextPermissions);
         cachePermissions({ userId: user.id, role: nextRole, permissions: nextPermissions });
       })
       .catch(() => undefined)
