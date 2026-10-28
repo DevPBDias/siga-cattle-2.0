@@ -106,7 +106,7 @@ export function ReplicationProvider({
 
     let isMounted = true;
 
-    setInitialSyncReady(!user);
+    setInitialSyncReady(!user?.id);
 
     const handleSession = async (hasUser: boolean) => {
       if (!isMounted) return;
@@ -130,9 +130,21 @@ export function ReplicationProvider({
               "Failed to setup replication for authenticated user",
               err,
             );
+            // Falha de sincronização não pode bloquear permanentemente as
+            // rotas: o app continua funcionando com os dados locais.
+            if (isMounted) {
+              setReplicationsReady(false);
+              setInitialSyncReady(true);
+            }
           }
         } else {
-          if (isMounted) setReplicationsReady(true);
+          if (isMounted) {
+            setReplicationsReady(true);
+            // A replicação já existente não precisa aguardar uma nova rodada.
+            // Isso evita deixar as rotas protegidas presas no loading quando
+            // o Supabase atualiza o objeto da sessão após o login.
+            setInitialSyncReady(true);
+          }
         }
       } else {
         if ((db as any).replications) {
@@ -160,7 +172,7 @@ export function ReplicationProvider({
     return () => {
       isMounted = false;
     };
-  }, [authLoading, db, isLoading, user]);
+  }, [authLoading, db, isLoading, user?.id]);
 
   // Atualização periódica das stats do PendingQueue
   useEffect(() => {
