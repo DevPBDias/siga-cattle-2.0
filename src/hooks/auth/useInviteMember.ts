@@ -39,7 +39,9 @@ function nextMemberAccess(profile: UserProfile, changes: MemberAccessChanges) {
   const nextPermissions: UserPermissions = changes.role
     ? changes.role === "owner"
       ? OWNER_PERMISSIONS
-      : { ...DEFAULT_MEMBER_PERMISSIONS, ...currentPermissions }
+      : profile.role === "owner"
+        ? DEFAULT_MEMBER_PERMISSIONS
+        : { ...DEFAULT_MEMBER_PERMISSIONS, ...currentPermissions }
     : {
         ...currentPermissions,
         ...(changes.permission ? { [changes.permission]: changes.value } : {}),
@@ -102,7 +104,7 @@ export function useInviteMember() {
     setError(null);
     try {
       const roleToSave: UserRole = "member";
-      const permissionsToSave: UserPermissions = { consulta: true };
+      const permissionsToSave: UserPermissions = DEFAULT_MEMBER_PERMISSIONS;
 
       const isolatedClient = createIsolatedAuthClient();
       const { data: authData, error: authError } = await isolatedClient.auth.signUp({

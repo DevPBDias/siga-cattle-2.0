@@ -14,8 +14,10 @@ const items = [
 export function MobileFooter() {
   const pathname = usePathname();
   const router = useRouter();
-  const { canAccessPath } = useUserAccess();
-  const visibleItems = items.filter((item) => canAccessPath(item.href));
+  const { canAccessPath, loading } = useUserAccess();
+  const visibleItems = loading
+    ? []
+    : items.filter((item) => canAccessPath(item.href));
 
   return (
     <nav

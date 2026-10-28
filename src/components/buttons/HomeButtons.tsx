@@ -8,8 +8,10 @@ interface RedirectButtonsProps {
 }
 
 const HomeButtons = ({ data }: RedirectButtonsProps) => {
-  const { canAccessPath } = useUserAccess();
-  const allowedLinks = data.filter((link) => canAccessPath(link.href));
+  const { canAccessPath, loading } = useUserAccess();
+  const allowedLinks = loading
+    ? []
+    : data.filter((link) => canAccessPath(link.href));
 
   return (
     <section className="relative z-20 grid w-full grid-cols-4 gap-1 mt-2">
