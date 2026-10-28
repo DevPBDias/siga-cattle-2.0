@@ -95,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = getClient();
     if (!supabase) throw new Error("Cliente não inicializado");
     if (!navigator.onLine) throw new Error("Você precisa estar online para fazer login.");
+    // Não reutilizar uma decisão de autorização antiga durante um novo login.
+    clearPermissionsCache();
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });

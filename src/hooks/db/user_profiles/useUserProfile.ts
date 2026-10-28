@@ -9,6 +9,7 @@ import {
   getEffectiveRole,
 } from "@/types/permissions.type";
 import { cachePermissions, getCachedPermissions } from "@/lib/auth/permissionsCache";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import type { MangoQuery } from "rxdb";
 
 export type UserProfileFields = Pick<
@@ -30,6 +31,7 @@ export type UserProfileFields = Pick<
 
 export function useUserProfile() {
   const { data: user, loading: authLoading } = useAuth();
+  const { role: accessRole, loading: accessLoading } = useUserAccess();
   const query = useMemo<MangoQuery<UserProfile> | null>(
     () =>
       user
@@ -68,7 +70,10 @@ export function useUserProfile() {
 
     const currentProfile = data[0];
     const cachedPermissions = getCachedPermissions(user.id);
-    const profileRole = currentProfile?.role ?? cachedPermissions?.role ?? "member";
+    if (!currentProfile && !cachedPermissions && accessLoading) {
+      throw new Error("Aguardando a confirmação das permissões do usuário.");
+    }
+    const profileRole = currentProfile?.role ?? cachedPermissions?.role ?? accessRole;
     const savedProfile = await actions.upsert({
       id: user.id,
       ...fields,

@@ -7,7 +7,7 @@ declare const self: ServiceWorkerGlobalScope;
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
 // v33: Use the SIGA Cattle splash screen in the app shell.
-const SCHEMA_VERSION = "v33";
+const SCHEMA_VERSION = "v34";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
 

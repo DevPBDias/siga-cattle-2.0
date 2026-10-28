@@ -19,6 +19,7 @@ export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
 export type UserPermissions = Partial<Record<PermissionKey, boolean>>;
 
 export const DEFAULT_MEMBER_PERMISSIONS: UserPermissions = {
+  home: true,
   consulta: true,
 };
 

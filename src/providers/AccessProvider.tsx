@@ -6,6 +6,9 @@ import { cachePermissions, getCachedPermissions } from "@/lib/auth/permissionsCa
 import { useAuthContext } from "./AuthProvider";
 import { getPermissionForPath } from "@/lib/auth/routeAccess";
 import { canAccessPermission, getEffectivePermissions, getEffectiveRole, type PermissionKey, type UserPermissions, type UserRole } from "@/types/permissions.type";
+import { useLocalQuery } from "@/hooks/core/useLocalQuery";
+import type { UserProfile } from "@/types/user_profile.type";
+import type { MangoQuery } from "rxdb";
 
 interface AccessContextValue {
   role: UserRole;
@@ -22,12 +25,36 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<UserRole>("member");
   const [permissions, setPermissions] = useState<UserPermissions>();
   const [permissionsLoading, setPermissionsLoading] = useState(true);
+  const [remoteProfileMissing, setRemoteProfileMissing] = useState(false);
   const isConnectionOffline = typeof navigator !== "undefined" && !navigator.onLine;
+  const localProfileQuery = useMemo<MangoQuery<UserProfile> | null>(
+    () => user?.id ? {
+      selector: { id: { $eq: user.id }, _deleted: { $eq: false } },
+    } : null,
+    [user?.id],
+  );
+  const { data: localProfiles, loading: localProfileLoading } = useLocalQuery<UserProfile>(
+    "user_profiles",
+    localProfileQuery,
+  );
+
+  useEffect(() => {
+    const localProfile = localProfiles[0];
+    if (!user?.id || !localProfile) return;
+
+    const localRole = getEffectiveRole(localProfile.role);
+    const localPermissions = getEffectivePermissions(localRole, localProfile.permissions);
+    setRole(localRole);
+    setPermissions(localPermissions);
+    setRemoteProfileMissing(false);
+    setPermissionsLoading(false);
+    cachePermissions({ userId: user.id, role: localRole, permissions: localPermissions });
+  }, [localProfiles, user?.id]);
 
   useEffect(() => {
     let active = true;
     if (!user?.id) {
-      setRole("member"); setPermissions(undefined); setPermissionsLoading(false);
+      setRole("member"); setPermissions(undefined); setPermissionsLoading(false); setRemoteProfileMissing(false);
       return () => { active = false; };
     }
     const cached = getCachedPermissions(user.id);
@@ -36,6 +63,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     } else {
       setRole("member"); setPermissions(undefined); setPermissionsLoading(true);
     }
+    setRemoteProfileMissing(false);
     if (isConnectionOffline || isOfflineAuth) {
       setPermissionsLoading(false);
       return () => { active = false; };
@@ -55,6 +83,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
             setRole(latestCached.role);
             setPermissions(latestCached.permissions);
           }
+          setRemoteProfileMissing(true);
           return;
         }
 
@@ -62,12 +91,18 @@ export function AccessProvider({ children }: { children: ReactNode }) {
         const nextPermissions = getEffectivePermissions(nextRole, data.permissions);
         setRole(nextRole);
         setPermissions(nextPermissions);
+        setRemoteProfileMissing(false);
         cachePermissions({ userId: user.id, role: nextRole, permissions: nextPermissions });
       })
       .catch(() => undefined)
       .finally(() => { if (active) setPermissionsLoading(false); });
     return () => { active = false; };
   }, [isConnectionOffline, isOfflineAuth, user?.id]);
+
+  useEffect(() => {
+    if (!remoteProfileMissing || localProfileLoading || localProfiles.length > 0) return;
+    setRemoteProfileMissing(false);
+  }, [localProfileLoading, localProfiles.length, remoteProfileMissing]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -82,7 +117,7 @@ export function AccessProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("rico-ouro-permissions-updated", handleUpdate);
   }, [user?.id]);
 
-  const loading = authLoading || permissionsLoading;
+  const loading = authLoading || permissionsLoading || (remoteProfileMissing && localProfileLoading);
   const canAccess = (key: PermissionKey) => canAccessPermission(role, permissions, key);
   const canAccessPath = (pathname: string) => {
     if (loading) return false;
