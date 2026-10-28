@@ -1,6 +1,6 @@
 "use client";
 
-import { CalendarDays, Home, UserRound, ClipboardPen } from "lucide-react";
+import { CalendarDays, Home, UserRound, ClipboardPen, ChartLine } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
@@ -8,6 +8,7 @@ const items = [
   { label: "Início", icon: Home, href: "/home" },
   { label: "Calendário", icon: CalendarDays, href: "/calendario" },
   { label: "Cadastro", icon: ClipboardPen, href: "/cadastro" },
+  { label: "Evolução", icon: ChartLine, href: "/geral/evolucao" },
   { label: "Perfil", icon: UserRound, href: "/perfil" },
 ];
 

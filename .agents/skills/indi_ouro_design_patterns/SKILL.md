@@ -190,6 +190,7 @@ Exemplo canônico: src/lib/pdf/definitions/reproduction.definition.ts
 - Hooks core, domínio e services: references/data-hooks.md
 - Formulários e validação: references/forms.md
 - Offline-first, sync e datas: references/offline-sync.md
-- Segurança, permissões e RLS: references/security-and-permissions.md
+- Segurança, permissões e RLS: references/security-and-permissions.md (consulte também a skill dedicada `indi-ouro-auth-authorization`)
 - Anti-patterns reais: references/anti-patterns.md
+
 

@@ -13,6 +13,7 @@ export const APP_PERMISSIONS = [
   { key: "movimentacoes", label: "Movimentações", route: "/movimentacoes" },
   { key: "gerenciar", label: "Gerenciamento", route: "/gerenciar" },
   { key: "relatorios", label: "Relatórios", route: "/geral" },
+  { key: "evolucao", label: "Evolução", route: "/geral/evolucao" },
 ] as const;
 
 export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
@@ -44,6 +45,7 @@ export function canAccessPermission(
   permissions: UserPermissions | undefined,
   key: PermissionKey,
 ): boolean {
+  if (key === "evolucao") return role === "owner";
   if (role === "owner") return true;
   return permissions?.[key] === true;
 }

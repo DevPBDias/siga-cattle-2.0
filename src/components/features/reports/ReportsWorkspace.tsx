@@ -16,6 +16,7 @@ import {
   Upload,
   VenusAndMars,
   Baby,
+  BarChart3,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -199,6 +200,19 @@ export default function ReportsWorkspace() {
   return (
     <main className="min-h-screen bg-background pb-24">
       <ShortHeader title="Relatórios" />
+
+      <Link
+        href="/geral/evolucao"
+        className="mx-3 mt-3 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 p-3 text-primary transition-colors hover:bg-primary/10"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-primary text-primary-foreground">
+          <BarChart3 className="h-5 w-5" />
+        </span>
+        <span>
+          <strong className="block text-sm font-bold uppercase">Evolução do rebanho</strong>
+          <span className="text-xs text-muted-foreground">Visualize a quantidade por mês, ano e categoria.</span>
+        </span>
+      </Link>
 
       <section className="space-y-2 px-3 py-2">
         <Tabs defaultValue="pdf" className="w-full">
