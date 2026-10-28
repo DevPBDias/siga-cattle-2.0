@@ -10,8 +10,7 @@ import React, {
 import { useRxDB } from "./RxDBProvider";
 import { combineLatest } from "rxjs";
 import { setupReplication, stopReplication, forceSyncAll } from "../db/replication";
-import { getSupabase } from "@/lib/supabase/client";
-import type { Session } from "@supabase/supabase-js";
+import { useAuthContext } from "./AuthProvider";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { PendingQueue } from "@/lib/sync/pendingQueue";
 import type { SyncLogEntry } from "@/lib/sync/syncLogger";
@@ -66,6 +65,7 @@ export function ReplicationProvider({
   children: React.ReactNode;
 }) {
   const { db, isLoading } = useRxDB();
+  const { data: user, loading: authLoading } = useAuthContext();
   const [replicationsReady, setReplicationsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
@@ -99,15 +99,14 @@ export function ReplicationProvider({
 
   // Controla o ciclo de vida da replicação baseado na autenticação
   useEffect(() => {
-    if (isLoading || !db) return;
+    if (isLoading || authLoading || !db) return;
 
     let isMounted = true;
-    const supabase = getSupabase();
 
-    const handleSession = async (session: Session | null) => {
+    const handleSession = async (hasUser: boolean) => {
       if (!isMounted) return;
 
-      if (session?.user) {
+      if (hasUser) {
         if (!(db as any).replications) {
           try {
             SyncLogger.info(
@@ -147,23 +146,12 @@ export function ReplicationProvider({
       }
     };
 
-    // Verifica a sessão atual
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      handleSession(session);
-    });
-
-    // Escuta mudanças de auth (login, logout, refresh)
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        handleSession(session);
-      },
-    );
+    void handleSession(!!user);
 
     return () => {
       isMounted = false;
-      authListener.subscription.unsubscribe();
     };
-  }, [db, isLoading]);
+  }, [authLoading, db, isLoading, user]);
 
   // Atualização periódica das stats do PendingQueue
   useEffect(() => {

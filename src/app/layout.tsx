@@ -5,7 +5,7 @@ import "./globals.css";
 import ServiceWorkerUpdater from "@/components/sync/ServiceWorkerUpdater";
 import RegisterSW from "@/components/sync/RegisterSW";
 import AgendaReminderNotifier from "@/components/sync/AgendaReminderNotifier";
-import { LocalFirstProvider } from "@/providers";
+import { AccessProvider, AuthProvider, LocalFirstProvider } from "@/providers";
 
 export const metadata: Metadata = {
   title: "SIGA Cattle",
@@ -101,12 +101,16 @@ export default function RootLayout({
       <body
         className={`${GeistSans.variable} ${GeistMono.variable} antialiased`}
       >
-        <LocalFirstProvider>
-          <RegisterSW />
-          <AgendaReminderNotifier />
-          {children}
-          <ServiceWorkerUpdater />
-        </LocalFirstProvider>
+        <AuthProvider>
+          <LocalFirstProvider>
+            <AccessProvider>
+              <RegisterSW />
+              <AgendaReminderNotifier />
+              {children}
+              <ServiceWorkerUpdater />
+            </AccessProvider>
+          </LocalFirstProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -8,7 +8,7 @@ import {
   getEffectivePermissions,
   getEffectiveRole,
 } from "@/types/permissions.type";
-import { cachePermissions } from "@/lib/auth/permissionsCache";
+import { cachePermissions, getCachedPermissions } from "@/lib/auth/permissionsCache";
 import type { MangoQuery } from "rxdb";
 
 export type UserProfileFields = Pick<
@@ -67,12 +67,14 @@ export function useUserProfile() {
     }
 
     const currentProfile = data[0];
+    const cachedPermissions = getCachedPermissions(user.id);
+    const profileRole = currentProfile?.role ?? cachedPermissions?.role ?? "member";
     const savedProfile = await actions.upsert({
       id: user.id,
       ...fields,
       created_at: currentProfile?.created_at ?? Date.now(),
-      role: currentProfile?.role ?? "owner",
-      permissions: currentProfile?.permissions ?? {},
+      role: profileRole,
+      permissions: currentProfile?.permissions ?? cachedPermissions?.permissions ?? {},
       owner_id: currentProfile?.owner_id,
       _deleted: false,
     });
