@@ -93,7 +93,7 @@ export function ChartLineLabel({
               />
 
               <Tooltip
-                formatter={(value: number) => `${value}${unit}`}
+                formatter={(value: any) => `${value}${unit}`}
                 labelFormatter={(label) => `Data: ${label}`}
               />
 
@@ -115,7 +115,7 @@ export function ChartLineLabel({
                   className="fill-foreground"
                   fontSize={12}
                   dataKey="value"
-                  formatter={(value: number) => `${value}${unit}`}
+                  formatter={(value: any) => `${value}${unit}`}
                 />
               </Line>
             </LineChart>

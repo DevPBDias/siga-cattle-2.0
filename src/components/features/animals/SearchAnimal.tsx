@@ -99,6 +99,8 @@ export default function SearchAnimal() {
               }
               onClear={handleClearSelection}
               clearLabel="Fechar detalhes do animal"
+              onEdit={() => setIsEditingAnimal((prev) => !prev)}
+              editLabel="Editar informações"
             />
 
             {/* Componente de detalhes do animal */}
@@ -111,7 +113,7 @@ export default function SearchAnimal() {
           </div>
         ) : (
           /* Seção de busca de animais (quando nenhum animal estiver selecionado) */
-          <section aria-labelledby="search-title">
+          <section aria-label="Busca de animais">
             <label
               id="search-title"
               className="block mb-1.5 text-primary text-sm font-extrabold uppercase"

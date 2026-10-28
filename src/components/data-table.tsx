@@ -1,97 +1,35 @@
-import * as React from "react"
-import {
-  closestCenter,
-  DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type UniqueIdentifier,
-} from "@dnd-kit/core"
-import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
-import {
-  arrayMove,
-  SortableContext,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable"
-import { CSS } from "@dnd-kit/utilities"
-import {
-  IconChevronDown,
-  IconChevronLeft,
-  IconChevronRight,
-  IconChevronsLeft,
-  IconChevronsRight,
-  IconCircleCheckFilled,
-  IconDotsVertical,
-  IconGripVertical,
-  IconLayoutColumns,
-  IconLoader,
-  IconPlus,
-  IconTrendingUp,
-} from "@tabler/icons-react"
-import {
-  columnFilteringFeature,
-  columnVisibilityFeature,
-  createColumnHelper,
-  createFilteredRowModel,
-  createPaginatedRowModel,
-  createSortedRowModel,
-  FlexRender,
-  rowPaginationFeature,
-  rowSelectionFeature,
-  rowSortingFeature,
-  tableFeatures,
-  useTable,
-  type ColumnFiltersState,
-  type ColumnVisibilityState,
-  type Row,
-  type SortingState,
-} from "@tanstack/react-table"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
-import { toast } from "sonner"
-import { z } from "zod"
+"use client";
 
-import { useIsMobile } from "@/hooks/use-mobile"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@/components/ui/chart"
-import { Checkbox } from "@/components/ui/checkbox"
-import {
-  Drawer,
-  DrawerClose,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui/drawer"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
+  Search,
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Scale,
+  Syringe,
+  Baby,
+  Beef,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  X,
+} from "lucide-react";
+
+import { useAnimals } from "@/hooks/db/animals/useAnimals";
+import { useAnimalWeights } from "@/hooks/db/animal_weights/useAnimalWeights";
+import { useLocalQuery } from "@/hooks/core";
+import { Animal } from "@/types/animal.type";
+import { AnimalVaccine } from "@/types/vaccine.type";
+import { formatDate, formatAge, todayISO } from "@/utils/dates";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -99,716 +37,633 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
 import {
   Tabs,
-  TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs"
+} from "@/components/ui/tabs";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
-// New in v9: declare the features this table uses — anything you don't
-// register is tree-shaken out of the bundle.
-const features = tableFeatures({
-  columnFilteringFeature,
-  columnVisibilityFeature,
-  rowPaginationFeature,
-  rowSelectionFeature,
-  rowSortingFeature,
-  filteredRowModel: createFilteredRowModel(),
-  paginatedRowModel: createPaginatedRowModel(),
-  sortedRowModel: createSortedRowModel(),
-})
-
-const columnHelper = createColumnHelper<
-  typeof features,
-  z.infer<typeof schema>
->()
-
-export const schema = z.object({
-  id: z.number(),
-  header: z.string(),
-  type: z.string(),
-  status: z.string(),
-  target: z.string(),
-  limit: z.string(),
-  reviewer: z.string(),
-})
-
-// Create a separate component for the drag handle
-function DragHandle({ id }: { id: number }) {
-  const { attributes, listeners } = useSortable({
-    id,
-  })
-
-  return (
-    <Button
-      {...attributes}
-      {...listeners}
-      variant="ghost"
-      size="icon"
-      className="size-7 text-muted-foreground hover:bg-transparent"
-    >
-      <IconGripVertical className="size-3 text-muted-foreground" />
-      <span className="sr-only">Drag to reorder</span>
-    </Button>
-  )
+interface DataTableProps {
+  data?: any[];
 }
 
-const columns = columnHelper.columns([
-  columnHelper.display({
-    id: "drag",
-    header: () => null,
-    cell: ({ row }) => <DragHandle id={row.original.id} />,
-  }),
-  columnHelper.display({
-    id: "select",
-    header: ({ table }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      </div>
-    ),
-    cell: ({ row }) => (
-      <div className="flex items-center justify-center">
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      </div>
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  }),
-  columnHelper.accessor("header", {
-    header: "Header",
-    cell: ({ row }) => {
-      return <TableCellViewer item={row.original} />
-    },
-    enableHiding: false,
-  }),
-  columnHelper.accessor("type", {
-    header: "Section Type",
-    cell: ({ row }) => (
-      <div className="w-32">
-        <Badge variant="outline" className="px-1.5 text-muted-foreground">
-          {row.original.type}
-        </Badge>
-      </div>
-    ),
-  }),
-  columnHelper.accessor("status", {
-    header: "Status",
-    cell: ({ row }) => (
-      <Badge variant="outline" className="px-1.5 text-muted-foreground">
-        {row.original.status === "Done" ? (
-          <IconCircleCheckFilled className="fill-green-500 dark:fill-green-400" />
-        ) : (
-          <IconLoader />
-        )}
-        {row.original.status}
-      </Badge>
-    ),
-  }),
-  columnHelper.accessor("target", {
-    header: () => <div className="w-full text-right">Target</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-target`} className="sr-only">
-          Target
-        </Label>
-        <Input
-          className="h-8 w-16 border-transparent bg-transparent text-right shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
-          defaultValue={row.original.target}
-          id={`${row.original.id}-target`}
-        />
-      </form>
-    ),
-  }),
-  columnHelper.accessor("limit", {
-    header: () => <div className="w-full text-right">Limit</div>,
-    cell: ({ row }) => (
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          toast.promise(new Promise((resolve) => setTimeout(resolve, 1000)), {
-            loading: `Saving ${row.original.header}`,
-            success: "Done",
-            error: "Error",
-          })
-        }}
-      >
-        <Label htmlFor={`${row.original.id}-limit`} className="sr-only">
-          Limit
-        </Label>
-        <Input
-          className="h-8 w-16 border-transparent bg-transparent text-right shadow-none hover:bg-input/30 focus-visible:border focus-visible:bg-background dark:bg-transparent dark:hover:bg-input/30 dark:focus-visible:bg-input/30"
-          defaultValue={row.original.limit}
-          id={`${row.original.id}-limit`}
-        />
-      </form>
-    ),
-  }),
-  columnHelper.accessor("reviewer", {
-    header: "Reviewer",
-    cell: ({ row }) => {
-      const isAssigned = row.original.reviewer !== "Assign reviewer"
+export function DataTable({ data: initialData }: DataTableProps) {
+  // Hooks RxDB reativos
+  const { data: dbAnimals, loading: animalsLoading } = useAnimals();
+  const { data: dbWeights, loading: weightsLoading } = useAnimalWeights(undefined);
 
-      if (isAssigned) {
-        return row.original.reviewer
+  // Consulta de vacinas
+  const vaccineQuery = useMemo(
+    () => ({
+      selector: { _deleted: { $eq: false } },
+      sort: [{ date: "desc" } as any],
+    }),
+    []
+  );
+  const { data: dbVaccines } = useLocalQuery<AnimalVaccine>("animal_vaccines", vaccineQuery);
+
+  // Estados locais
+  const [selectedTab, setSelectedTab] = useState<string>("todos");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sexFilter, setSexFilter] = useState<"ALL" | "M" | "F">("ALL");
+  const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
+  const [inspectingAnimal, setInspectingAnimal] = useState<Animal | null>(null);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Mapa de último peso por RGN
+  const latestWeightMap = useMemo(() => {
+    const map = new Map<string, { value: number; date?: string }>();
+    if (!dbWeights) return map;
+    for (const w of dbWeights) {
+      if (!w.rgn) continue;
+      const existing = map.get(w.rgn);
+      if (!existing || (w.date && (!existing.date || w.date > existing.date))) {
+        map.set(w.rgn, { value: w.value, date: w.date });
+      }
+    }
+    return map;
+  }, [dbWeights]);
+
+  // Mapa de última vacina por RGN
+  const latestVaccineMap = useMemo(() => {
+    const map = new Map<string, { date?: string; vaccine_id?: string }>();
+    if (!dbVaccines) return map;
+    for (const v of dbVaccines) {
+      if (!v.rgn) continue;
+      const existing = map.get(v.rgn);
+      if (!existing || (v.date && (!existing.date || v.date > existing.date))) {
+        map.set(v.rgn, { date: v.date, vaccine_id: v.vaccine_id });
+      }
+    }
+    return map;
+  }, [dbVaccines]);
+
+  // Animais filtrados por busca, tab e sexo
+  const filteredAnimals = useMemo(() => {
+    const list = dbAnimals || [];
+    const query = searchQuery.trim().toLowerCase();
+    const today = todayISO();
+
+    return list.filter((animal) => {
+      // Filtro de Sexo
+      if (sexFilter === "M" && animal.sex?.toUpperCase() !== "M") return false;
+      if (sexFilter === "F" && animal.sex?.toUpperCase() !== "F") return false;
+
+      // Filtro de Tabs
+      if (selectedTab === "nascimentos") {
+        if (!animal.born_date) return false;
+        // Animais nascidos no último ano ou com menos de 12 meses
+        const ageDesc = formatAge(animal.born_date);
+        const isYoung = ageDesc.includes("mês") || ageDesc.includes("meses") || ageDesc.includes("dia");
+        if (!isYoung) return false;
+      } else if (selectedTab === "pesagens") {
+        // Apenas animais com pesagem registrada
+        if (!latestWeightMap.has(animal.rgn)) return false;
+      } else if (selectedTab === "alertas") {
+        // Animais com alerta (ex: prenha, inativo, sem pesagem)
+        const isPrenha = animal.animal_state?.toUpperCase() === "PRENHA";
+        const isInativo = animal.animal_state?.toUpperCase() === "INATIVO";
+        const noWeight = !latestWeightMap.has(animal.rgn);
+        if (!isPrenha && !isInativo && !noWeight) return false;
       }
 
+      // Filtro de Busca textual
+      if (!query) return true;
+      const rgn = (animal.rgn || "").toLowerCase();
+      const name = (animal.name || "").toLowerCase();
+      const serie = (animal.serie_rgd || "INDI").toLowerCase();
+      const fullDisplay = `${serie} ${rgn}`.toLowerCase();
+
       return (
-        <>
-          <Label htmlFor={`${row.original.id}-reviewer`} className="sr-only">
-            Reviewer
-          </Label>
-          <Select>
-            <SelectTrigger
-              className="w-38 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
-              size="sm"
-              id={`${row.original.id}-reviewer`}
-            >
-              <SelectValue placeholder="Assign reviewer" />
-            </SelectTrigger>
-            <SelectContent align="end">
-              <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-              <SelectItem value="Jamik Tashpulatov">
-                Jamik Tashpulatov
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </>
-      )
-    },
-  }),
-  columnHelper.display({
-    id: "actions",
-    cell: () => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            className="flex size-8 text-muted-foreground data-[state=open]:bg-muted"
-            size="icon"
-          >
-            <IconDotsVertical />
-            <span className="sr-only">Open menu</span>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-32">
-          <DropdownMenuItem>Edit</DropdownMenuItem>
-          <DropdownMenuItem>Make a copy</DropdownMenuItem>
-          <DropdownMenuItem>Favorite</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
-  }),
-])
+        rgn.includes(query) ||
+        name.includes(query) ||
+        serie.includes(query) ||
+        fullDisplay.includes(query)
+      );
+    });
+  }, [dbAnimals, searchQuery, sexFilter, selectedTab, latestWeightMap]);
 
-function DraggableRow({
-  row,
-}: {
-  row: Row<typeof features, z.infer<typeof schema>>
-}) {
-  const { transform, transition, setNodeRef, isDragging } = useSortable({
-    id: row.original.id,
-  })
+  // Paginação dos dados
+  const totalItems = filteredAnimals.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredAnimals.slice(start, start + pageSize);
+  }, [filteredAnimals, currentPage, pageSize]);
 
-  return (
-    <TableRow
-      data-state={row.getIsSelected() && "selected"}
-      data-dragging={isDragging}
-      ref={setNodeRef}
-      className="relative z-0 data-[dragging=true]:z-10 data-[dragging=true]:opacity-80"
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition: transition,
-      }}
-    >
-      {row.getVisibleCells().map((cell) => (
-        <TableCell key={cell.id}>
-          <FlexRender cell={cell} />
-        </TableCell>
-      ))}
-    </TableRow>
-  )
-}
+  // Seleção de linhas
+  const allCurrentSelected = paginatedData.length > 0 && paginatedData.every((a) => !!selectedRows[a.rgn]);
+  const someCurrentSelected = paginatedData.some((a) => !!selectedRows[a.rgn]) && !allCurrentSelected;
 
-export function DataTable({
-  data: initialData,
-}: {
-  data: z.infer<typeof schema>[]
-}) {
-  const [data, setData] = React.useState(() => initialData)
-  const [rowSelection, setRowSelection] = React.useState({})
-  const [columnVisibility, setColumnVisibility] =
-    React.useState<ColumnVisibilityState>({})
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
-  )
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [pagination, setPagination] = React.useState({
-    pageIndex: 0,
-    pageSize: 10,
-  })
-  const sortableId = React.useId()
-  const sensors = useSensors(
-    useSensor(MouseSensor, {}),
-    useSensor(TouchSensor, {}),
-    useSensor(KeyboardSensor, {})
-  )
-
-  const dataIds = React.useMemo<UniqueIdentifier[]>(
-    () => data?.map(({ id }) => id) || [],
-    [data]
-  )
-
-  const table = useTable({
-    features,
-    data,
-    columns,
-    state: {
-      sorting,
-      columnVisibility,
-      rowSelection,
-      columnFilters,
-      pagination,
-    },
-    getRowId: (row) => row.id.toString(),
-    enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
-    onColumnVisibilityChange: setColumnVisibility,
-    onPaginationChange: setPagination,
-  })
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event
-    if (active && over && active.id !== over.id) {
-      setData((data) => {
-        const oldIndex = dataIds.indexOf(active.id)
-        const newIndex = dataIds.indexOf(over.id)
-        return arrayMove(data, oldIndex, newIndex)
-      })
+  const toggleSelectAll = (checked: boolean) => {
+    const next = { ...selectedRows };
+    for (const a of paginatedData) {
+      if (checked) {
+        next[a.rgn] = true;
+      } else {
+        delete next[a.rgn];
+      }
     }
-  }
+    setSelectedRows(next);
+  };
+
+  const toggleSelectRow = (rgn: string, checked: boolean) => {
+    setSelectedRows((prev) => {
+      const next = { ...prev };
+      if (checked) {
+        next[rgn] = true;
+      } else {
+        delete next[rgn];
+      }
+      return next;
+    });
+  };
+
+  const selectedCount = Object.keys(selectedRows).filter((k) => selectedRows[k]).length;
 
   return (
-    <Tabs
-      defaultValue="outline"
-      className="w-full flex-col justify-start gap-6"
-    >
-      <div className="flex items-center justify-between px-4 lg:px-6">
-        <Label htmlFor="view-selector" className="sr-only">
-          View
-        </Label>
-        <Select defaultValue="outline">
-          <SelectTrigger
-            className="flex w-fit @4xl/main:hidden"
-            size="sm"
-            id="view-selector"
-          >
-            <SelectValue placeholder="Select a view" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="outline">Outline</SelectItem>
-            <SelectItem value="past-performance">Past Performance</SelectItem>
-            <SelectItem value="key-personnel">Key Personnel</SelectItem>
-            <SelectItem value="focus-documents">Focus Documents</SelectItem>
-          </SelectContent>
-        </Select>
-        <TabsList className="hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
-        </TabsList>
+    <div className="w-full space-y-4 px-4 lg:px-6">
+      {/* Abas e Barra de Ações Superior */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <Tabs
+          value={selectedTab}
+          onValueChange={(val) => {
+            setSelectedTab(val);
+            setCurrentPage(1);
+          }}
+          className="w-full md:w-auto"
+        >
+          <TabsList className="bg-muted/60 p-1">
+            <TabsTrigger value="todos" className="gap-2">
+              <Beef className="h-4 w-4 text-field-green" />
+              <span>Todos os Animais</span>
+              <Badge variant="secondary" className="ml-1 text-xs">
+                {dbAnimals?.length ?? 0}
+              </Badge>
+            </TabsTrigger>
+            <TabsTrigger value="nascimentos" className="gap-2">
+              <Baby className="h-4 w-4 text-amber" />
+              <span>Nascimentos</span>
+            </TabsTrigger>
+            <TabsTrigger value="pesagens" className="gap-2">
+              <Scale className="h-4 w-4 text-primary" />
+              <span>Pesagens</span>
+            </TabsTrigger>
+            <TabsTrigger value="alertas" className="gap-2">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <span>Alertas</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {/* Atalhos Rápidos */}
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                <IconLayoutColumns />
-                <span className="hidden lg:inline">Customize Columns</span>
-                <span className="lg:hidden">Columns</span>
-                <IconChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              {table
-                .getAllColumns()
-                .filter(
-                  (column) =>
-                    typeof column.accessorFn !== "undefined" &&
-                    column.getCanHide()
-                )
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  )
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <IconPlus />
-            <span className="hidden lg:inline">Add Section</span>
+          {selectedCount > 0 && (
+            <div className="flex items-center gap-2 bg-field-green/10 border border-field-green/30 text-field-green px-3 py-1 rounded-md text-xs font-semibold">
+              <span>{selectedCount} selecionado(s)</span>
+              <button
+                onClick={() => setSelectedRows({})}
+                className="hover:opacity-80"
+                title="Desmarcar todos"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
+          <Button asChild variant="outline" size="sm" className="gap-1.5 h-8">
+            <Link href="/consulta">
+              <Eye className="h-4 w-4" />
+              <span>Ver Consulta Completa</span>
+            </Link>
           </Button>
         </div>
       </div>
-      <TabsContent
-        value="outline"
-        className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
-      >
-        <div className="overflow-hidden rounded-lg border">
-          <DndContext
-            collisionDetection={closestCenter}
-            modifiers={[restrictToVerticalAxis]}
-            onDragEnd={handleDragEnd}
-            sensors={sensors}
-            id={sortableId}
-          >
-            <Table>
-              <TableHeader className="sticky top-0 z-10 bg-muted">
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id} colSpan={header.colSpan}>
-                          {header.isPlaceholder ? null : (
-                            <FlexRender header={header} />
-                          )}
-                        </TableHead>
-                      )
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody className="**:data-[slot=table-cell]:first:w-8">
-                {table.getRowModel().rows?.length ? (
-                  <SortableContext
-                    items={dataIds}
-                    strategy={verticalListSortingStrategy}
+
+      {/* Barra de Filtros e Busca */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-card p-3 rounded-xl border border-border/60 shadow-xs">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por brinco, RGN, série ou nome..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-8 h-8 text-sm"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* Filtro de Sexo */}
+          <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50 text-xs">
+            <button
+              onClick={() => {
+                setSexFilter("ALL");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                sexFilter === "ALL"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => {
+                setSexFilter("M");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                sexFilter === "M"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Machos
+            </button>
+            <button
+              onClick={() => {
+                setSexFilter("F");
+                setCurrentPage(1);
+              }}
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors ${
+                sexFilter === "F"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Fêmeas
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabela de Dados */}
+      <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-xs">
+        <Table>
+          <TableHeader className="bg-muted/30">
+            <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={allCurrentSelected ? true : someCurrentSelected ? "indeterminate" : false}
+                  onCheckedChange={(checked) => toggleSelectAll(!!checked)}
+                  aria-label="Selecionar todos da página"
+                />
+              </TableHead>
+              <TableHead>Identificação / RGN</TableHead>
+              <TableHead>Raça & Categoria</TableHead>
+              <TableHead>Sexo / Idade</TableHead>
+              <TableHead>Último Manejo</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {animalsLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  Carregando rebanho do banco local...
+                </TableCell>
+              </TableRow>
+            ) : paginatedData.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  {searchQuery ? "Nenhum animal encontrado para a busca." : "Nenhum registro para exibir nesta aba."}
+                </TableCell>
+              </TableRow>
+            ) : (
+              paginatedData.map((animal) => {
+                const isSelected = !!selectedRows[animal.rgn];
+                const displayName = `${animal.serie_rgd || "INDI"} ${animal.rgn}`;
+                const isNeloreMocho = animal.breed?.trim().toLowerCase() === "nelore mocha";
+                const latestWeight = latestWeightMap.get(animal.rgn);
+                const latestVaccine = latestVaccineMap.get(animal.rgn);
+                const ageText = animal.born_date ? formatAge(animal.born_date) : "—";
+                const state = (animal.animal_state || "ATIVO").toUpperCase();
+
+                return (
+                  <TableRow
+                    key={animal.rgn}
+                    data-state={isSelected ? "selected" : undefined}
+                    className="hover:bg-muted/40 transition-colors cursor-pointer"
+                    onClick={(e) => {
+                      // Evitar clique se foi no checkbox ou botão
+                      if ((e.target as HTMLElement).closest("button, input[type=checkbox]")) return;
+                      setInspectingAnimal(animal);
+                    }}
                   >
-                    {table.getRowModel().rows.map((row) => (
-                      <DraggableRow key={row.id} row={row} />
-                    ))}
-                  </SortableContext>
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={(checked) => toggleSelectRow(animal.rgn, !!checked)}
+                        aria-label={`Selecionar ${displayName}`}
+                      />
+                    </TableCell>
+                    <TableCell className="font-semibold text-primary">
+                      <div className="flex items-center gap-1.5">
+                        <span>{displayName}</span>
+                        {isNeloreMocho && (
+                          <span
+                            className="text-amber font-extrabold text-sm"
+                            title="Nelore Mocha"
+                          >
+                            *
+                          </span>
+                        )}
+                      </div>
+                      {animal.name && (
+                        <div className="text-xs text-muted-foreground font-normal">
+                          {animal.name}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs font-medium text-foreground">
+                        {animal.breed || "Nelore"}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {animal.type || animal.classification || "Geral"}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1.5">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs px-1.5 py-0 ${
+                            animal.sex?.toUpperCase() === "M"
+                              ? "border-sky-500/40 text-sky-700 bg-sky-50 dark:bg-sky-950/30"
+                              : "border-pink-500/40 text-pink-700 bg-pink-50 dark:bg-pink-950/30"
+                          }`}
+                        >
+                          {animal.sex?.toUpperCase() === "M" ? "Macho" : "Fêmea"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
+                        {ageText}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {latestWeight ? (
+                        <div>
+                          <span className="font-semibold text-foreground text-sm">
+                            {latestWeight.value} kg
+                          </span>
+                          {latestWeight.date && (
+                            <div className="text-xs text-muted-foreground">
+                              {formatDate(latestWeight.date)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">
+                          Sem pesagem
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs px-2 py-0.5 font-medium ${
+                          state === "ATIVO"
+                            ? "bg-field-green/10 text-field-green border-field-green/30"
+                            : state === "PRENHA"
+                            ? "bg-amber/10 text-amber border-amber/30"
+                            : "bg-muted text-muted-foreground border-border"
+                        }`}
+                      >
+                        {state === "ATIVO" && <CheckCircle2 className="mr-1 h-3 w-3" />}
+                        {state}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          title="Ver Ficha Rápida"
+                          onClick={() => setInspectingAnimal(animal)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild>
+                              <Link href={`/consulta?rgn=${animal.rgn}`}>
+                                Ficha Completa
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/pesagem-ce?rgn=${animal.rgn}`}>
+                                Registrar Pesagem
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/vacinas?rgn=${animal.rgn}`}>
+                                Registrar Vacina
+                              </Link>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </DndContext>
-        </div>
-        <div className="flex items-center justify-between px-4">
-          <div className="hidden flex-1 text-sm text-muted-foreground lg:flex">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+
+        {/* Rodapé da Tabela: Paginação e Contadores */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-t border-border/60 bg-muted/20 text-xs text-muted-foreground">
+          <div>
+            Mostrando{" "}
+            <span className="font-medium text-foreground">
+              {totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1}
+            </span>{" "}
+            a{" "}
+            <span className="font-medium text-foreground">
+              {Math.min(currentPage * pageSize, totalItems)}
+            </span>{" "}
+            de{" "}
+            <span className="font-medium text-foreground">{totalItems}</span> animais
           </div>
-          <div className="flex w-full items-center gap-8 lg:w-fit">
-            <div className="hidden items-center gap-2 lg:flex">
-              <Label htmlFor="rows-per-page" className="text-sm font-medium">
-                Rows per page
-              </Label>
-              <Select
-                value={`${table.state.pagination.pageSize}`}
-                onValueChange={(value) => {
-                  table.setPageSize(Number(value))
-                }}
-              >
-                <SelectTrigger size="sm" className="w-20" id="rows-per-page">
-                  <SelectValue placeholder={table.state.pagination.pageSize} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[10, 20, 30, 40, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-fit items-center justify-center text-sm font-medium">
-              Page {table.state.pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </div>
-            <div className="ml-auto flex items-center gap-2 lg:ml-0">
+
+          <div className="flex items-center gap-2">
+            <span className="hidden sm:inline">Itens por página:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-card border border-border/60 rounded px-2 py-1 text-xs text-foreground cursor-pointer"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+
+            <div className="flex items-center gap-1 ml-2">
               <Button
                 variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                <span className="sr-only">Go to first page</span>
-                <IconChevronsLeft />
-              </Button>
-              <Button
-                variant="outline"
-                className="size-8"
                 size="icon"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
+                className="h-7 w-7"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               >
-                <span className="sr-only">Go to previous page</span>
-                <IconChevronLeft />
+                <ChevronLeft className="h-3.5 w-3.5" />
               </Button>
+              <span className="px-2 font-medium text-foreground">
+                {currentPage} / {totalPages}
+              </span>
               <Button
                 variant="outline"
-                className="size-8"
                 size="icon"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
+                className="h-7 w-7"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               >
-                <span className="sr-only">Go to next page</span>
-                <IconChevronRight />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden size-8 lg:flex"
-                size="icon"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                <span className="sr-only">Go to last page</span>
-                <IconChevronsRight />
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
         </div>
-      </TabsContent>
-      <TabsContent
-        value="past-performance"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent
-        value="focus-documents"
-        className="flex flex-col px-4 lg:px-6"
-      >
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-    </Tabs>
-  )
-}
+      </div>
 
-const chartData = [
-  { month: "January", desktop: 186, mobile: 80 },
-  { month: "February", desktop: 305, mobile: 200 },
-  { month: "March", desktop: 237, mobile: 120 },
-  { month: "April", desktop: 73, mobile: 190 },
-  { month: "May", desktop: 209, mobile: 130 },
-  { month: "June", desktop: 214, mobile: 140 },
-]
-
-const chartConfig = {
-  desktop: {
-    label: "Desktop",
-    color: "var(--primary)",
-  },
-  mobile: {
-    label: "Mobile",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig
-
-function TableCellViewer({ item }: { item: z.infer<typeof schema> }) {
-  const isMobile = useIsMobile()
-
-  return (
-    <Drawer direction={isMobile ? "bottom" : "right"}>
-      <DrawerTrigger asChild>
-        <Button variant="link" className="w-fit px-0 text-left text-foreground">
-          {item.header}
-        </Button>
-      </DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader className="gap-1">
-          <DrawerTitle>{item.header}</DrawerTitle>
-          <DrawerDescription>
-            Showing total visitors for the last 6 months
-          </DrawerDescription>
-        </DrawerHeader>
-        <div className="flex flex-col gap-4 overflow-y-auto px-4 text-sm">
-          {!isMobile && (
-            <>
-              <ChartContainer config={chartConfig}>
-                <AreaChart
-                  accessibilityLayer
-                  data={chartData}
-                  margin={{
-                    left: 0,
-                    right: 10,
-                  }}
-                >
-                  <CartesianGrid vertical={false} />
-                  <XAxis
-                    dataKey="month"
-                    tickLine={false}
-                    axisLine={false}
-                    tickMargin={8}
-                    tickFormatter={(value) => value.slice(0, 3)}
-                    hide
-                  />
-                  <ChartTooltip
-                    cursor={false}
-                    content={<ChartTooltipContent indicator="dot" />}
-                  />
-                  <Area
-                    dataKey="mobile"
-                    type="natural"
-                    fill="var(--color-mobile)"
-                    fillOpacity={0.6}
-                    stroke="var(--color-mobile)"
-                    stackId="a"
-                  />
-                  <Area
-                    dataKey="desktop"
-                    type="natural"
-                    fill="var(--color-desktop)"
-                    fillOpacity={0.4}
-                    stroke="var(--color-desktop)"
-                    stackId="a"
-                  />
-                </AreaChart>
-              </ChartContainer>
-              <Separator />
-              <div className="grid gap-2">
-                <div className="flex gap-2 leading-none font-medium">
-                  Trending up by 5.2% this month{" "}
-                  <IconTrendingUp className="size-4" />
+      {/* Sheet / Drawer Lateral de Ficha Rápida do Animal */}
+      <Sheet open={!!inspectingAnimal} onOpenChange={(open) => !open && setInspectingAnimal(null)}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {inspectingAnimal && (
+            <div className="space-y-6 pt-4">
+              <SheetHeader>
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className="text-field-green border-field-green/30 bg-field-green/5">
+                    {inspectingAnimal.animal_state || "ATIVO"}
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Criado em: {inspectingAnimal.created_at ? formatDate(new Date(inspectingAnimal.created_at).toISOString().split("T")[0]) : "—"}
+                  </span>
                 </div>
-                <div className="text-muted-foreground">
-                  Showing total visitors for the last 6 months. This is just
-                  some random text to test the layout. It spans multiple lines
-                  and should wrap around.
+                <SheetTitle className="text-xl font-bold text-primary flex items-center gap-2">
+                  <span>{inspectingAnimal.serie_rgd || "INDI"} {inspectingAnimal.rgn}</span>
+                  {inspectingAnimal.breed?.trim().toLowerCase() === "nelore mocha" && (
+                    <span className="text-amber font-extrabold text-base">*</span>
+                  )}
+                </SheetTitle>
+                <SheetDescription>
+                  {inspectingAnimal.name || "Sem nome fantasia cadastrado"}
+                </SheetDescription>
+              </SheetHeader>
+
+              {/* Informações Resumidas */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
+                  <div className="text-xs text-muted-foreground">Raça</div>
+                  <div className="font-semibold text-foreground mt-0.5">{inspectingAnimal.breed || "Nelore"}</div>
+                </div>
+                <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
+                  <div className="text-xs text-muted-foreground">Sexo</div>
+                  <div className="font-semibold text-foreground mt-0.5">
+                    {inspectingAnimal.sex?.toUpperCase() === "M" ? "Macho" : "Fêmea"}
+                  </div>
+                </div>
+                <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
+                  <div className="text-xs text-muted-foreground">Data Nascimento</div>
+                  <div className="font-semibold text-foreground mt-0.5">
+                    {inspectingAnimal.born_date ? formatDate(inspectingAnimal.born_date) : "—"}
+                  </div>
+                </div>
+                <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
+                  <div className="text-xs text-muted-foreground">Idade Atual</div>
+                  <div className="font-semibold text-foreground mt-0.5">
+                    {inspectingAnimal.born_date ? formatAge(inspectingAnimal.born_date) : "—"}
+                  </div>
                 </div>
               </div>
-              <Separator />
-            </>
+
+              {/* Dados Genealógicos */}
+              <div className="space-y-3 bg-card p-4 rounded-xl border border-border/60">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Genealogia
+                </h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Pai:</span>
+                    <span className="font-medium text-foreground">{inspectingAnimal.father_name || "—"}</span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Mãe (RGN):</span>
+                    <span className="font-medium text-foreground">
+                      {inspectingAnimal.mother_serie_rgd ? `${inspectingAnimal.mother_serie_rgd} ` : ""}{inspectingAnimal.mother_rgn || "—"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Condição:</span>
+                    <span className="font-medium text-foreground">{inspectingAnimal.condition || "Solteira"}</span>
+                  </div>
+                  <div className="flex justify-between py-1">
+                    <span className="text-muted-foreground">Tipo / Função:</span>
+                    <span className="font-medium text-foreground">{inspectingAnimal.type || "Comum"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Ações na Ficha Rápida */}
+              <div className="space-y-2 pt-2">
+                <Button asChild className="w-full gap-2">
+                  <Link href={`/consulta?rgn=${inspectingAnimal.rgn}`}>
+                    <ExternalLink className="h-4 w-4" />
+                    Abrir Ficha Cadastral Completa
+                  </Link>
+                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button asChild variant="outline" size="sm" className="gap-1.5">
+                    <Link href={`/pesagem-ce?rgn=${inspectingAnimal.rgn}`}>
+                      <Scale className="h-4 w-4" />
+                      Pesar Animal
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="sm" className="gap-1.5">
+                    <Link href={`/vacinas?rgn=${inspectingAnimal.rgn}`}>
+                      <Syringe className="h-4 w-4" />
+                      Vacinar
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
-          <form className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="header">Header</Label>
-              <Input id="header" defaultValue={item.header} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="type">Type</Label>
-                <Select defaultValue={item.type}>
-                  <SelectTrigger id="type" className="w-full">
-                    <SelectValue placeholder="Select a type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Table of Contents">
-                      Table of Contents
-                    </SelectItem>
-                    <SelectItem value="Executive Summary">
-                      Executive Summary
-                    </SelectItem>
-                    <SelectItem value="Technical Approach">
-                      Technical Approach
-                    </SelectItem>
-                    <SelectItem value="Design">Design</SelectItem>
-                    <SelectItem value="Capabilities">Capabilities</SelectItem>
-                    <SelectItem value="Focus Documents">
-                      Focus Documents
-                    </SelectItem>
-                    <SelectItem value="Narrative">Narrative</SelectItem>
-                    <SelectItem value="Cover Page">Cover Page</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="status">Status</Label>
-                <Select defaultValue={item.status}>
-                  <SelectTrigger id="status" className="w-full">
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Done">Done</SelectItem>
-                    <SelectItem value="In Progress">In Progress</SelectItem>
-                    <SelectItem value="Not Started">Not Started</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="target">Target</Label>
-                <Input id="target" defaultValue={item.target} />
-              </div>
-              <div className="flex flex-col gap-3">
-                <Label htmlFor="limit">Limit</Label>
-                <Input id="limit" defaultValue={item.limit} />
-              </div>
-            </div>
-            <div className="flex flex-col gap-3">
-              <Label htmlFor="reviewer">Reviewer</Label>
-              <Select defaultValue={item.reviewer}>
-                <SelectTrigger id="reviewer" className="w-full">
-                  <SelectValue placeholder="Select a reviewer" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Eddie Lake">Eddie Lake</SelectItem>
-                  <SelectItem value="Jamik Tashpulatov">
-                    Jamik Tashpulatov
-                  </SelectItem>
-                  <SelectItem value="Emily Whalen">Emily Whalen</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </form>
-        </div>
-        <DrawerFooter>
-          <Button>Submit</Button>
-          <DrawerClose asChild>
-            <Button variant="outline">Done</Button>
-          </DrawerClose>
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
-  )
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
 }

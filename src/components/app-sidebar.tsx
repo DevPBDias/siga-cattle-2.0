@@ -1,179 +1,180 @@
-import * as React from "react"
-import {
-  IconCamera,
-  IconChartBar,
-  IconDashboard,
-  IconDatabase,
-  IconFileAi,
-  IconFileDescription,
-  IconFileWord,
-  IconFolder,
-  IconHelp,
-  IconInnerShadowTop,
-  IconListDetails,
-  IconReport,
-  IconSearch,
-  IconSettings,
-  IconUsers,
-} from "@tabler/icons-react"
+"use client";
 
-import { NavDocuments } from "@/components/nav-documents"
-import { NavMain } from "@/components/nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { NavUser } from "@/components/nav-user"
+import * as React from "react";
+import {
+  LayoutDashboard,
+  Users,
+  Scale,
+  Syringe,
+  Heart,
+  Baby,
+  Truck,
+  ShoppingCart,
+  CalendarDays,
+  TrendingUp,
+  FileBarChart2,
+  Plus,
+  Beef,
+  ClipboardList,
+} from "lucide-react";
+import Link from "next/link";
+
+import { NavMain } from "@/components/nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { NavUser } from "@/components/nav-user";
+import { SyncStatusIndicator } from "@/components/sync/SyncStatusIndicator";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+  SidebarMenuButton,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
+import logo_siga_cattle from "@/assets/icons/logo_siga_cattle.png";
+import Image from "next/image";
 
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
+const navMain = [
+  {
+    title: "Dashboard Geral",
+    url: "/dashboard",
+    icon: LayoutDashboard,
   },
-  navMain: [
-    {
-      title: "Dashboard",
-      url: "#",
-      icon: IconDashboard,
-    },
-    {
-      title: "Lifecycle",
-      url: "#",
-      icon: IconListDetails,
-    },
-    {
-      title: "Analytics",
-      url: "#",
-      icon: IconChartBar,
-    },
-    {
-      title: "Projects",
-      url: "#",
-      icon: IconFolder,
-    },
-    {
-      title: "Team",
-      url: "#",
-      icon: IconUsers,
-    },
-  ],
-  navClouds: [
-    {
-      title: "Capture",
-      icon: IconCamera,
-      isActive: true,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Proposal",
-      icon: IconFileDescription,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Prompts",
-      icon: IconFileAi,
-      url: "#",
-      items: [
-        {
-          title: "Active Proposals",
-          url: "#",
-        },
-        {
-          title: "Archived",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  navSecondary: [
-    {
-      title: "Settings",
-      url: "#",
-      icon: IconSettings,
-    },
-    {
-      title: "Get Help",
-      url: "#",
-      icon: IconHelp,
-    },
-    {
-      title: "Search",
-      url: "#",
-      icon: IconSearch,
-    },
-  ],
-  documents: [
-    {
-      name: "Data Library",
-      url: "#",
-      icon: IconDatabase,
-    },
-    {
-      name: "Reports",
-      url: "#",
-      icon: IconReport,
-    },
-    {
-      name: "Word Assistant",
-      url: "#",
-      icon: IconFileWord,
-    },
-  ],
-}
+  {
+    title: "Rebanho & Consulta",
+    url: "/consulta",
+    icon: Beef,
+  },
+  {
+    title: "Gerenciar Animais",
+    url: "/gerenciar",
+    icon: ClipboardList,
+  },
+  {
+    title: "Pesagem",
+    url: "/pesagem-ce",
+    icon: Scale,
+  },
+  {
+    title: "Sanitário & Vacinas",
+    url: "/vacinas",
+    icon: Syringe,
+  },
+  {
+    title: "Reprodução & IATF",
+    url: "/reproducao",
+    icon: Heart,
+  },
+  {
+    title: "Maternidade & Nascimentos",
+    url: "/nascimentos",
+    icon: Baby,
+  },
+  {
+    title: "Movimentações & Mortes",
+    url: "/movimentacoes",
+    icon: Truck,
+  },
+  {
+    title: "Comercial / Vendas",
+    url: "/comercial",
+    icon: ShoppingCart,
+  },
+  {
+    title: "Agenda & Calendário",
+    url: "/calendario",
+    icon: CalendarDays,
+  },
+];
+
+const navOwner = [
+  {
+    title: "Evolução do Rebanho",
+    url: "/geral/evolucao",
+    icon: TrendingUp,
+  },
+  {
+    title: "Relatórios & Exportação",
+    url: "/geral",
+    icon: FileBarChart2,
+  },
+];
+
+const navSecondary = [
+  {
+    title: "Meu Perfil",
+    url: "/perfil",
+    icon: Users,
+  },
+];
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { user, role } = useUserAccess();
+
+  const displayName = user?.user_metadata?.name ?? user?.email?.split("@")[0] ?? "Usuário";
+  const email = user?.email ?? "";
+  const avatar = user?.user_metadata?.avatar_url ?? "";
+
+  const fullNavMain = role === "owner"
+    ? [...navMain, ...navOwner]
+    : navMain;
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
+        {/* Logo + nome do sistema */}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <a href="#">
-                <IconInnerShadowTop className="size-5!" />
-                <span className="text-base font-semibold">Acme Inc.</span>
-              </a>
+            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-2!">
+              <Link href="/dashboard" className="flex items-center gap-2">
+                <Image
+                  src={logo_siga_cattle}
+                  alt="SIGA Cattle"
+                  width={90}
+                  height={28}
+                  className="object-contain"
+                />
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+
+        {/* Botão de atalho rápido */}
+        <div className="px-2 pb-1">
+          <Link
+            href="/cadastro"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-field-green px-3 py-2 text-xs font-bold text-white shadow-sm transition-all hover:bg-field-green/90 active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            Novo Lançamento
+          </Link>
+        </div>
       </SidebarHeader>
+
       <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavDocuments items={data.documents} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain items={fullNavMain} />
       </SidebarContent>
+
+      <SidebarSeparator />
+
+      {/* Status de Sincronização no rodapé */}
+      <div className="px-3 py-2">
+        <SyncStatusIndicator />
+      </div>
+
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavSecondary items={navSecondary} />
+        <NavUser
+          user={{
+            name: displayName,
+            email,
+            avatar,
+          }}
+        />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }

@@ -42,9 +42,11 @@ export default function SearchCard({
             <h3 className="text-primary text-[17px] font-bold tracking-tight m-0 leading-tight">
               {animal?.serie_rgd || "INDI"} {animal?.rgn}
             </h3>
-            <span className="block text-muted-foreground text-[9px] -mt-0.5">
-              {animal?.name || "Registro cadastrado"}
-            </span>
+            {animal?.name && animal.name.trim().toLowerCase() !== `${(animal?.serie_rgd || "INDI").toLowerCase()} ${(animal?.rgn || "").toLowerCase()}` ? (
+              <span className="block text-muted-foreground text-[9px] -mt-0.5">
+                {animal.name}
+              </span>
+            ) : null}
           </div>
           <button
             type="button"

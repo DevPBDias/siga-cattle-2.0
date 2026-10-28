@@ -1,6 +1,6 @@
 "use client";
 
-import { X } from "lucide-react";
+import { X, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface SelectedEntityCardProps {
@@ -11,6 +11,8 @@ interface SelectedEntityCardProps {
   badge?: React.ReactNode;
   onClear: () => void;
   clearLabel?: string;
+  onEdit?: () => void;
+  editLabel?: string;
 }
 
 export function SelectedEntityCard({
@@ -20,6 +22,8 @@ export function SelectedEntityCard({
   badge,
   onClear,
   clearLabel = "Trocar seleção",
+  onEdit,
+  editLabel = "Editar informações",
 }: SelectedEntityCardProps) {
   return (
     <div className="bg-primary/5 border border-primary/20 px-4 py-1 rounded-md flex justify-between items-center animate-in zoom-in-95 duration-300 shadow-xs">
@@ -37,17 +41,32 @@ export function SelectedEntityCard({
           </p>
         )}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={onClear}
-        aria-label={clearLabel}
-        title={clearLabel}
-        className="text-destructive/70 hover:text-white hover:bg-destructive h-8 w-8 p-0 rounded-md transition-all group border border-destructive/10 cursor-pointer"
-      >
-        <X className="w-4 h-4 group-hover:scale-110" />
-      </Button>
+      <div className="flex items-center gap-1">
+        {onEdit && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onEdit}
+            aria-label={editLabel}
+            title={editLabel}
+            className="text-primary/70 hover:text-white hover:bg-primary h-8 w-8 p-0 rounded-md transition-all group border border-primary/10 cursor-pointer"
+          >
+            <Pencil className="w-4 h-4 group-hover:scale-110" />
+          </Button>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClear}
+          aria-label={clearLabel}
+          title={clearLabel}
+          className="text-destructive/70 hover:text-white hover:bg-destructive h-8 w-8 p-0 rounded-md transition-all group border border-destructive/10 cursor-pointer"
+        >
+          <X className="w-4 h-4 group-hover:scale-110" />
+        </Button>
+      </div>
     </div>
   );
 }

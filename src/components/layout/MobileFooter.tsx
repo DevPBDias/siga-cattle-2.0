@@ -22,7 +22,7 @@ export function MobileFooter() {
 
   return (
     <nav
-      className="fixed z-10 bottom-0 left-0 right-0 bg-white/95 border-t border-border flex justify-between gap-[clamp(12px,8vw,92px)] px-6 py-1.5 backdrop-blur-md"
+      className="fixed z-10 bottom-0 left-0 right-0 bg-white/95 border-t border-border flex justify-between gap-[clamp(12px,8vw,92px)] px-6 py-1.5 backdrop-blur-md md:hidden"
       aria-label="Navegação principal"
     >
       {visibleItems.map(({ label, icon: Icon, href }) => {

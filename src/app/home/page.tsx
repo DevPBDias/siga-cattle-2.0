@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Bell,
 } from "lucide-react";
@@ -16,7 +17,20 @@ import { MarketQuotesCard } from "@/components/features/home/MarketQuotesCard";
 import { MobileFooter } from "@/components/layout/MobileFooter";
 
 const HomePage = () => {
+  const router = useRouter();
   const [notice, setNotice] = useState("");
+
+  // Redirecionar automaticamente para o dashboard no desktop
+  useEffect(() => {
+    const checkAndRedirect = () => {
+      if (window.innerWidth >= 768) {
+        router.replace("/dashboard");
+      }
+    };
+    checkAndRedirect();
+    window.addEventListener("resize", checkAndRedirect);
+    return () => window.removeEventListener("resize", checkAndRedirect);
+  }, [router]);
 
   useEffect(() => {
     let reloadTimer: number | undefined;
