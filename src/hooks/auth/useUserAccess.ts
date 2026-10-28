@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./useAuth";
 import { getSupabase } from "@/lib/supabase/client";
 import {
@@ -167,11 +167,20 @@ export function useUserAccess() {
   const loading = authLoading || permissionsLoading;
 
   // ── canAccessPath ────────────────────────────────────────────────────────
-  const canAccessPath = (pathname: string): boolean => {
+  const canAccessPath = useCallback((pathname: string): boolean => {
     if (loading) return true; // Don't block while loading
     const key = getPermissionForPath(pathname);
+
+    // Primeiro acesso: o usuário autenticado precisa conseguir chegar ao
+    // início e concluir o cadastro do próprio perfil. Sem esse escape seguro,
+    // a ausência de uma linha em user_profiles manda o usuário para /perfil e
+    // remove o início da navegação, deixando-o preso nessa tela.
+    if (permissions === undefined && (key === "home" || pathname === "/perfil")) {
+      return true;
+    }
+
     return !key || canAccessPermission(role, permissions, key);
-  };
+  }, [loading, permissions, role]);
 
   return {
     user,

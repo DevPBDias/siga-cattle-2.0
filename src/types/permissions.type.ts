@@ -27,7 +27,8 @@ export const OWNER_PERMISSIONS: UserPermissions = Object.fromEntries(
 ) as UserPermissions;
 
 export function getEffectiveRole(role?: UserRole): UserRole {
-  return role === "member" ? "member" : "owner";
+  // Ausência de perfil/permissão nunca deve elevar privilégios.
+  return role === "owner" ? "owner" : "member";
 }
 
 export function canAccessPermission(
