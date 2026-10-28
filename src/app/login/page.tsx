@@ -111,7 +111,7 @@ export default function LoginPage() {
       </div>
       <form
         onSubmit={handleSubmit}
-        className="absolute bottom-4 flex w-full max-w-sm flex-col gap-4 rounded-lg border border-white/20 bg-primary/80 p-6 shadow-lg backdrop-blur-sm"
+        className="absolute bottom-4 flex w-full max-w-sm flex-col gap-4 rounded-lg border border-white/20 bg-black/55 p-6 shadow-lg backdrop-blur-sm"
       >
         <div className="mt-1 flex flex-col gap-1">
           <label
@@ -126,7 +126,7 @@ export default function LoginPage() {
             placeholder="E-mail"
             required
             id="email"
-            className="h-10 rounded-lg border-2 border-white/80 bg-card pl-2 text-base font-medium text-foreground placeholder:text-muted-foreground placeholder:italic focus-visible:border-indi-ouro focus-visible:ring-2 focus-visible:ring-indi-ouro/70"
+            className="h-10 rounded-lg border-2 border-white/80 bg-black/35 pl-2 text-base font-medium text-white placeholder:text-white/70 placeholder:italic focus-visible:border-indi-ouro focus-visible:ring-2 focus-visible:ring-indi-ouro/70"
             type="email"
           />
         </div>
@@ -143,7 +143,7 @@ export default function LoginPage() {
             placeholder="Senha"
             id="password"
             type="password"
-            className="h-10 rounded-lg border-2 border-white/80 bg-card pl-2 text-base font-medium text-foreground placeholder:text-muted-foreground placeholder:italic focus-visible:border-indi-ouro focus-visible:ring-2 focus-visible:ring-indi-ouro/70"
+            className="h-10 rounded-lg border-2 border-white/80 bg-black/35 pl-2 text-base font-medium text-white placeholder:text-white/70 placeholder:italic focus-visible:border-indi-ouro focus-visible:ring-2 focus-visible:ring-indi-ouro/70"
             required
           />
         </div>

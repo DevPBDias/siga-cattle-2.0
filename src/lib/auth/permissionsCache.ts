@@ -28,6 +28,11 @@ export function cachePermissions(data: Omit<CachedPermissions, "cachedAt" | "exp
       expiresAt: data.expiresAt ?? now + PERMISSIONS_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000,
     };
     localStorage.setItem(PERMISSIONS_CACHE_KEY, JSON.stringify(entry));
+    window.dispatchEvent(
+      new CustomEvent("rico-ouro-permissions-updated", {
+        detail: { userId: entry.userId },
+      }),
+    );
   } catch {
     // localStorage may be unavailable in some environments
   }

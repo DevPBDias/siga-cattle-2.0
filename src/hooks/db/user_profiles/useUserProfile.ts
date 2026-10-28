@@ -4,7 +4,10 @@ import { useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { useLocalMutation, useLocalQuery } from "@/hooks/core";
 import { UserProfile } from "@/types/user_profile.type";
-import { getEffectiveRole } from "@/types/permissions.type";
+import {
+  getEffectivePermissions,
+  getEffectiveRole,
+} from "@/types/permissions.type";
 import { cachePermissions } from "@/lib/auth/permissionsCache";
 import type { MangoQuery } from "rxdb";
 
@@ -50,10 +53,11 @@ export function useUserProfile() {
   useEffect(() => {
     const profile = data[0];
     if (!profile || !user?.id) return;
+    const profileRole = getEffectiveRole(profile.role);
     cachePermissions({
       userId: user.id,
-      role: getEffectiveRole(profile.role),
-      permissions: profile.permissions ?? {},
+      role: profileRole,
+      permissions: getEffectivePermissions(profileRole, profile.permissions),
     });
   }, [data, user?.id]);
 
@@ -74,10 +78,11 @@ export function useUserProfile() {
     });
 
     // Atualiza o cache de permissões para refletir imediatamente na UI.
+    const savedRole = getEffectiveRole(savedProfile.role);
     cachePermissions({
       userId: user.id,
-      role: getEffectiveRole(savedProfile.role),
-      permissions: savedProfile.permissions ?? {},
+      role: savedRole,
+      permissions: getEffectivePermissions(savedRole, savedProfile.permissions),
     });
 
     return savedProfile;

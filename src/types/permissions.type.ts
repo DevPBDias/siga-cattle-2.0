@@ -12,7 +12,7 @@ export const APP_PERMISSIONS = [
   { key: "comercial", label: "Comercial", route: "/comercial" },
   { key: "movimentacoes", label: "Movimentações", route: "/movimentacoes" },
   { key: "gerenciar", label: "Gerenciamento", route: "/gerenciar" },
-  { key: "relatorios", label: "Relatórios", route: "/geral/relatorios" },
+  { key: "relatorios", label: "Relatórios", route: "/geral" },
 ] as const;
 
 export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
@@ -29,6 +29,13 @@ export const OWNER_PERMISSIONS: UserPermissions = Object.fromEntries(
 export function getEffectiveRole(role?: UserRole): UserRole {
   // Ausência de perfil/permissão nunca deve elevar privilégios.
   return role === "owner" ? "owner" : "member";
+}
+
+export function getEffectivePermissions(
+  role: UserRole,
+  permissions?: UserPermissions,
+): UserPermissions {
+  return role === "owner" ? OWNER_PERMISSIONS : permissions ?? {};
 }
 
 export function canAccessPermission(

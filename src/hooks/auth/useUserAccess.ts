@@ -6,6 +6,7 @@ import { getSupabase } from "@/lib/supabase/client";
 import {
   APP_PERMISSIONS,
   canAccessPermission,
+  getEffectivePermissions,
   getEffectiveRole,
   PermissionKey,
   UserPermissions,
@@ -113,8 +114,10 @@ export function useUserAccess() {
         const freshRole = getEffectiveRole(
           (profile as { role?: UserRole }).role
         );
-        const freshPermissions: UserPermissions =
-          (profile as { permissions?: UserPermissions }).permissions ?? {};
+        const freshPermissions = getEffectivePermissions(
+          freshRole,
+          (profile as { permissions?: UserPermissions }).permissions,
+        );
 
         setRole(freshRole);
         setPermissions(freshPermissions);
@@ -144,6 +147,36 @@ export function useUserAccess() {
       setPermissions(undefined);
       setPermissionsLoading(true);
     }
+  }, [user?.id]);
+
+  // Todas as partes da Home usam instÃ¢ncias independentes deste hook. O
+  // evento garante que todas adotem o perfil atualizado imediatamente.
+  useEffect(() => {
+    if (!user?.id || typeof window === "undefined") return;
+
+    const handlePermissionsUpdated = (event: Event) => {
+      const eventUserId = (event as CustomEvent<{ userId?: string }>).detail
+        ?.userId;
+      if (eventUserId && eventUserId !== user.id) return;
+
+      const cached = getCachedPermissions(user.id);
+      if (!cached) return;
+
+      setRole(cached.role);
+      setPermissions(cached.permissions);
+      setPermissionsLoading(false);
+    };
+
+    window.addEventListener(
+      "rico-ouro-permissions-updated",
+      handlePermissionsUpdated,
+    );
+
+    return () =>
+      window.removeEventListener(
+        "rico-ouro-permissions-updated",
+        handlePermissionsUpdated,
+      );
   }, [user?.id]);
 
   // ── Dev diagnostics ─────────────────────────────────────────────────────
@@ -179,7 +212,8 @@ export function useUserAccess() {
       return true;
     }
 
-    return !key || canAccessPermission(role, permissions, key);
+    if (!key) return pathname === "/perfil" || role === "owner";
+    return canAccessPermission(role, permissions, key);
   }, [loading, permissions, role]);
 
   return {

@@ -25,7 +25,8 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   const { data: inviteData, actions } = useInviteMember();
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  const members = allProfiles.filter((profile) => profile.id !== user?.id);
+  // O dono também precisa visualizar o próprio perfil na equipe.
+  const members = allProfiles;
 
   const handleRole = (profile: UserProfile, role: UserRole) => {
     if (!editing) return;
