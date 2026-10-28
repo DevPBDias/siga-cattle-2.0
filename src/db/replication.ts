@@ -291,7 +291,7 @@ export async function setupReplication(db: MyDatabase) {
     realtimeTeardown = setupRealtimeSync((db as any).replications);
 
     // Inicia a replicação manualmente após um delay para garantir que o banco local esteja pronto
-    setTimeout(() => {
+    await (async () => {
       SyncLogger.info("setup", "Starting all replications...");
 
       // Verifica novamente os dados locais antes de iniciar
@@ -324,7 +324,29 @@ export async function setupReplication(db: MyDatabase) {
       exchangesReplication.start();
 
       SyncLogger.info("setup", "All 16 replications started ✅");
-    }, 500);
+      await Promise.race([
+        Promise.allSettled([
+          animalsReplication,
+          vaccinesReplication,
+          farmsReplication,
+          userProfilesReplication,
+          animalMetricsWeightReplication,
+          animalMetricsCEReplication,
+          animalVaccinesReplication,
+          reproductionEventsReplication,
+          animalStatusesReplication,
+          animalSituationsReplication,
+          semenDosesReplication,
+          clientsReplication,
+          movementsReplication,
+          salesReplication,
+          deathsReplication,
+          exchangesReplication,
+        ].map((replication) => replication.awaitInitialReplication())),
+        new Promise((resolve) => setTimeout(resolve, 10000)),
+      ]);
+      SyncLogger.info("setup", "Initial replication round completed");
+    })();
 
     // Monitoramento de erros por coleção
     const monitoredCollections = [

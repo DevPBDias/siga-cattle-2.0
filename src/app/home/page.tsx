@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bell,
 } from "lucide-react";
@@ -17,6 +17,24 @@ import { MobileFooter } from "@/components/layout/MobileFooter";
 
 const HomePage = () => {
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    let reloadTimer: number | undefined;
+
+    const handleRemoteSync = () => {
+      // O RxDB jÃ¡ atualiza as consultas reativas. O reload Ã© usado aqui para
+      // garantir que cards e atalhos calculados tambÃ©m reflitam o Supabase.
+      if (document.visibilityState !== "visible") return;
+      if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
+      reloadTimer = window.setTimeout(() => window.location.reload(), 500);
+    };
+
+    window.addEventListener("rico-ouro-remote-sync", handleRemoteSync);
+    return () => {
+      window.removeEventListener("rico-ouro-remote-sync", handleRemoteSync);
+      if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
+    };
+  }, []);
 
   function showNotice(label: string) {
     setNotice(`${label} selecionado`);

@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import loginImg from "@/assets/images/login-page.png";
 import logoImg from "@/assets/icons/logo_siga_cattle.png";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
+import { useRxDB } from "@/providers/RxDBProvider";
 
 export default function LoginPage() {
   const {
@@ -17,6 +18,7 @@ export default function LoginPage() {
     loading,
   } = useAuth();
   const router = useRouter();
+  const { isReady: isDatabaseReady, isLoading: isDatabaseLoading } = useRxDB();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loadingLocal, setLoadingLocal] = useState(false);
@@ -61,6 +63,10 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isDatabaseReady) {
+      setErr("Preparando o banco local. Aguarde alguns segundos e tente novamente.");
+      return;
+    }
     setLoadingLocal(true);
     setErr(null);
     try {
@@ -175,7 +181,7 @@ export default function LoginPage() {
         )}
 
         <Button
-          disabled={loadingLocal || !isOnline}
+          disabled={loadingLocal || !isOnline || isDatabaseLoading || !isDatabaseReady}
           type="submit"
           className="uppercase text-sm font-bold mt-4"
         >

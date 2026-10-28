@@ -25,6 +25,7 @@ interface SyncStats {
 
 interface ReplicationContextType {
   isSyncing: boolean;
+  initialSyncReady: boolean;
   lastSyncedAt: Date | null;
   online: boolean;
   replicationErrors: Error[];
@@ -47,6 +48,7 @@ const defaultSyncStats: SyncStats = {
 
 const ReplicationContext = createContext<ReplicationContextType>({
   isSyncing: false,
+  initialSyncReady: false,
   lastSyncedAt: null,
   online: true,
   replicationErrors: [],
@@ -68,6 +70,7 @@ export function ReplicationProvider({
   const { data: user, loading: authLoading } = useAuthContext();
   const [replicationsReady, setReplicationsReady] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [initialSyncReady, setInitialSyncReady] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null);
   const [online, setOnline] = useState(true);
   const [replicationErrors, setReplicationErrors] = useState<Error[]>([]);
@@ -103,10 +106,13 @@ export function ReplicationProvider({
 
     let isMounted = true;
 
+    setInitialSyncReady(!user);
+
     const handleSession = async (hasUser: boolean) => {
       if (!isMounted) return;
 
       if (hasUser) {
+        setInitialSyncReady(false);
         if (!(db as any).replications) {
           try {
             SyncLogger.info(
@@ -116,6 +122,7 @@ export function ReplicationProvider({
             await setupReplication(db);
             if (isMounted) {
               setReplicationsReady(true);
+              setInitialSyncReady(true);
             }
           } catch (err) {
             SyncLogger.error(
@@ -136,12 +143,14 @@ export function ReplicationProvider({
           await stopReplication(db);
           if (isMounted) {
             setReplicationsReady(false);
+            setInitialSyncReady(true);
             setEntityStatus({});
             setIsSyncing(false);
             setReplicationErrors([]);
           }
         } else {
           if (isMounted) setReplicationsReady(false);
+          if (isMounted) setInitialSyncReady(true);
         }
       }
     };
@@ -213,6 +222,20 @@ export function ReplicationProvider({
             }));
           }),
         );
+
+        // Pulls representam dados realmente recebidos do Supabase. O evento
+        // permite que a Home atualize somente quando houve alteração remota.
+        subscriptions.push(
+          rep.received$.subscribe(() => {
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(
+                new CustomEvent("rico-ouro-remote-sync", {
+                  detail: { tableName: name },
+                }),
+              );
+            }
+          }),
+        );
       });
 
       // Global sync status logic
@@ -269,6 +292,7 @@ export function ReplicationProvider({
     <ReplicationContext.Provider
       value={{
         isSyncing,
+        initialSyncReady,
         lastSyncedAt,
         online,
         replicationErrors,
