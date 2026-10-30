@@ -52,11 +52,17 @@ export default function OpeningPage() {
   }, [isMounted, resolution.isValid, triggerRedirect]);
 
   if (!isMounted) {
+    const isDarkSplash =
+      resolution.tenant?.id === "agro3mil" ||
+      resolution.tenant?.id === "nelore-indi-ouro";
+
     return (
       <main
         className="relative h-dvh w-full overflow-hidden"
         style={{
-          backgroundColor: resolution.tenant?.backgroundColor || "#1e3b2b",
+          backgroundColor: isDarkSplash
+            ? "#081a2f"
+            : resolution.tenant?.backgroundColor || "#1e3b2b",
         }}
       />
     );

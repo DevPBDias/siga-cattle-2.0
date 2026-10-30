@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { getActiveTenant, TenantConfig, TenantResolution, TENANTS } from "@/config/tenant";
+import { NeloreIndiOuroSplash } from "./NeloreIndiOuroSplash";
 
 interface TenantSplashProps {
   onSkip?: () => void;
@@ -71,6 +72,11 @@ export function TenantSplash({ onSkip, tenantConfig, resolution }: TenantSplashP
         </div>
       </main>
     );
+  }
+
+  // Se for agro3mil ou nelore-indi-ouro, renderiza a splash visual especializada Nelore INDI Ouro
+  if (tenant.id === "agro3mil" || tenant.id === "nelore-indi-ouro") {
+    return <NeloreIndiOuroSplash onSkip={onSkip} />;
   }
 
   // Obter as iniciais da fazenda para fallback se a imagem falhar
