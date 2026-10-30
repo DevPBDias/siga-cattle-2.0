@@ -37,6 +37,7 @@ export function TenantLoadingScreen({
  * 1. Loading Fazenda Agro 3mil (Nelore INDI Ouro)
  * Fundo azul #2B68B1, imagem centralizada proporcionalmente reduzida
  * para acomodar perfeitamente a barra de carregamento e o texto "CARREGANDO ..."
+ * Usa `fixed inset-0 z-50` para sobrepor a tela sem ocupar espaço estático no fluxo.
  */
 function Agro3milLoading({ message }: { message: string }) {
   return (
@@ -45,8 +46,8 @@ function Agro3milLoading({ message }: { message: string }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2B68B1] select-none"
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-50 flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2B68B1] select-none"
     >
       <div className="flex-1 w-full flex items-center justify-center">
         {/* Imagem do Nelore com estrelas e logo INDI Ouro reduzida proporcionalmente */}
@@ -76,6 +77,7 @@ function Agro3milLoading({ message }: { message: string }) {
 /**
  * 2. Loading Haras Fazenda Luma
  * Fundo verde floresta #2C4A2E, texto tipográfico com o nome da fazenda e barra de carregamento
+ * Usa `fixed inset-0 z-50` para sobrepor a tela sem ocupar espaço estático no fluxo.
  */
 function HarasLumaLoading({ message }: { message: string }) {
   return (
@@ -84,8 +86,8 @@ function HarasLumaLoading({ message }: { message: string }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2C4A2E] px-6 py-12 select-none"
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-50 flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2C4A2E] px-6 py-12 select-none"
     >
       <div className="flex-1 w-full flex items-center justify-center">
         {/* Texto do Haras Fazenda Luma em fonte condensada e impactante */}
@@ -113,6 +115,7 @@ function HarasLumaLoading({ message }: { message: string }) {
 /**
  * 3. Loading SIGA Cattle (Padrão)
  * Fundo verde escuro #1E3B2B, logo estilizada SIGA CATTLE em texto (sem ícone do boi) e barra de carregamento
+ * Usa `fixed inset-0 z-50` para sobrepor a tela sem ocupar espaço estático no fluxo.
  */
 function SigaCattleLoading({ message }: { message: string }) {
   return (
@@ -121,8 +124,8 @@ function SigaCattleLoading({ message }: { message: string }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.4 }}
-      className="relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#1E3B2B] px-6 py-12 select-none"
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-50 flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#1E3B2B] px-6 py-12 select-none"
     >
       <div className="flex-1 w-full flex items-center justify-center">
         {/* Logo oficial em texto SIGA CATTLE */}

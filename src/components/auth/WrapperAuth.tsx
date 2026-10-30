@@ -49,5 +49,8 @@ export default function ProtectedClient({ children }: { children: React.ReactNod
   if (shouldShowLoading) return <LoadingScreen />;
   if (!loading && !user) return null;
   if (!user || !pathAllowed) return null;
-  return <div>{children}</div>;
+
+  // Retorna Fragment para NÃO injetar nenhuma div extra no DOM que possa
+  // criar espaços brancos ou quebrar o fluxo de layout das páginas.
+  return <>{children}</>;
 }

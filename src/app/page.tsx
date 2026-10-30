@@ -13,11 +13,8 @@ import { useReplication } from "@/providers/ReplicationProvider";
 /**
  * Tela de abertura do aplicativo (rota raiz "/").
  *
- * Aguarda auth + initialSyncReady antes de redirecionar, eliminando a segunda
- * tela de loading que aparecia no WrapperAuth logo após o redirect.
- *
- * Timeout de segurança (3 s) garante que, mesmo se a replicação falhar,
- * o app não trave nesta tela.
+ * Aguarda auth + initialSyncReady antes de redirecionar.
+ * Utiliza overlay fixo para não ocupar espaço estático no fluxo do documento.
  */
 export default function LoadingPage() {
   const router = useRouter();
@@ -40,36 +37,28 @@ export default function LoadingPage() {
     setTimeout(() => {
       const isAuthenticated = (!authLoading && !!user) || hasCachedAuth();
       if (!isAuthenticated) {
-        router.push("/login");
+        router.replace("/login");
         return;
       }
-      // Sinaliza que a splash já foi exibida nesta sessão.
-      // O WrapperAuth lê esta flag para evitar exibir um segundo loading screen.
       try {
         sessionStorage.setItem("splash_done", "1");
       } catch {
-        // sessionStorage indisponível (modo privado restrito) — sem problema
+        // sessionStorage indisponível (modo privado restrito)
       }
       // Desktop (≥768px) → /dashboard | Mobile (<768px) → /home
-      router.push(getDeviceHomeRoute());
-    }, 300);
+      router.replace(getDeviceHomeRoute());
+    }, 250);
   }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!isMounted) return;
     if (!resolution.isValid) return;
 
-    // Redireciona assim que auth e sync estiverem prontos.
-    // initialSyncReady = true quando:
-    //   - Usuário não autenticado (sem sync necessário), ou
-    //   - Replicação inicial já foi configurada ou falhou (app usa cache local).
     if (!authLoading && initialSyncReady) {
       triggerRedirect();
       return;
     }
 
-    // Timeout de segurança: se auth ou sync demorar mais de 3 s, redireciona
-    // assim mesmo para não deixar o usuário preso na splash.
     const safetyTimer = setTimeout(() => {
       triggerRedirect();
     }, 3000);
@@ -81,7 +70,7 @@ export default function LoadingPage() {
     const initialBg = resolution.tenant?.backgroundColor || "#2B68B1";
     return (
       <main
-        className="relative h-dvh w-full overflow-hidden"
+        className="fixed inset-0 z-50 h-dvh w-full overflow-hidden"
         style={{ backgroundColor: initialBg }}
       />
     );
