@@ -1,15 +1,32 @@
 import { UserOptions } from "jspdf-autotable";
+import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
 
-export const REPORT_COLORS = {
-  PRIMARY: [17, 98, 174] as [number, number, number], // Pixel Perfect Blue
-  TEXT_DARK_BLUE: [17, 98, 174] as [number, number, number],
-  SECONDARY: [80, 80, 80] as [number, number, number], // Grey
-  HEADER_BG: [255, 255, 255] as [number, number, number], // White header
+const DEFAULT_COLORS = {
+  PRIMARY: [30, 59, 43] as [number, number, number],
+  TEXT_DARK_BLUE: [30, 59, 43] as [number, number, number],
+  SECONDARY: [80, 80, 80] as [number, number, number],
+  HEADER_BG: [255, 255, 255] as [number, number, number],
   TEXT: [0, 0, 0] as [number, number, number],
   TITLE_RED: [180, 0, 0] as [number, number, number],
   LINE_GRAY: [180, 180, 180] as [number, number, number],
   STRIPE_GRAY: [248, 248, 248] as [number, number, number],
 };
+
+/**
+ * Cores do relatório dinamicamente resolvidas de acordo com a fazenda ativa.
+ */
+export const REPORT_COLORS = new Proxy(DEFAULT_COLORS, {
+  get(target, prop: keyof typeof DEFAULT_COLORS) {
+    if (prop === "PRIMARY" || prop === "TEXT_DARK_BLUE") {
+      try {
+        return getTenantBranding().primaryRgb;
+      } catch {
+        return target[prop];
+      }
+    }
+    return target[prop];
+  },
+});
 
 export const DEFAULT_TABLE_STYLES: UserOptions = {
   styles: {

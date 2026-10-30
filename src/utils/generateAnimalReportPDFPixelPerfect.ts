@@ -5,7 +5,8 @@ import { SelectedReportFields } from "@/types/report_field.type";
 import { fieldMap } from "@/constants/dynamicFields";
 import { Farm } from "@/types/farm.type";
 import { saveBlobAsFile } from "./saveBlobFile";
-import { logoPdf } from "@/assets/icons/logo_pdf";
+import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
+import { formatDate, getTodayFormatted } from "@/utils/dates";
 
 const LAYOUT = {
   unit: "mm" as const,
@@ -42,12 +43,33 @@ const LAYOUT = {
   },
 };
 
-// Base64 do PNG extraído do SVG para evitar erro de assinatura no jsPDF
-const LOGO_INDI_OURO_BASE64 = logoPdf;
-
-function drawNeloreLogo(doc: jsPDF, x: number, y: number): void {
+function drawTenantLogo(doc: jsPDF, x: number, y: number, branding: ReturnType<typeof getTenantBranding>): void {
   try {
-    doc.addImage(LOGO_INDI_OURO_BASE64, "PNG", x, y, 36, 12, undefined, "FAST");
+    const initials = branding.farmName
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase();
+
+    doc.setFillColor(255, 255, 255, 0.2);
+    doc.roundedRect(x, y, 36, 12, 1.5, 1.5, "F");
+    doc.setDrawColor(...branding.secondaryRgb);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(x, y, 36, 12, 1.5, 1.5, "D");
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text(initials, x + 3, y + 8);
+
+    doc.setFontSize(5.5);
+    doc.setTextColor(...branding.secondaryRgb);
+    doc.text(branding.tenant.badgeText ?? "SIGA", x + 12, y + 5.5);
+    doc.setFontSize(5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("CATTLE", x + 12, y + 9.5);
   } catch (error) {
     console.error("Erro ao carregar logo no PDF:", error);
   }
@@ -58,8 +80,6 @@ function formatValue(val: any): string {
   return String(val);
 }
 
-import { formatDate, getTodayFormatted } from "@/utils/dates";
-
 export async function generateAnimalReportPDFPixelPerfect(
   data: Animal[],
   selectedFields: SelectedReportFields,
@@ -69,6 +89,8 @@ export async function generateAnimalReportPDFPixelPerfect(
   method: "share" | "save-picker" | "download";
 } | null> {
   if (!data || data.length === 0) return null;
+
+  const branding = getTenantBranding();
 
   // 1. Ordenação obrigatória por RGN decrescente
   const sortedData = [...data].sort((a, b) => {
@@ -89,19 +111,23 @@ export async function generateAnimalReportPDFPixelPerfect(
   const margins = LAYOUT.margins;
 
   const renderInstitutionalHeader = (doc: jsPDF, pageNumber: number) => {
-    // Background do Header
-    doc.setFillColor(...LAYOUT.colors.textDarkBlue);
+    // Background do Header na cor da fazenda
+    doc.setFillColor(...branding.primaryRgb);
     doc.rect(0, 0, pageWidth, 21, "F");
 
+    // Linha dourada de acento
+    doc.setFillColor(...branding.secondaryRgb);
+    doc.rect(0, 20.4, pageWidth, 0.6, "F");
+
     // Logo
-    drawNeloreLogo(doc, margins.left, 4.5);
+    drawTenantLogo(doc, margins.left, 4.5, branding);
 
     // Cabeçalho Centralizado
     doc.setTextColor(...LAYOUT.colors.textWhite);
     doc.setFont(LAYOUT.fonts.base, "bold");
 
     doc.setFontSize(LAYOUT.sizes.headerDept);
-    doc.text("SISTEMA DE GESTÃO PECUÁRIA - NELORE INDI OURO", centerX, 9, {
+    doc.text(`SISTEMA DE GESTÃO PECUÁRIA - ${branding.farmName.toUpperCase()}`, centerX, 9, {
       align: "center",
     });
 
@@ -118,18 +144,18 @@ export async function generateAnimalReportPDFPixelPerfect(
 
     // Criador - Alinhado à esquerda
     doc.setFont(LAYOUT.fonts.base, "normal");
-    doc.text("Criador:", margins.left, startInfoY);
-    const criadorLabelWidth = doc.getTextWidth("Criador: ");
+    doc.text("Sistema:", margins.left, startInfoY);
+    const criadorLabelWidth = doc.getTextWidth("Sistema: ");
     doc.setFont(LAYOUT.fonts.base, "bold");
     doc.text(
-      "RICARDO RIBEIRO DIAS",
+      "SIGA CATTLE",
       margins.left + criadorLabelWidth + 1,
       startInfoY
     );
 
     // Fazenda - Alinhado ao centro
     const fazendaLabel = "Fazenda: ";
-    const fazendaValue = "AGRO 3 MIL";
+    const fazendaValue = branding.farmName.toUpperCase();
     doc.setFont(LAYOUT.fonts.base, "normal");
     const fazendaLabelWidth = doc.getTextWidth(fazendaLabel);
     const fazendaValueWidth = doc.getTextWidth(fazendaValue);
@@ -327,7 +353,7 @@ export async function generateAnimalReportPDFPixelPerfect(
         const now = getTodayFormatted();
 
         doc.text(
-          `Nelore Indi Ouro - Valoriza rebanhos - Impresso em: ${now}`,
+          `Siga Cattle - ${branding.farmName} - Impresso em: ${now}`,
           margins.left,
           footerY
         );
@@ -339,7 +365,7 @@ export async function generateAnimalReportPDFPixelPerfect(
   });
 
   const pdfBlob = doc.output("blob");
-  const fileName = `relatorio_agro_3mil_${Date.now()}.pdf`;
+  const fileName = `relatorio_${branding.tenant.id}_${Date.now()}.pdf`;
 
   return await saveBlobAsFile(pdfBlob, fileName);
 }

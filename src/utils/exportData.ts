@@ -1,10 +1,13 @@
 import * as XLSX from "xlsx";
 import { Animal } from "@/types/animal.type";
+import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
 
 export function exportToExcel(
   dados: Animal[],
-  filename: string = "animais.xlsx"
+  filename?: string
 ) {
+  const branding = getTenantBranding();
+  const targetFilename = filename || `animais_${branding.tenant.id}.xlsx`;
   const exportData = dados.map((item, index) => ({
     ID: index + 1,
     RGN: item.rgn || "",
@@ -62,7 +65,12 @@ export function exportToExcel(
   worksheet["!cols"] = columnWidths;
 
   const workbook = XLSX.utils.book_new();
+  workbook.Props = {
+    Title: `Exportação de Animais - ${branding.farmName}`,
+    Author: `Siga Cattle - ${branding.farmName}`,
+    Company: branding.farmName,
+  };
   XLSX.utils.book_append_sheet(workbook, worksheet, "Animais");
 
-  XLSX.writeFile(workbook, filename);
+  XLSX.writeFile(workbook, targetFilename);
 }

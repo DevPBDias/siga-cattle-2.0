@@ -140,7 +140,7 @@ export function createReplication<T extends ReplicableEntity>(
           const data = Array.isArray(rawDocuments) ? rawDocuments : [];
 
           // Map documents for RxDB.
-          const processedDocuments = data.map((doc) => {
+          const rawProcessedDocuments = data.map((doc) => {
             let processed: T;
             if (mapFromSupabase) {
               processed = mapFromSupabase(doc);
@@ -155,6 +155,23 @@ export function createReplication<T extends ReplicableEntity>(
               created_at: processed.created_at || Date.now(),
               updated_at: processed.updated_at || Date.now(),
             } as T;
+          });
+
+          // DOC18 guard: filtrar documentos inválidos que foram marcados com
+          // _rxdb_skip pelo mapFromSupabase (ex: reproduction_events sem id),
+          // ou que possuam a primaryKey nula/vazia.
+          const processedDocuments = rawProcessedDocuments.filter((doc: any) => {
+            if (doc._rxdb_skip) return false;
+            const pkValue = doc[primaryKey];
+            if (pkValue == null || pkValue === "") {
+              SyncLogger.warn(
+                colName,
+                `Documento descartado: primaryKey '${primaryKey}' nula/vazia`,
+                { doc }
+              );
+              return false;
+            }
+            return true;
           });
 
           SyncLogger.info(

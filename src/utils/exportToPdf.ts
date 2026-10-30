@@ -9,6 +9,8 @@ import { AnimalMetric } from "@/types/animal_metrics.type";
 import { AnimalVaccine } from "@/types/vaccine.type";
 import { formatDate, formatDateTime } from "@/utils/dates";
 
+import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
+
 export async function generateAnimalReportPDF(
   data: Animal[],
   selectedFields: SelectedReportFields
@@ -21,45 +23,52 @@ export async function generateAnimalReportPDF(
     return null;
   }
 
+  const branding = getTenantBranding();
   const doc = new jsPDF({ orientation: "landscape", unit: "mm" });
 
-  const primaryColor: [number, number, number] = [17, 98, 174]; // #1162ae
+  const primaryColor = branding.primaryRgb;
   const lightGray: [number, number, number] = [245, 245, 245];
   const darkGray: [number, number, number] = [60, 60, 60];
   
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
 
-  // Header compacto
+  // Header compacto com a cor da fazenda
   doc.setFillColor(...primaryColor);
   doc.rect(0, 0, pageWidth, 22, "F");
   
   // Linha decorativa
-  doc.setFillColor(255, 255, 255);
+  doc.setFillColor(...branding.secondaryRgb);
   doc.rect(0, 21, pageWidth, 1, "F");
   
   doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
+  doc.setFontSize(15);
   doc.setFont("helvetica", "bold");
-  doc.text("RELATÓRIO DE ANIMAIS", pageWidth / 2, 9, {
+  doc.text("RELATÓRIO DE ANIMAIS", pageWidth / 2, 8.5, {
+    align: "center",
+  });
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Siga Cattle - ${branding.farmName}`, pageWidth / 2, 13.5, {
     align: "center",
   });
   
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(240, 240, 240);
   const dateStr = formatDateTime(new Date());
-  doc.text(`Gerado em: ${dateStr}`, pageWidth / 2, 15, {
+  doc.text(`Gerado em: ${dateStr}`, pageWidth / 2, 17.5, {
     align: "center",
   });
   
   // Informações adicionais no header
   doc.setFontSize(7);
-  doc.setTextColor(200, 200, 200);
+  doc.setTextColor(220, 220, 220);
   doc.text(
     `Total: ${data.length} animal${data.length !== 1 ? "is" : ""}`,
     pageWidth / 2,
-    19,
+    20.5,
     { align: "center" }
   );
 
@@ -408,10 +417,10 @@ export async function generateAnimalReportPDF(
   }
 
   const pdfBlob = doc.output("blob");
-  const fileName = `relatorio_animais_${Date.now()}.pdf`;
+  const fileName = `relatorio_animais_${branding.tenant.id}_${Date.now()}.pdf`;
 
   return await saveBlobAsFile(pdfBlob, fileName, {
-    shareTitle: "📊 Relatório de Animais",
-    shareText: `Relatório com ${data.length} animais - INDI Ouro`,
+    shareTitle: `📊 Relatório de Animais - ${branding.farmName}`,
+    shareText: `Relatório com ${data.length} animais - Siga Cattle (${branding.farmName})`,
   });
 }

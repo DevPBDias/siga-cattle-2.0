@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   createClient as createSupabaseClient,
-  type SupabaseClient,
 } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 
 // ---------------------------------------------------------------------------
-// Allowlist — only these tables can be accessed via the sync API.
+// Allowlist — apenas essas tabelas podem ser acessadas via API de sync.
 // ---------------------------------------------------------------------------
 const ALLOWED_TABLES = new Set([
   "animals",
@@ -30,13 +29,11 @@ const ALLOWED_TABLES = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-// PK override: maps the client-side RxDB primary key to the actual Supabase
-// column name when they differ between the old and new schema.
-//
-// reproduction_events: old schema used event_id; new schema uses id (UUID).
+// PK override: mapeia a chave primária real do Supabase quando necessário
 // ---------------------------------------------------------------------------
 const SERVER_PK_OVERRIDE: Record<string, string> = {
-  reproduction_events: "id",
+  animals: "rgn",
+  reproduction_events: "event_id",
 };
 
 async function getSupabaseForRequest(req: NextRequest) {
@@ -49,24 +46,6 @@ async function getSupabaseForRequest(req: NextRequest) {
     );
   }
   return await createServerClient();
-}
-
-async function getOrgId(
-  supabase: SupabaseClient,
-  userId: string,
-): Promise<string | null> {
-  const { data: profile, error } = await supabase
-    .from("user_profiles")
-    .select("owner_id")
-    .eq("id", userId)
-    .maybeSingle();
-
-  if (error) {
-    console.error("[SyncAPI] Failed to resolve organization:", error);
-    return null;
-  }
-
-  return profile?.owner_id ?? userId;
 }
 
 export async function GET(req: NextRequest) {
@@ -95,92 +74,54 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Use the server-side PK column (may differ from the client-side RxDB PK).
   const serverPk = SERVER_PK_OVERRIDE[table] ?? clientPrimaryKey;
 
   console.log(`[SyncAPI] Pull: ${table} (pk=${serverPk}) for ${user.email}`);
 
-  let selectQuery = "*";
-  const needsJoin = [
-    "reproduction_events",
-    "deaths",
-    "sales",
-    "animal_vaccines",
-    "animal_metrics_weight",
-    "animal_metrics_ce",
-    "movements",
-  ].includes(table);
-
-  if (needsJoin) {
-    selectQuery = "*, animals(rgn)";
-  }
-
+  // Consulta todas as colunas existentes na tabela no Supabase
   let query = supabase
     .from(table)
-    .select(selectQuery)
-    .order("server_updated_at", { ascending: true })
+    .select("*")
+    .order("updated_at", { ascending: true })
     .order(serverPk, { ascending: true })
     .limit(parseInt(limit));
 
   if (lastModified !== null && lastModified !== undefined) {
     const lastModNum = Number(lastModified);
 
-    // lastModNum === 0 significa primeira sincronização (sem checkpoint).
-    // Nesse caso retornamos TUDO sem filtrar — evita problemas de tipo
-    // (BIGINT vs TIMESTAMPTZ) e é semanticamente correto.
+    // Se lastModNum > 0: filtra por updated_at (bigint numérico)
     if (lastModNum > 0) {
-      const lastModStr = new Date(lastModNum).toISOString();
-
-      // Guard against corrupted checkpoint values like the string "undefined"
       const validLastId = lastId && lastId !== "undefined" && lastId !== "null";
       if (validLastId) {
-        const idFilter = `"${lastId}"`;
         query = query.or(
-          `server_updated_at.gt.${lastModStr},and(server_updated_at.eq.${lastModStr},${serverPk}.gt.${idFilter})`,
+          `updated_at.gt.${lastModNum},and(updated_at.eq.${lastModNum},${serverPk}.gt."${lastId}")`,
         );
       } else {
-        query = query.gte("server_updated_at", lastModStr);
+        query = query.gte("updated_at", lastModNum);
       }
     }
-    // Se lastModNum === 0: não filtra, retorna todas as linhas
   }
 
-  let { data, error } = await query;
+  const { data, error } = await query;
   if (error) {
     console.error(`[SyncAPI] Pull error for ${table}:`, error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  if (data && needsJoin) {
-    data = data.map((row: any) => {
-      if (row.animals && row.animals.rgn) {
-        if (table === "sales" || table === "deaths") {
-           row.animal_rgn = row.animals.rgn;
-        } else if (table === "movements") {
-           // movements RxDB schema uses animal_id field but stores the RGN value
-           row.animal_id = row.animals.rgn;
-        } else {
-           // reproduction_events, animal_vaccines, animal_metrics_weight, animal_metrics_ce
-           row.rgn = row.animals.rgn;
-        }
-      }
-      delete row.animals;
-      // Remove the UUID animal_id for tables that don't use it in RxDB
-      // (movements overwrites it above, so this is safe)
-      if (table !== "movements") {
-        delete row.animal_id;
-      }
-      // For reproduction_events, copy server 'id' to 'event_id' so the client
-      // checkpoint can read the correct PK value from the raw response.
-      if (table === "reproduction_events" && row.id && !row.event_id) {
-        row.event_id = row.id;
+  // Prepara os dados para o cliente RxDB
+  let processedData = data || [];
+  if (Array.isArray(processedData)) {
+    processedData = processedData.map((row: any) => {
+      // Garante que server_updated_at seja compatível com o checkpoint do cliente
+      if (row.server_updated_at === undefined && row.updated_at !== undefined) {
+        row.server_updated_at = row.updated_at;
       }
       return row;
     });
   }
 
-  console.log(`[SyncAPI] Pull success for ${table}: ${data?.length ?? 0} rows`);
-  return NextResponse.json(data);
+  console.log(`[SyncAPI] Pull success for ${table}: ${processedData.length} rows`);
+  return NextResponse.json(processedData);
 }
 
 export async function POST(req: NextRequest) {
@@ -205,72 +146,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const orgId = await getOrgId(supabase, user.id);
-    if (!orgId) {
-      return NextResponse.json({ error: "User has no active organization" }, { status: 403 });
-    }
-
-    // Use the server-side PK for upsert conflict resolution.
     const serverPk = SERVER_PK_OVERRIDE[table] ?? clientPrimaryKey;
 
-    let enriched = documents.map((doc: Record<string, unknown>) => ({
-      ...doc,
-      org_id: orgId,
-      device_id: (doc.device_id as string | undefined) || "web",
-    }));
-
-    const needsLookup = [
-      "reproduction_events",
-      "deaths",
-      "sales",
-      "animal_vaccines",
-      "animal_metrics_weight",
-      "animal_metrics_ce",
-      "movements",
-    ].includes(table);
-
-    if (needsLookup) {
-      const rgnsToLookup = new Set<string>();
-      enriched.forEach((doc: any) => {
-        if (doc.rgn) rgnsToLookup.add(doc.rgn);
-        if (doc.animal_rgn) rgnsToLookup.add(doc.animal_rgn);
-        if (table === "movements" && doc.animal_id) rgnsToLookup.add(doc.animal_id);
-      });
-
-      if (rgnsToLookup.size > 0) {
-        const { data: animalIds } = await supabase
-          .from("animals")
-          .select("id, rgn")
-          .in("rgn", Array.from(rgnsToLookup))
-          .eq("org_id", orgId);
-
-        const rgnToIdMap: Record<string, string> = {};
-        if (animalIds) {
-          animalIds.forEach((a: any) => {
-            rgnToIdMap[a.rgn] = a.id;
-          });
-        }
-
-        enriched = enriched.map((doc: any) => {
-          if (doc.rgn && rgnToIdMap[doc.rgn]) {
-            doc.animal_id = rgnToIdMap[doc.rgn];
-            delete doc.rgn;
-          }
-          if (doc.animal_rgn && rgnToIdMap[doc.animal_rgn]) {
-            doc.animal_id = rgnToIdMap[doc.animal_rgn];
-            delete doc.animal_rgn;
-          }
-          if (table === "movements" && doc.animal_id && rgnToIdMap[doc.animal_id]) {
-            doc.animal_id = rgnToIdMap[doc.animal_id];
-          }
-          return doc;
-        });
-      }
-    }
+    // Sanitiza documentos para o Supabase: remove colunas inexistentes no banco remoto
+    const sanitizedDocuments = documents.map((doc: Record<string, unknown>) => {
+      const clean = { ...doc };
+      delete (clean as any).server_updated_at;
+      delete (clean as any).device_id;
+      delete (clean as any).org_id;
+      return clean;
+    });
 
     const { data, error } = await supabase
       .from(table)
-      .upsert(enriched, { onConflict: serverPk, ignoreDuplicates: false })
+      .upsert(sanitizedDocuments, { onConflict: serverPk, ignoreDuplicates: false })
       .select();
 
     if (error) {

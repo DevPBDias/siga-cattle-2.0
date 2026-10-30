@@ -17,6 +17,8 @@ import {
   AlertCircle,
   ExternalLink,
   X,
+  ArrowDown,
+  ArrowUp,
 } from "lucide-react";
 
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
@@ -83,6 +85,9 @@ export function DataTable({ data: initialData }: DataTableProps) {
   const [selectedRows, setSelectedRows] = useState<Record<string, boolean>>({});
   const [inspectingAnimal, setInspectingAnimal] = useState<Animal | null>(null);
 
+  // Ordenação por RGN (padrão: decrescente / maior para o menor)
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+
   // Paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -117,11 +122,10 @@ export function DataTable({ data: initialData }: DataTableProps) {
 
   // Animais filtrados por busca, tab e sexo
   const filteredAnimals = useMemo(() => {
-    const list = dbAnimals || [];
+    const list: Animal[] = dbAnimals || [];
     const query = searchQuery.trim().toLowerCase();
-    const today = todayISO();
 
-    return list.filter((animal) => {
+    const filtered = list.filter((animal: Animal) => {
       // Filtro de Sexo
       if (sexFilter === "M" && animal.sex?.toUpperCase() !== "M") return false;
       if (sexFilter === "F" && animal.sex?.toUpperCase() !== "F") return false;
@@ -158,7 +162,31 @@ export function DataTable({ data: initialData }: DataTableProps) {
         fullDisplay.includes(query)
       );
     });
-  }, [dbAnimals, searchQuery, sexFilter, selectedTab, latestWeightMap]);
+
+    // Ordenação pelo RGN do maior para o menor (decrescente por padrão)
+    return filtered.sort((a: Animal, b: Animal) => {
+      const rgnA = (a.rgn || "").trim();
+      const rgnB = (b.rgn || "").trim();
+
+      if (!rgnA && !rgnB) return 0;
+      if (!rgnA) return 1;
+      if (!rgnB) return -1;
+
+      const numA = Number(rgnA);
+      const numB = Number(rgnB);
+
+      let comparison = 0;
+      if (!isNaN(numA) && !isNaN(numB)) {
+        // Numérico puro: maior para o menor
+        comparison = numB - numA;
+      } else {
+        // Alfanumérico natural (ex: A100 vs A20): maior para o menor
+        comparison = rgnB.localeCompare(rgnA, undefined, { numeric: true, sensitivity: "base" });
+      }
+
+      return sortOrder === "asc" ? -comparison : comparison;
+    });
+  }, [dbAnimals, searchQuery, sexFilter, selectedTab, latestWeightMap, sortOrder]);
 
   // Paginação dos dados
   const totalItems = filteredAnimals.length;
@@ -329,7 +357,20 @@ export function DataTable({ data: initialData }: DataTableProps) {
                   aria-label="Selecionar todos da página"
                 />
               </TableHead>
-              <TableHead>Identificação / RGN</TableHead>
+              <TableHead
+                className="cursor-pointer select-none hover:text-foreground transition-colors"
+                onClick={() => setSortOrder((prev) => (prev === "desc" ? "asc" : "desc"))}
+                title={`Clique para alternar ordenação por RGN (${sortOrder === "desc" ? "atualmente: maior para o menor" : "atualmente: menor para o maior"})`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span>Identificação / RGN</span>
+                  {sortOrder === "desc" ? (
+                    <ArrowDown className="h-3.5 w-3.5 text-primary" />
+                  ) : (
+                    <ArrowUp className="h-3.5 w-3.5 text-primary" />
+                  )}
+                </div>
+              </TableHead>
               <TableHead>Raça & Categoria</TableHead>
               <TableHead>Sexo / Idade</TableHead>
               <TableHead>Último Manejo</TableHead>

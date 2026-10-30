@@ -45,8 +45,6 @@ export function setupRealtimeSync(
       SyncLogger.warn("realtime", `Replication missing for ${tableName}`);
       return;
     }
-    const reSync = replication.reSync;
-
     // Debounce de 350ms por tabela para evitar tempestade de reSyncs concorrentes
     const existing = debounceTimers.get(tableName);
     if (existing) clearTimeout(existing);
@@ -54,9 +52,11 @@ export function setupRealtimeSync(
     const timer = setTimeout(() => {
       debounceTimers.delete(tableName);
       try {
-        void Promise.resolve(reSync()).catch((error) =>
-          SyncLogger.error("realtime", `reSync failed for ${tableName}`, error),
-        );
+        if (typeof replication.reSync === "function" && !(replication as any).isStopped?.()) {
+          void Promise.resolve(replication.reSync()).catch((error) =>
+            SyncLogger.error("realtime", `reSync failed for ${tableName}`, error),
+          );
+        }
       } catch (error) {
         SyncLogger.error("realtime", `reSync failed for ${tableName}`, error);
       }

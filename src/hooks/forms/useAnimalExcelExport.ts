@@ -9,6 +9,7 @@ import { useStatuses } from "@/hooks/db/statuses/useStatuses";
 import { saveBlobAsFile } from "@/utils/saveBlobFile";
 import { flattenAnimalsForExport } from "@/lib/excel/flattenAnimalsForExport";
 import { todayISO } from "@/utils/dates";
+import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
 
 export type ActivityFilter = "ATIVO" | "INATIVO" | "Ambos";
 export type ExportMethod = "share" | "save-picker" | "download";
@@ -61,9 +62,20 @@ export function useAnimalExcelExport() {
 
     setIsExporting(true);
     try {
+      const branding = getTenantBranding();
       const flattenedData = flattenAnimalsForExport(filteredData, farmMap, statusMap);
       const worksheet = XLSX.utils.json_to_sheet(flattenedData);
       const workbook = XLSX.utils.book_new();
+
+      // Metadados do documento XLSX personalizados por cliente
+      workbook.Props = {
+        Title: `Exportação de Animais - ${branding.farmName}`,
+        Subject: "Relatório de Animais",
+        Author: `Siga Cattle - ${branding.farmName}`,
+        Company: branding.farmName,
+        CreatedDate: new Date(),
+      };
+
       XLSX.utils.book_append_sheet(workbook, worksheet, "Animais");
 
       const range = XLSX.utils.decode_range(worksheet["!ref"]!);
@@ -76,7 +88,7 @@ export function useAnimalExcelExport() {
         return { wch: maxLength + 2 };
       });
 
-      const fileName = `Exportacao_Nelore_${todayISO().replaceAll("-", "")}.xlsx`;
+      const fileName = `Exportacao_${branding.tenant.id}_${todayISO().replaceAll("-", "")}.xlsx`;
       const wbout = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
       const blob = new Blob([wbout], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -84,8 +96,8 @@ export function useAnimalExcelExport() {
 
       const result = await saveBlobAsFile(blob, fileName, {
         forceDownload: true,
-        shareTitle: "Planilha de Animais",
-        shareText: `Planilha com ${filteredData.length} animais - INDI Ouro`,
+        shareTitle: `Planilha de Animais - ${branding.farmName}`,
+        shareText: `Planilha com ${filteredData.length} animais - Siga Cattle (${branding.farmName})`,
       });
 
       if (result.success) {

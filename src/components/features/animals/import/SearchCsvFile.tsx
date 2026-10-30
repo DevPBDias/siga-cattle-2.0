@@ -1,21 +1,30 @@
 "use client";
+
 import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, X, AlertTriangle, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  X,
+  AlertTriangle,
+  XCircle,
+  FileSpreadsheet,
+  Layers,
+  Loader2,
+} from "lucide-react";
 import Link from "next/link";
 import { Animal } from "@/types/animal.type";
-import { checkDuplicateRGNs } from "@/lib/supabase/api";
+import { isSupabaseConfigured } from "@/lib/supabase/api";
+import { getSupabase } from "@/lib/supabase/client";
 import { useRxDatabase } from "@/providers/RxDBProvider";
-import { extractDataFromExcel } from "@/utils/extractData";
+import {
+  extractDataFromExcel,
+  extractActiveProductsFromExcel,
+  mergeAnimalData,
+} from "@/utils/extractData";
 import { useCreateAnimal } from "@/hooks/db/animals/useCreateAnimal";
 
-interface DuplicateInfo {
-  rgn: string;
-  id: string;
-  name: string;
-  source: "local" | "global";
-}
+type ProcessPlanilhaType = "avaliacao" | "ativos";
 
 const SearchCsvFile = () => {
   const {
@@ -24,9 +33,13 @@ const SearchCsvFile = () => {
   const db = useRxDatabase();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [currentProcessType, setCurrentProcessType] =
+    useState<ProcessPlanilhaType | null>(null);
+  const [processedModelLabel, setProcessedModelLabel] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [duplicates, setDuplicates] = useState<DuplicateInfo[]>([]);
-  const [totalImported, setTotalImported] = useState(0);
+  const [totalProcessed, setTotalProcessed] = useState(0);
+  const [totalCreated, setTotalCreated] = useState(0);
+  const [totalUpdated, setTotalUpdated] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showNotificationModal, setShowNotificationModal] = useState(false);
   const [notificationTitle, setNotificationTitle] = useState("");
@@ -45,131 +58,123 @@ const SearchCsvFile = () => {
     fileInputRef.current?.click();
   };
 
-  const processAnimals = async (animals: Animal[]) => {
-    for (const animal of animals) {
-      try {
-        await saveAnimal(animal);
-      } catch (error) {
-        console.error(`Erro ao salvar animal ${animal.rgn}:`, error);
-      }
-    }
-
-    setTotalImported(animals.length);
-    setIsProcessing(false);
-    setShowSuccessModal(true);
-  };
-
-  const checkLocalDuplicates = async (
-    rgns: string[],
-  ): Promise<DuplicateInfo[]> => {
-    if (!db) return [];
-
-    const validRgns = rgns.filter((rgn) => rgn && rgn.trim() !== "");
-    if (validRgns.length === 0) return [];
-
-    try {
-      const localAnimals = await db.animals
-        .find({
-          selector: {
-            rgn: {
-              $in: validRgns,
-            },
-          },
-        })
-        .exec();
-
-      const duplicates: DuplicateInfo[] = [];
-
-      localAnimals.forEach((doc: any) => {
-        const animal = doc.toJSON();
-        if (animal.rgn) {
-          duplicates.push({
-            rgn: animal.rgn,
-            id: animal.rgn,
-            name: animal.name || "Sem nome",
-            source: "local",
-          });
-        }
-      });
-
-      return duplicates;
-    } catch (error) {
-      console.error("Erro ao verificar duplicatas locais:", error);
-      return [];
-    }
-  };
-
-  const handleProcessFile = async () => {
+  const handleProcessFile = async (type: ProcessPlanilhaType) => {
     if (!selectedFile) return;
 
     setIsProcessing(true);
+    setCurrentProcessType(type);
+
+    const modelName =
+      type === "ativos"
+        ? "Produtos Ativos (ABCZ)"
+        : "Avaliação Genética (iABCZ)";
+    setProcessedModelLabel(modelName);
+
     try {
-      const extractedData: Animal[] = await extractDataFromExcel(selectedFile);
+      // 1. Extração conforme o modelo da planilha
+      let extractedData: Animal[] = [];
 
-      const rgnsToCheck = extractedData
-        .map((animal) => animal.rgn)
-        .filter((rgn): rgn is string => !!rgn && rgn.trim() !== "");
+      if (type === "ativos") {
+        extractedData = await extractActiveProductsFromExcel(selectedFile);
+      } else {
+        extractedData = await extractDataFromExcel(selectedFile);
+      }
 
-      let allDuplicates: DuplicateInfo[] = [];
+      if (extractedData.length === 0) {
+        setIsProcessing(false);
+        setCurrentProcessType(null);
+        setNotificationType("warning");
+        setNotificationTitle("Nenhum dado encontrado");
+        setNotificationMessage(
+          `Não foi possível extrair nenhum registro de animal com identificação válida deste arquivo para o modelo '${modelName}'. Verifique o arquivo selecionado.`,
+        );
+        setShowNotificationModal(true);
+        return;
+      }
 
-      if (rgnsToCheck.length > 0) {
-        const localDuplicates = await checkLocalDuplicates(rgnsToCheck);
+      let createdCount = 0;
+      let updatedCount = 0;
 
-        if (localDuplicates.length > 0) {
-          allDuplicates = [...localDuplicates];
-        }
-
+      // 2. Persistência com merge inteligente: mantém antigos e atualiza/insere novos
+      for (const animal of extractedData) {
         try {
-          const globalDuplicates = await checkDuplicateRGNs(rgnsToCheck);
-
-          if (globalDuplicates.length > 0) {
-            const localRgns = new Set(localDuplicates.map((d) => d.rgn));
-            const uniqueGlobalDuplicates = globalDuplicates
-              .filter((d) => !localRgns.has(d.rgn))
-              .map((d) => ({
-                rgn: d.rgn,
-                id: d.id,
-                name: d.name,
-                source: "global" as const,
-              }));
-
-            allDuplicates = [...allDuplicates, ...uniqueGlobalDuplicates];
-          }
-        } catch (checkError) {
-          console.warn(
-            "⚠️ Erro na verificação de duplicatas globais, mas verificação local foi realizada:",
-            checkError,
-          );
-        }
-
-        if (allDuplicates.length > 0) {
-          const duplicateRgns = new Set(allDuplicates.map((d) => d.rgn));
-
-          const nonDuplicateAnimals = extractedData.filter(
-            (animal) => !duplicateRgns.has(animal.rgn),
-          );
-
-          if (nonDuplicateAnimals.length === 0) {
-            setIsProcessing(false);
-            setNotificationType("warning");
-            setNotificationTitle("Todos os animais já existem");
-            setNotificationMessage(
-              `Todos os ${extractedData.length} animais da planilha já existem no banco de dados. Nenhum animal foi importado.`,
-            );
-            setShowNotificationModal(true);
-            return;
+          if (!db) {
+            await saveAnimal(animal);
+            createdCount++;
+            continue;
           }
 
-          setDuplicates(allDuplicates);
+          // A. Procura se já existe no banco de dados local (RxDB)
+          const localDoc = await db.animals
+            .findOne({ selector: { rgn: animal.rgn } })
+            .exec();
 
-          await processAnimals(nonDuplicateAnimals);
-          return;
+          if (localDoc) {
+            // Animal existe: mescla mantendo dados anteriores e atualizando campos novos
+            const existingData = (localDoc.toJSON() as unknown) as Animal;
+            const merged = mergeAnimalData(existingData, animal);
+            await localDoc.patch(merged);
+            updatedCount++;
+          } else {
+            // B. Se não está local, verifica no banco remoto (Supabase)
+            let foundInGlobal = false;
+            if (isSupabaseConfigured()) {
+              try {
+                const supabase = getSupabase();
+                const { data: supaAnimal, error } = await supabase
+                  .from("animals")
+                  .select("*")
+                  .eq("rgn", animal.rgn)
+                  .maybeSingle();
+
+                if (!error && supaAnimal) {
+                  // Existe no Supabase: mescla e insere localmente
+                  const merged = mergeAnimalData(
+                    supaAnimal as unknown as Animal,
+                    animal,
+                  );
+                  await db.animals.insert(merged);
+                  foundInGlobal = true;
+                  updatedCount++;
+                }
+              } catch (checkError) {
+                console.warn(
+                  `⚠️ Aviso ao consultar Supabase para RGN ${animal.rgn}:`,
+                  checkError,
+                );
+              }
+            }
+
+            // C. Animal novo de fato: insere novo registro
+            if (!foundInGlobal) {
+              const newAnimal: Animal = {
+                breed: "Nelore",
+                status: "-",
+                ...animal,
+                animal_state: animal.animal_state || "ATIVO",
+                created_at: Date.now(),
+                updated_at: Date.now(),
+                _deleted: false,
+              };
+
+              await db.animals.insert(newAnimal);
+              createdCount++;
+            }
+          }
+        } catch (itemError) {
+          console.error(`Erro ao processar animal RGN ${animal.rgn}:`, itemError);
         }
       }
 
-      await processAnimals(extractedData);
+      setTotalProcessed(extractedData.length);
+      setTotalCreated(createdCount);
+      setTotalUpdated(updatedCount);
+      setIsProcessing(false);
+      setCurrentProcessType(null);
+      setShowSuccessModal(true);
     } catch (error) {
       setIsProcessing(false);
+      setCurrentProcessType(null);
 
       const errorMessage =
         error instanceof Error
@@ -179,7 +184,7 @@ const SearchCsvFile = () => {
       setNotificationType("error");
       setNotificationTitle("Erro ao processar arquivo");
       setNotificationMessage(
-        `${errorMessage}\n\nPor favor, verifique se o arquivo está no formato correto e tente novamente.`,
+        `${errorMessage}\n\nPor favor, certifique-se de que selecionou o modelo correto para este arquivo e tente novamente.`,
       );
       setShowNotificationModal(true);
     }
@@ -195,7 +200,7 @@ const SearchCsvFile = () => {
             </label>
 
             <div className="rounded-lg bg-muted px-4 py-3 mt-2">
-              <p className="text-sm italic text-muted-foreground">
+              <p className="text-sm italic text-muted-foreground truncate">
                 {selectedFile
                   ? selectedFile.name
                   : "Nenhum arquivo selecionado"}
@@ -215,19 +220,57 @@ const SearchCsvFile = () => {
               accept=".xls,.xlsx"
               onChange={handleFileSelect}
               className="hidden"
-              aria-label="Selecionar arquivo CSV"
+              aria-label="Selecionar arquivo Excel"
             />
           </div>
 
-          <div className="border-t-1 border-primary" />
+          <div className="border-t border-border" />
 
-          <Button
-            onClick={handleProcessFile}
-            disabled={!selectedFile || isProcessing}
-            className="w-full rounded-lg bg-primary py-6 text-sm uppercase font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            {isProcessing ? "Processando..." : "Processar arquivo"}
-          </Button>
+          {/* Opções de processamento por modelo de planilha */}
+          <div className="space-y-3">
+            <p className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+              Escolha como processar a planilha:
+            </p>
+
+            {/* Botão 1: Avaliação Genética */}
+            <Button
+              onClick={() => handleProcessFile("avaliacao")}
+              disabled={!selectedFile || isProcessing}
+              className="w-full rounded-lg bg-primary py-6 text-xs sm:text-sm uppercase font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+            >
+              {isProcessing && currentProcessType === "avaliacao" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando Avaliação...
+                </>
+              ) : (
+                <>
+                  <Layers className="h-4 w-4" />
+                  Processar Avaliação Genética (iABCZ)
+                </>
+              )}
+            </Button>
+
+            {/* Botão 2: Produtos Ativos */}
+            <Button
+              onClick={() => handleProcessFile("ativos")}
+              disabled={!selectedFile || isProcessing}
+              variant="outline"
+              className="w-full rounded-lg border-2 border-primary py-6 text-xs sm:text-sm uppercase font-semibold text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
+            >
+              {isProcessing && currentProcessType === "ativos" ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando Produtos Ativos...
+                </>
+              ) : (
+                <>
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Processar Produtos Ativos (ABCZ)
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </main>
 
@@ -250,46 +293,62 @@ const SearchCsvFile = () => {
               <h2 className="text-xl font-semibold text-primary">
                 Processamento Concluído
               </h2>
+              {processedModelLabel && (
+                <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
+                  {processedModelLabel}
+                </span>
+              )}
               <p className="text-muted-foreground">
                 O arquivo{" "}
                 <span className="font-medium text-foreground">
                   {selectedFile?.name}
                 </span>{" "}
-                foi procesado com sucesso!
+                foi processado com sucesso!
               </p>
 
               {/* Estatísticas */}
-              {totalImported > 0 && (
+              {totalProcessed > 0 && (
                 <div className="w-full bg-muted rounded-lg p-4 space-y-2">
                   <p className="text-sm font-semibold text-foreground">
                     📊 Estatísticas da Importação:
                   </p>
-                  <div className="space-y-1 text-sm">
+                  <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">
-                        Total importado:
+                        Total no arquivo:
                       </span>
-                      <span className="font-medium text-green-600">
-                        {totalImported} animais
+                      <span className="font-medium text-foreground">
+                        {totalProcessed} animais
                       </span>
                     </div>
-                    {duplicates.length > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">
-                          Duplicados ignorados:
-                        </span>
-                        <span className="font-medium text-yellow-600">
-                          {duplicates.length} animais
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Novos cadastrados:
+                      </span>
+                      <span className="font-medium text-green-600">
+                        {totalCreated} animais
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Existentes atualizados:
+                      </span>
+                      <span className="font-medium text-blue-600">
+                        {totalUpdated} animais
+                      </span>
+                    </div>
                   </div>
+                  {totalUpdated > 0 && (
+                    <p className="text-xs text-muted-foreground text-left pt-2 border-t border-border">
+                      ℹ️ Os dados pré-existentes dos animais foram mantidos e atualizados com as novas informações da planilha.
+                    </p>
+                  )}
                 </div>
               )}
 
               <Link
                 href="/home"
-                className="mt-4 w-full rounded-lg bg-primary py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
+                className="mt-4 w-full rounded-lg bg-primary py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 text-center"
               >
                 Ir para a página inicial
               </Link>

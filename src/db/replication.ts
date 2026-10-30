@@ -422,8 +422,16 @@ export function forceSyncAll(db: MyDatabase) {
   const replications = (db as any).replications;
   Object.entries(replications).forEach(([name, rep]: [string, any]) => {
     if (rep && typeof rep.reSync === "function") {
-      rep.reSync();
-      SyncLogger.info("manual-sync", `reSync triggered for ${name}`);
+      try {
+        if (!rep.isStopped?.()) {
+          void Promise.resolve(rep.reSync()).catch((err) =>
+            SyncLogger.warn("manual-sync", `reSync rejected for ${name}:`, err),
+          );
+          SyncLogger.info("manual-sync", `reSync triggered for ${name}`);
+        }
+      } catch (err) {
+        SyncLogger.warn("manual-sync", `reSync call failed for ${name}:`, err);
+      }
     }
   });
 }

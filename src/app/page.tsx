@@ -5,9 +5,8 @@ import { AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
-import { activeBrand } from "@/config/branding";
-import { NeloreIndiOuroSplash } from "@/components/splash/NeloreIndiOuroSplash";
-import { SigaCattleSplash } from "@/components/splash/SigaCattleSplash";
+import { getActiveTenant } from "@/config/tenant";
+import { TenantSplash } from "@/components/splash/TenantSplash";
 
 export default function OpeningPage() {
   const router = useRouter();
@@ -15,6 +14,7 @@ export default function OpeningPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const redirectTriggered = useRef(false);
+  const resolution = getActiveTenant();
 
   useEffect(() => {
     setIsMounted(true);
@@ -34,31 +34,37 @@ export default function OpeningPage() {
   useEffect(() => {
     if (!isMounted) return;
 
+    // Se o identificador de tenant for inválido, não redireciona automaticamente
+    if (!resolution.isValid) return;
+
     // Splash duration: 2.8 seconds
     const timer = setTimeout(() => {
       triggerRedirect();
     }, 2800);
 
     return () => clearTimeout(timer);
-  }, [isMounted, triggerRedirect]);
+  }, [isMounted, resolution.isValid, triggerRedirect]);
 
   if (!isMounted) {
     return (
       <main
         className="relative h-dvh w-full overflow-hidden"
-        style={{ backgroundColor: activeBrand.colors.primary }}
+        style={{
+          backgroundColor: resolution.tenant?.backgroundColor || "#1e3b2b",
+        }}
       />
     );
   }
 
   return (
     <AnimatePresence mode="wait">
-      {!isExiting &&
-        (activeBrand.id === "nelore-indi-ouro" ? (
-          <NeloreIndiOuroSplash key="indi-ouro" onSkip={triggerRedirect} />
-        ) : (
-          <SigaCattleSplash key="siga-cattle" onSkip={triggerRedirect} />
-        ))}
+      {!isExiting && (
+        <TenantSplash
+          key={resolution.tenant?.id || "unconfigured-tenant"}
+          resolution={resolution}
+          onSkip={triggerRedirect}
+        />
+      )}
     </AnimatePresence>
   );
 }

@@ -59,6 +59,12 @@
   --warning: #d97706;
   --warning-foreground: #ffffff;
 
+  /* Identidade Visual Dinâmica por Fazenda (Multi-tenant) */
+  --color-tenant-primary: #1e3b2b;
+  --color-tenant-secondary: #f7e9d4;
+  --color-tenant-background: #f4f7f4;
+  --color-tenant-text: #1a241c;
+
   /* Controles compactos compartilhados por formulários e modais. */
   --control-height: 2.5rem;
   --control-font-size: 0.875rem;
