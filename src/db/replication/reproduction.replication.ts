@@ -6,10 +6,10 @@ import { SyncLogger } from "@/lib/sync/syncLogger";
 export const reproductionEventReplication = createReplication<ReproductionEvent>({
   collectionName: "reproduction_events",
   tableName: "reproduction_events",
-  replicationIdentifier: "reproduction-events-replication-v14",
+  replicationIdentifier: "reproduction-events-replication-v15",
 
   mapToSupabase: (doc) => ({
-    id: doc.event_id,
+    event_id: doc.event_id,
     rgn: doc.rgn,
     event_type: doc.event_type,
     productive_status: doc.productive_status ?? null,
@@ -45,20 +45,18 @@ export const reproductionEventReplication = createReplication<ReproductionEvent>
   }),
 
   mapFromSupabase: (doc) => {
-    // DOC18 guard: documentos sem `id` (chave primária do Supabase) são inválidos
-    // e causariam RxError DOC18 ao tentar criar a chave composta interna do RxDB.
-    if (doc.id == null || doc.id === "") {
+    // reproduction_events possui 'event_id' como primary key no Supabase e no RxDB (aceita 'id' como fallback)
+    const primaryId = doc.event_id ?? doc.id;
+    if (primaryId == null || primaryId === "") {
       SyncLogger.warn(
         "reproduction_events",
-        "Documento ignorado: 'id' nulo ou vazio",
+        "Documento ignorado: 'event_id' ou 'id' nulo ou vazio",
         { doc }
       );
-      // Retorna um objeto marcado; será filtrado em createReplication antes de
-      // passar para o RxDB.
       return { _rxdb_skip: true } as unknown as ReproductionEvent;
     }
     const cleaned = cleanSupabaseDocument(doc);
-    cleaned.event_id = String(cleaned.id);
+    cleaned.event_id = String(primaryId);
     delete cleaned.id; // Remove Supabase-specific ID as we use event_id
     return cleaned as unknown as ReproductionEvent;
   },
@@ -71,5 +69,3 @@ export async function replicateReproductionEventsNew(
 ) {
   return reproductionEventReplication(db, supabaseUrl, supabaseKey);
 }
-
-
