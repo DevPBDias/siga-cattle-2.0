@@ -4,7 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { getActiveTenant, TenantConfig, TenantResolution, TENANTS } from "@/config/tenant";
+import { Agro3milSplash } from "./Agro3milSplash";
 import { NeloreIndiOuroSplash } from "./NeloreIndiOuroSplash";
+import { SigaCattleSplash } from "./SigaCattleSplash";
 
 interface TenantSplashProps {
   onSkip?: () => void;
@@ -74,9 +76,19 @@ export function TenantSplash({ onSkip, tenantConfig, resolution }: TenantSplashP
     );
   }
 
-  // Se for agro3mil ou nelore-indi-ouro, renderiza a splash visual especializada Nelore INDI Ouro
-  if (tenant.id === "agro3mil" || tenant.id === "nelore-indi-ouro") {
+  // 1. Splash dedicada da Fazenda Agro 3mil (Mobile tela cheia / Desktop centralizado no fundo azul #2B68B1)
+  if (tenant.id === "agro3mil") {
+    return <Agro3milSplash onSkip={onSkip} />;
+  }
+
+  // 2. Splash visual especializada Nelore INDI Ouro
+  if (tenant.id === "nelore-indi-ouro") {
     return <NeloreIndiOuroSplash onSkip={onSkip} />;
+  }
+
+  // 3. Splash de abertura verde com ícone do aplicativo SIGA Cattle
+  if (tenant.id === "siga-cattle") {
+    return <SigaCattleSplash onSkip={onSkip} />;
   }
 
   // Obter as iniciais da fazenda para fallback se a imagem falhar

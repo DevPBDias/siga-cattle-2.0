@@ -34,7 +34,7 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
-import logo_siga_cattle from "@/assets/icons/logo_siga_cattle.png";
+import logo_hor_siga_cattle from "@/assets/icons/logo_hor_siga_cattle.png";
 import Image from "next/image";
 
 const navMain = [
@@ -131,11 +131,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-2!">
               <Link href="/dashboard" className="flex items-center gap-2">
                 <Image
-                  src={logo_siga_cattle}
+                  src={logo_hor_siga_cattle}
                   alt="SIGA Cattle"
-                  width={90}
-                  height={28}
-                  className="object-contain"
+                  width={140}
+                  height={32}
+                  className="h-7 w-auto object-contain"
                 />
               </Link>
             </SidebarMenuButton>

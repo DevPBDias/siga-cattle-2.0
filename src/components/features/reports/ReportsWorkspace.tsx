@@ -488,7 +488,7 @@ export default function ReportsWorkspace() {
                             className="h-11 text-xs font-bold uppercase"
                             onClick={() => setStep(3)}
                           >
-                            Revisar
+                            Avançar
                           </Button>
                         </div>
                       </>

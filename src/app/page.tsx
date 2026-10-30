@@ -52,17 +52,18 @@ export default function OpeningPage() {
   }, [isMounted, resolution.isValid, triggerRedirect]);
 
   if (!isMounted) {
-    const isDarkSplash =
-      resolution.tenant?.id === "agro3mil" ||
-      resolution.tenant?.id === "nelore-indi-ouro";
+    let initialBg = resolution.tenant?.backgroundColor || "#1e3b2b";
+    if (resolution.tenant?.id === "agro3mil") {
+      initialBg = "#2B68B1";
+    } else if (resolution.tenant?.id === "nelore-indi-ouro") {
+      initialBg = "#081a2f";
+    }
 
     return (
       <main
         className="relative h-dvh w-full overflow-hidden"
         style={{
-          backgroundColor: isDarkSplash
-            ? "#081a2f"
-            : resolution.tenant?.backgroundColor || "#1e3b2b",
+          backgroundColor: initialBg,
         }}
       />
     );

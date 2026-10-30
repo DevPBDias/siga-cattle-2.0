@@ -62,17 +62,17 @@ export function SigaCattleSplash({ onSkip }: SigaCattleSplashProps) {
         >
           <Image
             src={sigaLogo}
-            alt="SIGA Cattle PO"
-            width={260}
-            height={85}
-            className="h-16 w-auto object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]"
+            alt="SIGA Cattle"
+            width={240}
+            height={168}
+            className="h-20 md:h-24 w-auto object-contain drop-shadow-[0_4px_18px_rgba(0,0,0,0.6)]"
             priority
           />
 
           <div className="flex items-center gap-2 mt-1">
             <span className="h-px w-6 bg-brand-gold/40" />
             <span className="text-[11px] font-bold uppercase tracking-[0.35em] text-brand-gold">
-              Gestão Pecuária
+              SIGA CATTLE • Gestão Pecuária
             </span>
             <span className="h-px w-6 bg-brand-gold/40" />
           </div>

@@ -184,7 +184,12 @@ export function createReplication<T extends ReplicableEntity>(
           const lastRawDoc = data.length > 0 ? data[data.length - 1] : null;
           const newCheckpoint: ReplicationCheckpoint = {
             updated_at: lastRawDoc
-              ? (typeof lastRawDoc.server_updated_at === 'string' ? new Date(lastRawDoc.server_updated_at).getTime() : Number(lastRawDoc.server_updated_at))
+              ? (() => {
+                  const rawVal = lastRawDoc.server_updated_at ?? lastRawDoc.updated_at;
+                  if (rawVal == null) return lastServerUpdatedAtNum;
+                  const parsed = typeof rawVal === "string" ? new Date(rawVal).getTime() : Number(rawVal);
+                  return isNaN(parsed) ? lastServerUpdatedAtNum : parsed;
+                })()
               : lastServerUpdatedAtNum,
             last_id: lastRawDoc
               ? String(lastRawDoc[primaryKey] ?? lastRawDoc.id ?? "")

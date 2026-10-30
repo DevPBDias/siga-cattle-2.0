@@ -31,7 +31,7 @@ describe("HomePage Component", () => {
   it("deve renderizar o cabeçalho e título principal corretamente", async () => {
     render(<HomePage />);
     
-    expect(screen.getByAltText("IndiOuro")).toBeInTheDocument();
+    expect(screen.getByAltText(/SIGA Cattle|IndiOuro/i)).toBeInTheDocument();
     expect(screen.getByLabelText("Gado em uma fazenda")).toBeInTheDocument();
   });
 

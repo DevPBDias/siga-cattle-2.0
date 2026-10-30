@@ -24,7 +24,7 @@ class MockResizeObserver {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
-global.ResizeObserver = MockResizeObserver as any;
+global.ResizeObserver = MockResizeObserver as unknown as typeof ResizeObserver;
 
 // Mock IntersectionObserver
 class MockIntersectionObserver {
@@ -32,27 +32,24 @@ class MockIntersectionObserver {
   unobserve = vi.fn();
   disconnect = vi.fn();
 }
-global.IntersectionObserver = MockIntersectionObserver as any;
+global.IntersectionObserver = MockIntersectionObserver as unknown as typeof IntersectionObserver;
 
-// Mock framer-motion to avoid animation issues
+// Mock framer-motion to avoid animation issues.
+// Usa Proxy para cobrir qualquer tag HTML (div, span, main, section, etc.)
 vi.mock("framer-motion", () => ({
-  motion: {
-    div: vi
-      .fn()
-      .mockImplementation(({ children, ...props }) =>
-        React.createElement("div", props, children),
-      ),
-    span: vi
-      .fn()
-      .mockImplementation(({ children, ...props }) =>
-        React.createElement("span", props, children),
-      ),
-  },
-  AnimatePresence: vi
-    .fn()
-    .mockImplementation(({ children }) =>
-      React.createElement(React.Fragment, {}, children),
-    ),
+  motion: new Proxy(
+    {},
+    {
+      get: (_target: unknown, tag: string) =>
+        ({ children, ...props }: { children?: React.ReactNode; [key: string]: unknown }) =>
+          React.createElement(tag as string, props, children),
+    },
+  ),
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) =>
+    React.createElement(React.Fragment, {}, children),
+  useAnimation: () => ({ start: vi.fn(), stop: vi.fn() }),
+  useMotionValue: (initial: unknown) => ({ get: () => initial, set: vi.fn() }),
+  useTransform: () => ({ get: vi.fn() }),
 }));
 
 // Mock next/navigation

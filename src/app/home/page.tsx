@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 import ProtectedClient from "@/components/auth/WrapperAuth";
-import logo_siga_cattle from "@/assets/icons/logo_siga_cattle.png";
+import logo_hor_siga_cattle from "@/assets/icons/logo_hor_siga_cattle.png";
 import Image from "next/image";
 import { SyncStatusIndicator } from "@/components/sync/SyncStatusIndicator";
 import HomeButtons from "@/components/buttons/HomeButtons";
@@ -76,7 +76,14 @@ const HomePage = () => {
           {/* Cabeçalho */}
           <header className="relative z-10 min-h-[78px] flex items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <Image src={logo_siga_cattle} alt="IndiOuro" width={120} height={80} />
+              <Image
+                src={logo_hor_siga_cattle}
+                alt="SIGA Cattle"
+                width={150}
+                height={32}
+                className="h-8 w-auto object-contain"
+                priority
+              />
             </div>
 
             <div className="flex items-center gap-2.5 min-w-0">
