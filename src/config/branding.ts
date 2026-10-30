@@ -20,7 +20,15 @@ export interface BrandConfig {
     ring: string;
     gold: string;
   };
-  splash: {
+  loading?: {
+    tagline: string;
+    bgGradient: {
+      from: string;
+      via: string;
+      to: string;
+    };
+  };
+  splash?: {
     tagline: string;
     bgGradient: {
       from: string;

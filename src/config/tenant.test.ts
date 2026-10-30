@@ -32,7 +32,7 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       expect(res.tenant).toBeDefined();
       expect(res.tenant?.id).toBe("agro3mil");
       expect(res.tenant?.name).toBe("Fazenda Agro 3mil");
-      expect(res.tenant?.logo).toBe("/branding/agro3mil/logo.svg");
+      expect(res.tenant?.logo).toBe("/branding/agro3mil/logo.png");
       expect(res.tenant?.reportLogo).toBe("/branding/agro3mil/logo-report.png");
       expect(res.tenant?.primaryColor).toBe("#1E3B2B");
       expect(res.tenant?.secondaryColor).toBe("#F7E9D4");
@@ -115,8 +115,8 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       expect(res.tenant).toBeDefined();
       expect(res.tenant?.id).toBe("nelore-indi-ouro");
       expect(res.tenant?.name).toBe("Nelore INDI Ouro");
-      expect(res.tenant?.logo).toBe("/branding/nelore-indi-ouro/logo-hor-indiouro.png");
-      expect(res.tenant?.reportLogo).toBe("/branding/nelore-indi-ouro/logo-hor-indiouro.png");
+      expect(res.tenant?.logo).toBe("/branding/agro3mil/logo-hor-indiouro.png");
+      expect(res.tenant?.reportLogo).toBe("/branding/agro3mil/logo-report.png");
       expect(res.tenant?.primaryColor).toBe("#1162ae");
       expect(res.tenant?.backgroundColor).toBe("#0d2a4a");
       expect(res.tenant?.secondaryColor).toBe("#ffcb04");

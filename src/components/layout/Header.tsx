@@ -2,7 +2,7 @@
 import { ArrowLeftCircleIcon, HomeIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import logoSiga from "@/assets/icons/SIGA CATTLE ICON.png";
+import logoSiga from "@/assets/icons/logo_hor_siga_cattle.png";
 
 import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 
@@ -16,7 +16,14 @@ function Header({ title }: HeaderProps) {
   return (
     <header className="sticky top-0 z-50 w-full p-4 bg-primary text-white flex flex-col items-center gap-5">
       <div className="flex items-center justify-center">
-        <Image src={logoSiga} alt="Logo" width={48} height={48} />
+        <Image
+          src={logoSiga}
+          alt="SIGA Cattle"
+          width={130}
+          height={26}
+          className="h-6 w-auto object-contain"
+          priority
+        />
       </div>
       <nav className="flex items-center justify-between w-full py-2">
         <ArrowLeftCircleIcon

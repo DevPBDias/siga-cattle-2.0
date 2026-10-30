@@ -7,9 +7,9 @@ import { useAuth } from "@/hooks/auth/useAuth";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
 import { getActiveTenant } from "@/config/tenant";
 import { getDeviceHomeRoute } from "@/hooks/use-mobile";
-import { TenantSplash } from "@/components/splash/TenantSplash";
+import { TenantLoadingScreen } from "@/components/loading/TenantLoadingScreen";
 
-export default function OpeningPage() {
+export default function LoadingPage() {
   const router = useRouter();
   const { data: user, loading: authLoading } = useAuth();
   const [isMounted, setIsMounted] = useState(false);
@@ -34,37 +34,27 @@ export default function OpeningPage() {
       }
       // Redireciona conforme o tipo de device: Desktop (≥768px) -> /dashboard, Mobile (<768px) -> /home
       router.push(getDeviceHomeRoute());
-    }, 600);
+    }, 400);
   }, [authLoading, user, router]);
 
   useEffect(() => {
     if (!isMounted) return;
-
-    // Se o identificador de tenant for inválido, não redireciona automaticamente
     if (!resolution.isValid) return;
 
-    // Splash duration: 2.8 seconds
+    // Loading com a barra de carregamento ativa enquanto verifica sessão
     const timer = setTimeout(() => {
       triggerRedirect();
-    }, 2800);
+    }, 1800);
 
     return () => clearTimeout(timer);
   }, [isMounted, resolution.isValid, triggerRedirect]);
 
   if (!isMounted) {
-    let initialBg = resolution.tenant?.backgroundColor || "#1e3b2b";
-    if (resolution.tenant?.id === "agro3mil") {
-      initialBg = "#2B68B1";
-    } else if (resolution.tenant?.id === "nelore-indi-ouro") {
-      initialBg = "#081a2f";
-    }
-
+    const initialBg = resolution.tenant?.backgroundColor || "#2B68B1";
     return (
       <main
         className="relative h-dvh w-full overflow-hidden"
-        style={{
-          backgroundColor: initialBg,
-        }}
+        style={{ backgroundColor: initialBg }}
       />
     );
   }
@@ -72,10 +62,9 @@ export default function OpeningPage() {
   return (
     <AnimatePresence mode="wait">
       {!isExiting && (
-        <TenantSplash
+        <TenantLoadingScreen
           key={resolution.tenant?.id || "unconfigured-tenant"}
-          resolution={resolution}
-          onSkip={triggerRedirect}
+          tenantConfig={resolution.tenant ?? undefined}
         />
       )}
     </AnimatePresence>
