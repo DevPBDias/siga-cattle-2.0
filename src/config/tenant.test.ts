@@ -59,48 +59,48 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
     });
   });
 
-  describe("Cenário B: Fazenda B", () => {
+  describe("Cenário B: Haras Fazenda Luma", () => {
     beforeEach(() => {
-      process.env.NEXT_PUBLIC_TENANT_ID = "fazendaB";
+      process.env.NEXT_PUBLIC_TENANT_ID = "haras-luma";
     });
 
-    it("deve carregar corretamente a configuração da Fazenda B", () => {
-      const res = resolveTenant("fazendaB");
+    it("deve carregar corretamente a configuração do Haras Fazenda Luma", () => {
+      const res = resolveTenant("haras-luma");
       expect(res.isValid).toBe(true);
       expect(res.tenant).toBeDefined();
-      expect(res.tenant?.id).toBe("fazendaB");
-      expect(res.tenant?.name).toBe("Fazenda B");
-      expect(res.tenant?.logo).toBe("/branding/fazenda-b/logo.svg");
-      expect(res.tenant?.reportLogo).toBe("/branding/fazenda-b/logo-report.png");
-      expect(res.tenant?.primaryColor).toBe("#1162AE");
-      expect(res.tenant?.secondaryColor).toBe("#FFCB04");
-      expect(res.tenant?.backgroundColor).toBe("#F5F8FC");
-      expect(res.tenant?.textColor).toBe("#172337");
+      expect(res.tenant?.id).toBe("haras-luma");
+      expect(res.tenant?.name).toBe("Haras Fazenda Luma");
+      expect(res.tenant?.logo).toBe("/branding/haras-luma/logo.svg");
+      expect(res.tenant?.reportLogo).toBe("/branding/haras-luma/logo-report.png");
+      expect(res.tenant?.primaryColor).toBe("#2C4A2E");
+      expect(res.tenant?.secondaryColor).toBe("#C9A84C");
+      expect(res.tenant?.backgroundColor).toBe("#F5F3EE");
+      expect(res.tenant?.textColor).toBe("#1C2D1E");
     });
 
-    it("deve suportar alias com hífen 'fazenda-b'", () => {
-      const res = resolveTenant("fazenda-b");
+    it("deve suportar alias camelCase 'harasLuma'", () => {
+      const res = resolveTenant("harasLuma");
       expect(res.isValid).toBe(true);
-      expect(res.tenant?.id).toBe("fazendaB");
+      expect(res.tenant?.id).toBe("haras-luma");
     });
 
-    it("deve gerar o título 'Siga Cattle - Fazenda B'", () => {
-      const res = resolveTenant("fazendaB");
+    it("deve gerar o título 'Siga Cattle - Haras Fazenda Luma'", () => {
+      const res = resolveTenant("haras-luma");
       const title = getTenantPageTitle(res);
-      expect(title).toBe("Siga Cattle - Fazenda B");
+      expect(title).toBe("Siga Cattle - Haras Fazenda Luma");
     });
 
-    it("deve resolver o branding de relatórios para Fazenda B sem referências a Agro 3mil", () => {
-      const branding = getTenantBranding("fazendaB");
-      expect(branding.farmName).toBe("Fazenda B");
+    it("deve resolver o branding de relatórios para Haras Fazenda Luma sem referências a Agro 3mil", () => {
+      const branding = getTenantBranding("haras-luma");
+      expect(branding.farmName).toBe("Haras Fazenda Luma");
       expect(branding.farmName).not.toContain("Agro 3mil");
-      expect(branding.primaryRgb).toEqual([17, 98, 174]);
-      expect(branding.reportLogoUrl).toBe("/branding/fazenda-b/logo-report.png");
+      expect(branding.primaryRgb).toEqual([44, 74, 46]);
+      expect(branding.reportLogoUrl).toBe("/branding/haras-luma/logo-report.png");
     });
 
-    it("deve aplicar cores corretas em REPORT_COLORS proxy para Fazenda B", () => {
-      process.env.NEXT_PUBLIC_TENANT_ID = "fazendaB";
-      expect(REPORT_COLORS.PRIMARY).toEqual([17, 98, 174]);
+    it("deve aplicar cores corretas em REPORT_COLORS proxy para Haras Fazenda Luma", () => {
+      process.env.NEXT_PUBLIC_TENANT_ID = "haras-luma";
+      expect(REPORT_COLORS.PRIMARY).toEqual([44, 74, 46]);
     });
   });
 
@@ -156,7 +156,7 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       const title = getTenantPageTitle(res);
       expect(title).toBe("Siga Cattle");
       expect(title).not.toContain("Agro 3mil");
-      expect(title).not.toContain("Fazenda B");
+      expect(title).not.toContain("Haras Fazenda Luma");
     });
   });
 
@@ -189,7 +189,7 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       const doc = new jsPDF({ orientation: "landscape", unit: "mm" });
       addReportCoverPage(doc, {
         reportName: "RELATÓRIO DE DESEMPENHO",
-        tenantId: "fazendaB",
+        tenantId: "haras-luma",
         totalItems: 42,
       });
       // Capa adiciona uma página nova para o conteúdo

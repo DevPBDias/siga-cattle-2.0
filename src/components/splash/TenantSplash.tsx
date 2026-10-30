@@ -18,7 +18,7 @@ export function TenantSplash({ onSkip, tenantConfig, resolution }: TenantSplashP
 
   // Tratamento explícito para identificador inválido ou ausente (Teste C)
   if (!currentResolution.isValid || !tenant) {
-    const registeredIds = Object.keys(TENANTS).filter(k => k !== "fazenda-b");
+    const registeredIds = Object.keys(TENANTS).filter(k => TENANTS[k].id === k || !Object.keys(TENANTS).some(other => other !== k && TENANTS[other].id === TENANTS[k].id && other.length < k.length));
 
     return (
       <main className="relative flex h-dvh w-full flex-col items-center justify-center overflow-hidden bg-[#1a241c] p-6 text-white select-none">
