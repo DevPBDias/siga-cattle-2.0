@@ -12,6 +12,7 @@ import { useDeathById } from "@/hooks/db/deaths/useDeathById";
 import { useSaleById } from "@/hooks/db/sales/useSaleById";
 import { useExchangeById } from "@/hooks/db/exchanges/useExchangeById";
 import { useUserProfiles } from "@/hooks/db/user_profiles/useUserProfiles";
+import { useMemo } from "react";
 
 interface MovementListItemProps {
   movement: Movement;
@@ -174,15 +175,49 @@ const TrocaDetails = ({ details_id }: { details_id: string }) => {
   );
 };
 
+/** Resolve o nome de exibição do responsável pelo registro.
+ *  Prioridade: nome completo > parte local do e-mail > "Usuário da fazenda"
+ *  Nunca exibe o UUID bruto para o usuário final.
+ */
+function resolveResponsibleName(
+  createdBy: string | undefined,
+  profileMap: Map<string, { full_name?: string; email?: string }>,
+): string {
+  if (!createdBy) return "Não informado";
+
+  const profile = profileMap.get(createdBy);
+  if (!profile) {
+    // Perfil ainda não sincronizado; mostra placeholder amigável em vez do UUID
+    return "Usuário da fazenda";
+  }
+
+  if (profile.full_name?.trim()) return profile.full_name.trim();
+  if (profile.email?.trim()) {
+    // Exibe apenas a parte local do e-mail (antes do @) capitalizada
+    const local = profile.email.trim().split("@")[0];
+    return local.charAt(0).toUpperCase() + local.slice(1);
+  }
+
+  return "Usuário da fazenda";
+}
+
 export function MovementListItem({
   movement,
 }: MovementListItemProps) {
   const config = (typeConfig as any)[movement.type] || typeConfig.morte;
   const Icon = config.icon;
   const { data: profiles = [] } = useUserProfiles();
-  const responsibleUser = movement.created_by
-    ? profiles.find((profile) => profile.id === movement.created_by)
-    : undefined;
+
+  // Mapeia id → { full_name, email } uma única vez para evitar buscas em loop
+  const profileMap = useMemo(
+    () =>
+      new Map(
+        profiles.map((p) => [p.id, { full_name: p.full_name, email: p.email }]),
+      ),
+    [profiles],
+  );
+
+  const responsibleName = resolveResponsibleName(movement.created_by, profileMap);
 
   const renderContent = () => {
     switch (movement.type) {
@@ -246,12 +281,7 @@ export function MovementListItem({
         <div className="mt-2 border-t border-border/50 pt-2">
           <InfoRow
             label="Usuário responsável"
-            value={
-              responsibleUser?.full_name ||
-              (movement.created_by
-                ? `${movement.created_by.slice(0, 8)}...`
-                : "Não informado")
-            }
+            value={responsibleName}
           />
         </div>
       </AccordionContent>

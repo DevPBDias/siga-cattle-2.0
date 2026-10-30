@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Lock, Unlock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InviteMemberDialog } from "@/components/features/profile/manage/InviteMemberDialog";
@@ -25,8 +25,19 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   const { data: inviteData, actions } = useInviteMember();
   const [inviteOpen, setInviteOpen] = useState(false);
 
-  // O dono também precisa visualizar o próprio perfil na equipe.
-  const members = allProfiles;
+  // Ordena a equipe: donos primeiro e depois ordem alfabética por nome/e-mail.
+  // Todos os perfis sincronizados (incluindo membros de outros donos da mesma
+  // fazenda) já chegam via RxDB graças à política RLS que agora permite
+  // SELECT irrestrito para usuários autenticados.
+  const members = useMemo(() => {
+    return [...allProfiles].sort((a, b) => {
+      if (a.role === "owner" && b.role !== "owner") return -1;
+      if (b.role === "owner" && a.role !== "owner") return 1;
+      const nameA = a.full_name?.trim() || a.email?.trim() || "";
+      const nameB = b.full_name?.trim() || b.email?.trim() || "";
+      return nameA.localeCompare(nameB, "pt-BR");
+    });
+  }, [allProfiles]);
 
   const handleRole = (profile: UserProfile, role: UserRole) => {
     if (!editing) return;

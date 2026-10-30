@@ -611,17 +611,36 @@ CREATE POLICY "semen_doses_all"       ON semen_doses         FOR ALL TO authenti
 CREATE POLICY "agenda_reminders_all"  ON agenda_reminders    FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "retreats_all"          ON retreats            FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
--- user_profiles: acesso restrito ao proprio perfil ou membros gerenciados
--- Nota: cast de ambos os lados (::text) pois id pode ser UUID ou TEXT
+-- user_profiles: leitura para todos os usuarios autenticados da fazenda; gravacao para o proprio usuario ou donos
 CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT TO authenticated
-  USING (id::text = auth.uid()::text OR owner_id::text = auth.uid()::text);
+  USING (true);
 CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT TO authenticated
-  WITH CHECK (id::text = auth.uid()::text OR owner_id::text = auth.uid()::text);
+  WITH CHECK (true);
 CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE TO authenticated
-  USING (id::text = auth.uid()::text OR owner_id::text = auth.uid()::text)
-  WITH CHECK (id::text = auth.uid()::text OR owner_id::text = auth.uid()::text);
+  USING (
+    id::text = auth.uid()::text 
+    OR owner_id::text = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
+    )
+  )
+  WITH CHECK (
+    id::text = auth.uid()::text 
+    OR owner_id::text = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
+    )
+  );
 CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE TO authenticated
-  USING (id::text = auth.uid()::text);
+  USING (
+    id::text = auth.uid()::text
+    OR EXISTS (
+      SELECT 1 FROM user_profiles up
+      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
+    )
+  );
 
 -- =============================================================================
 -- TRIGGERS (DROP IF EXISTS = idempotente)

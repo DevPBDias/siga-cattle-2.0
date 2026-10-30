@@ -83,7 +83,7 @@ describe("Módulo: Mortes e Baixas (mortes)", () => {
 
   it("deve exibir os campos do formulário de registro de óbito", () => {
     render(<MortesPage />);
-    // DeathForm renderiza um Select com label "Motivo da Morte *"
-    expect(screen.getByText(/Motivo da Morte/i)).toBeInTheDocument();
+    // DeathForm renderiza um FormRow com label "Causa da morte"
+    expect(screen.getByText(/Causa da morte/i)).toBeInTheDocument();
   });
 });
