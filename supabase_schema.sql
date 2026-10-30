@@ -409,6 +409,24 @@ ALTER TABLE animal_situations ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NU
 ALTER TABLE animal_situations ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- reproduction_events
+-- Migration: renomear PK 'id' -> 'event_id' se o banco foi criado com estrutura antiga
+DO $$
+BEGIN
+  -- Se existe coluna 'id' E nao existe 'event_id', renomear
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'reproduction_events' AND column_name = 'id'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'reproduction_events' AND column_name = 'event_id'
+  ) THEN
+    -- Remover constraint de PK antiga antes de renomear
+    ALTER TABLE reproduction_events DROP CONSTRAINT IF EXISTS reproduction_events_pkey;
+    ALTER TABLE reproduction_events RENAME COLUMN id TO event_id;
+    ALTER TABLE reproduction_events ADD PRIMARY KEY (event_id);
+  END IF;
+END $$;
+
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS updated_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS created_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS _deleted                  BOOLEAN NOT NULL DEFAULT FALSE;

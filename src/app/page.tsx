@@ -43,6 +43,13 @@ export default function LoadingPage() {
         router.push("/login");
         return;
       }
+      // Sinaliza que a splash já foi exibida nesta sessão.
+      // O WrapperAuth lê esta flag para evitar exibir um segundo loading screen.
+      try {
+        sessionStorage.setItem("splash_done", "1");
+      } catch {
+        // sessionStorage indisponível (modo privado restrito) — sem problema
+      }
       // Desktop (≥768px) → /dashboard | Mobile (<768px) → /home
       router.push(getDeviceHomeRoute());
     }, 300);
