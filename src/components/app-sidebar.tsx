@@ -114,28 +114,30 @@ const navSecondary = [
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user, role } = useUserAccess();
 
-  const displayName = user?.user_metadata?.name ?? user?.email?.split("@")[0] ?? "Usuário";
+  const displayName =
+    user?.user_metadata?.name ?? user?.email?.split("@")[0] ?? "Usuário";
   const email = user?.email ?? "";
   const avatar = user?.user_metadata?.avatar_url ?? "";
 
-  const fullNavMain = role === "owner"
-    ? [...navMain, ...navOwner]
-    : navMain;
+  const fullNavMain = role === "owner" ? [...navMain, ...navOwner] : navMain;
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
+      <SidebarHeader className="flex flex-row justify-between items center">
         {/* Logo + nome do sistema */}
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:p-2!">
+            <SidebarMenuButton
+              asChild
+              className="data-[slot=sidebar-menu-button]:p-2!"
+            >
               <Link href="/dashboard" className="flex items-center gap-2">
                 <Image
                   src={logo_hor_siga_cattle}
                   alt="SIGA Cattle"
-                  width={140}
-                  height={32}
-                  className="h-7 w-auto object-contain"
+                  width={100}
+                  height={18}
+                  className="ntain"
                 />
               </Link>
             </SidebarMenuButton>
@@ -143,14 +145,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
 
         {/* Botão de atalho rápido */}
-        <div className="px-2 pb-1">
-          <Link
-            href="/cadastro"
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-white/15 px-3 py-2 text-xs font-bold text-white border border-white/20 shadow-sm transition-all hover:bg-white/25 active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-            Novo Lançamento
-          </Link>
+        <div className="w-full">
+          <SyncStatusIndicator />
         </div>
       </SidebarHeader>
 
@@ -162,11 +158,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       {/* Status de Sincronização no rodapé */}
       <div className="px-3 py-2">
-        <SyncStatusIndicator />
+        <Link
+          href="/cadastro"
+          className="flex w-full items-center justify-center gap-2 rounded-md bg-white/15 px-2 py-2 text-xs font-bold text-white border border-white/20 shadow-sm transition-all hover:bg-white/25 active:scale-95"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Animal
+        </Link>
       </div>
 
       <SidebarFooter>
-        <NavSecondary items={navSecondary} />
         <NavUser
           user={{
             name: displayName,

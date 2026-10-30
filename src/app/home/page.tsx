@@ -2,9 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bell,
-} from "lucide-react";
+import { Bell } from "lucide-react";
 
 import ProtectedClient from "@/components/auth/WrapperAuth";
 import logo_hor_siga_cattle from "@/assets/icons/logo_hor_siga_cattle.png";
@@ -79,9 +77,8 @@ const HomePage = () => {
               <Image
                 src={logo_hor_siga_cattle}
                 alt="SIGA Cattle"
-                width={150}
-                height={32}
-                className="h-8 w-auto object-contain"
+                width={100}
+                height={20}
                 priority
               />
             </div>
@@ -99,9 +96,7 @@ const HomePage = () => {
             </div>
           </header>
 
-          <section
-            className="absolute top-0 left-0 w-full h-[100dvh] bg-primary rounded-b-3xl z-0"
-          />
+          <section className="absolute top-0 left-0 w-full h-[100dvh] bg-primary rounded-b-3xl z-0" />
 
           <MarketQuotesCard />
 

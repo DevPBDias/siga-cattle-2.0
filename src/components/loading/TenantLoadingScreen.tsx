@@ -46,24 +46,24 @@ function Agro3milLoading({ message }: { message: string }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.4 }}
-      className="relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2B68B1] px-6 py-10 select-none"
+      className="relative flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2B68B1] select-none"
     >
       <div className="flex-1 w-full flex items-center justify-center">
         {/* Imagem do Nelore com estrelas e logo INDI Ouro reduzida proporcionalmente */}
-        <div className="relative w-full max-w-[280px] sm:max-w-[320px] md:max-w-[360px] aspect-[393/720] max-h-[64vh] flex items-center justify-center">
+        <div className="relative w-full max-w-[320px] md:max-w-[600px] aspect-[393/720] max-h-[80vh] flex items-center justify-center">
           <Image
             src={agro3milLoadingImg}
             alt="Nelore INDI Ouro - Agro 3mil"
             fill
-            sizes="(max-width: 768px) 280px, 360px"
+            sizes="(max-width: 768px) 320px, 600px"
             priority
-            className="object-contain object-center drop-shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+            className="object-contain object-center"
           />
         </div>
       </div>
 
       {/* Barra de carregamento e mensagem no rodapé */}
-      <div className="w-full flex flex-col items-center gap-2.5 pb-4">
+      <div className="w-full flex flex-col items-center gap-2.5 pb-8">
         <span className="text-[12px] md:text-[13px] font-extrabold tracking-[0.25em] text-white uppercase drop-shadow-sm">
           {message}
         </span>
@@ -152,13 +152,7 @@ function SigaCattleLoading({ message }: { message: string }) {
 /**
  * Barra de progresso animada e contínua com efeito shimmer e preenchimento progressivo
  */
-function ProgressBar({
-  color,
-  bgColor,
-}: {
-  color: string;
-  bgColor: string;
-}) {
+function ProgressBar({ color, bgColor }: { color: string; bgColor: string }) {
   return (
     <div
       className="relative h-2 w-64 sm:w-72 md:w-80 overflow-hidden rounded-xs shadow-inner"
@@ -195,4 +189,3 @@ function ProgressBar({
 }
 
 export default TenantLoadingScreen;
-
