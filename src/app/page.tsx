@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/auth/useAuth";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
 import { getActiveTenant } from "@/config/tenant";
+import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 import { TenantSplash } from "@/components/splash/TenantSplash";
 
 export default function OpeningPage() {
@@ -27,7 +28,12 @@ export default function OpeningPage() {
     setIsExiting(true);
     setTimeout(() => {
       const isAuthenticated = (!authLoading && !!user) || hasCachedAuth();
-      router.push(isAuthenticated ? "/home" : "/login");
+      if (!isAuthenticated) {
+        router.push("/login");
+        return;
+      }
+      // Redireciona conforme o tipo de device: Desktop (≥768px) -> /dashboard, Mobile (<768px) -> /home
+      router.push(getDeviceHomeRoute());
     }, 600);
   }, [authLoading, user, router]);
 

@@ -16,14 +16,19 @@ import { StatsFooter } from "@/components/home/StatsFooter";
 import { MarketQuotesCard } from "@/components/features/home/MarketQuotesCard";
 import { MobileFooter } from "@/components/layout/MobileFooter";
 
+import { isDesktopDevice } from "@/hooks/use-mobile";
+
 const HomePage = () => {
   const router = useRouter();
   const [notice, setNotice] = useState("");
+  const [isDesktop, setIsDesktop] = useState(() => isDesktopDevice());
 
   // Redirecionar automaticamente para o dashboard no desktop
   useEffect(() => {
     const checkAndRedirect = () => {
-      if (window.innerWidth >= 768) {
+      const desktop = window.innerWidth >= 768;
+      setIsDesktop(desktop);
+      if (desktop) {
         router.replace("/dashboard");
       }
     };
@@ -36,8 +41,8 @@ const HomePage = () => {
     let reloadTimer: number | undefined;
 
     const handleRemoteSync = () => {
-      // O RxDB jÃ¡ atualiza as consultas reativas. O reload Ã© usado aqui para
-      // garantir que cards e atalhos calculados tambÃ©m reflitam o Supabase.
+      // O RxDB já atualiza as consultas reativas. O reload é usado aqui para
+      // garantir que cards e atalhos calculados também reflitam o Supabase.
       if (document.visibilityState !== "visible") return;
       if (reloadTimer !== undefined) window.clearTimeout(reloadTimer);
       reloadTimer = window.setTimeout(() => window.location.reload(), 500);
@@ -55,9 +60,18 @@ const HomePage = () => {
     window.setTimeout(() => setNotice(""), 2200);
   }
 
+  // No desktop, não renderiza o layout mobile para evitar flash antes do redirecionamento
+  if (isDesktop) {
+    return (
+      <ProtectedClient>
+        <div className="h-[100dvh] min-h-[100dvh] w-full bg-background" />
+      </ProtectedClient>
+    );
+  }
+
   return (
     <ProtectedClient>
-      <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-background">
+      <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-background md:hidden">
         <div className="w-full max-w-[1100px] mx-auto px-[22px] pb-8 overflow-y-auto max-h-full">
           {/* Cabeçalho */}
           <header className="relative z-10 min-h-[78px] flex items-center justify-between gap-4">

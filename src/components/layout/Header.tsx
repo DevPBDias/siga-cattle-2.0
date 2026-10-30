@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import logoSiga from "@/assets/icons/SIGA CATTLE ICON.png";
 
+import { getDeviceHomeRoute } from "@/hooks/use-mobile";
+
 interface HeaderProps {
   title: string;
 }
@@ -24,7 +26,7 @@ function Header({ title }: HeaderProps) {
         />
         <h1 className="text-xl font-medium uppercase">{title}</h1>
         <HomeIcon
-          onClick={() => router.push("/home")}
+          onClick={() => router.push(getDeviceHomeRoute())}
           size={30}
           color="white"
         />

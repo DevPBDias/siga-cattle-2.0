@@ -10,6 +10,7 @@ import loginImg from "@/assets/images/login-page.png";
 import logoImg from "@/assets/icons/logo_siga_cattle.png";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
 import { useRxDB } from "@/providers/RxDBProvider";
+import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 
 export default function LoginPage() {
   const {
@@ -46,14 +47,14 @@ export default function LoginPage() {
   // Redirect if user is authenticated (or has cached auth when offline)
   useEffect(() => {
     if (!loading && user) {
-      router.push("/home");
+      router.push(getDeviceHomeRoute());
     }
 
-    // If offline but has cached auth, redirect to home
+    // If offline but has cached auth, redirect to appropriate device route
     // The WrapperAuth will handle showing offline mode
     if (!loading && !user && !isOnline && hasCachedAuth()) {
-      console.log("[Login] Offline with cached auth - redirecting to home");
-      router.push("/home");
+      console.log("[Login] Offline with cached auth - redirecting to device home");
+      router.push(getDeviceHomeRoute());
     }
   }, [user, loading, router, isOnline]);
 

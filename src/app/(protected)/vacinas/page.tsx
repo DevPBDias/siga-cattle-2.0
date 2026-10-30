@@ -10,6 +10,7 @@ import { AnimalIdentificationCard } from "@/components/features/vaccines/form/An
 import { VaccineReviewModal } from "@/components/features/vaccines/modals/VaccineReviewModal";
 import { VaccineFormActions } from "@/components/features/vaccines/form/VaccineFormActions";
 import { useVaccineForm } from "@/hooks/forms/useVaccineForm";
+import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 
 export default function VaccinesPage() {
   const {
@@ -70,7 +71,7 @@ export default function VaccinesPage() {
 
           <VaccineFormActions
             isSubmitting={isSubmitting}
-            onCancel={() => router.push("/home")}
+            onCancel={() => router.push(getDeviceHomeRoute())}
           />
         </form>
       </div>
@@ -90,7 +91,7 @@ export default function VaccinesPage() {
       <VaccineSuccessModal
         open={successModalOpen}
         onClose={handleCloseSuccess}
-        onNavigateHome={() => { handleCloseSuccess(); router.push("/home"); }}
+        onNavigateHome={() => { handleCloseSuccess(); router.push(getDeviceHomeRoute()); }}
       />
 
       <AddVaccineModal

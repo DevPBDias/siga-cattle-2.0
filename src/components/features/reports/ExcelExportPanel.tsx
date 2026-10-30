@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { ExcelExportSuccessModal } from "@/components/features/reports/ExcelExportSuccessModal";
 import { useAnimalExcelExport, ActivityFilter } from "@/hooks/forms/useAnimalExcelExport";
+import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 
 const FILTERS: ActivityFilter[] = ["ATIVO", "INATIVO", "Ambos"];
 
@@ -66,7 +67,7 @@ export function ExcelExportPanel() {
         fileName={data.exportedFileName}
         method={data.successMethod}
         onClose={actions.closeSuccess}
-        onGoHome={() => router.push("/home")}
+        onGoHome={() => router.push(getDeviceHomeRoute())}
       />
     </>
   );
