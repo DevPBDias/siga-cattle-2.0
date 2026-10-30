@@ -7,7 +7,7 @@ declare const self: ServiceWorkerGlobalScope;
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
 // v35: Unified tenant loading screen across the app shell.
-const SCHEMA_VERSION = "v35";
+const SCHEMA_VERSION = "v36";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
 
