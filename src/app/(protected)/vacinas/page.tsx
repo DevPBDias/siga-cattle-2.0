@@ -14,14 +14,32 @@ import { getDeviceHomeRoute } from "@/hooks/use-mobile";
 
 export default function VaccinesPage() {
   const {
-    vaccines, isLoading, rgnOptions,
-    existingVaccinesWithNames, duplicateWarnings, loadingAnimalVaccines,
-    formData, setFormData, multipleAnimals, setMultipleAnimals,
-    error, isSubmitting,
-    successModalOpen, addModalOpen, deleteModalOpen, reviewModalOpen,
-    setAddModalOpen, setDeleteModalOpen, setReviewModalOpen,
-    handleOpenReview, handleConfirmRegister, handleCloseSuccess,
-    handleCreateVaccine, handleDeleteVaccine, toggleVaccine, router,
+    vaccines,
+    isLoading,
+    rgnOptions,
+    existingVaccinesWithNames,
+    duplicateWarnings,
+    loadingAnimalVaccines,
+    formData,
+    setFormData,
+    multipleAnimals,
+    setMultipleAnimals,
+    error,
+    isSubmitting,
+    successModalOpen,
+    addModalOpen,
+    deleteModalOpen,
+    reviewModalOpen,
+    setAddModalOpen,
+    setDeleteModalOpen,
+    setReviewModalOpen,
+    handleOpenReview,
+    handleConfirmRegister,
+    handleCloseSuccess,
+    handleCreateVaccine,
+    handleDeleteVaccine,
+    toggleVaccine,
+    router,
   } = useVaccineForm();
 
   return (
@@ -31,7 +49,7 @@ export default function VaccinesPage() {
       <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 pb-8">
         <form onSubmit={handleOpenReview} className="space-y-4">
           {/* Single unified card wrapping all form sections */}
-          <div className="p-3.5 border border-border rounded-[15px] bg-card shadow-xs space-y-4">
+          <div className="border border-border rounded-[15px] space-y-4">
             {/* Seleção de vacinas */}
             <VaccineSelectionCard
               vaccines={vaccines}
@@ -56,11 +74,18 @@ export default function VaccinesPage() {
               className="border-0 rounded-none shadow-none p-0 bg-transparent"
             />
 
-            {/* Botões de ação */}
-            <VaccineFormActions
-              isSubmitting={isSubmitting}
-              onCancel={() => router.push(getDeviceHomeRoute())}
-            />
+            {/* Data da vacinação */}
+            <section>
+              <DatePicker
+                label="Data da vacinação *"
+                value={formData.data}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, data: value }))
+                }
+                required
+                inline
+              />
+            </section>
 
             {/* Erro global do formulário */}
             {error && (
@@ -69,15 +94,11 @@ export default function VaccinesPage() {
               </div>
             )}
 
-            {/* Data da vacinação */}
-            <section>
-              <DatePicker
-                label="Data da vacinação *"
-                value={formData.data}
-                onChange={(value) => setFormData((prev) => ({ ...prev, data: value }))}
-                required
-              />
-            </section>
+            {/* Botões de ação */}
+            <VaccineFormActions
+              isSubmitting={isSubmitting}
+              onCancel={() => router.push(getDeviceHomeRoute())}
+            />
           </div>
         </form>
       </div>
@@ -97,7 +118,10 @@ export default function VaccinesPage() {
       <VaccineSuccessModal
         open={successModalOpen}
         onClose={handleCloseSuccess}
-        onNavigateHome={() => { handleCloseSuccess(); router.push(getDeviceHomeRoute()); }}
+        onNavigateHome={() => {
+          handleCloseSuccess();
+          router.push(getDeviceHomeRoute());
+        }}
       />
 
       <AddVaccineModal
