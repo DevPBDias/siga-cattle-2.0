@@ -14,6 +14,7 @@ export const APP_PERMISSIONS = [
   { key: "gerenciar", label: "Gerenciamento", route: "/gerenciar" },
   { key: "relatorios", label: "Relatórios", route: "/geral" },
   { key: "evolucao", label: "Evolução", route: "/geral/evolucao" },
+  { key: "mover-rebanho", label: "Mover Rebanho", route: "/mover-rebanho" },
 ] as const;
 
 export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
@@ -41,6 +42,7 @@ export const DESKTOP_ROUTE_ALIASES: Record<string, PermissionKey> = {
   "/dashboard/gerenciar": "gerenciar",
   "/dashboard/geral": "relatorios",
   "/dashboard/geral/evolucao": "evolucao",
+  "/dashboard/mover-rebanho": "mover-rebanho",
 };
 
 export const DEFAULT_MEMBER_PERMISSIONS: UserPermissions = {
@@ -69,6 +71,7 @@ export function canAccessPermission(
   key: PermissionKey,
 ): boolean {
   if (key === "evolucao") return role === "owner";
+  if (key === "mover-rebanho") return role === "owner";
   if (role === "owner") return true;
   return permissions?.[key] === true;
 }
