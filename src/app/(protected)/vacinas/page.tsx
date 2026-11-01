@@ -30,49 +30,55 @@ export default function VaccinesPage() {
 
       <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 pb-8">
         <form onSubmit={handleOpenReview} className="space-y-4">
-          {/* Erro global do formulário */}
-          {error && (
-            <div className="bg-destructive/10 border border-destructive/30 text-destructive px-3.5 py-2.5 rounded-xl text-xs font-semibold">
-              {error}
-            </div>
-          )}
-
-          {/* Seleção de vacinas */}
-          <VaccineSelectionCard
-            vaccines={vaccines}
-            loading={isLoading}
-            selected={formData.vacinas}
-            onToggle={toggleVaccine}
-            onAddClick={() => setAddModalOpen(true)}
-            onDeleteClick={() => setDeleteModalOpen(true)}
-          />
-
-          {/* Identificação do animal */}
-          <AnimalIdentificationCard
-            rgn={formData.rgn}
-            multipleAnimals={multipleAnimals}
-            rgnOptions={rgnOptions}
-            existingVaccines={existingVaccinesWithNames}
-            loadingHistory={loadingAnimalVaccines}
-            duplicateWarnings={duplicateWarnings}
-            onRgnChange={(rgn) => setFormData((prev) => ({ ...prev, rgn }))}
-            onMultipleAnimalsChange={setMultipleAnimals}
-          />
-
-          {/* Data da vacinação */}
-          <section className="p-3.5 border border-border rounded-[15px] bg-card shadow-xs">
-            <DatePicker
-              label="Data da vacinação *"
-              value={formData.data}
-              onChange={(value) => setFormData((prev) => ({ ...prev, data: value }))}
-              required
+          {/* Single unified card wrapping all form sections */}
+          <div className="p-3.5 border border-border rounded-[15px] bg-card shadow-xs space-y-4">
+            {/* Seleção de vacinas */}
+            <VaccineSelectionCard
+              vaccines={vaccines}
+              loading={isLoading}
+              selected={formData.vacinas}
+              onToggle={toggleVaccine}
+              onAddClick={() => setAddModalOpen(true)}
+              onDeleteClick={() => setDeleteModalOpen(true)}
+              className="border-0 rounded-none shadow-none p-0 bg-transparent"
             />
-          </section>
 
-          <VaccineFormActions
-            isSubmitting={isSubmitting}
-            onCancel={() => router.push(getDeviceHomeRoute())}
-          />
+            {/* Identificação do animal */}
+            <AnimalIdentificationCard
+              rgn={formData.rgn}
+              multipleAnimals={multipleAnimals}
+              rgnOptions={rgnOptions}
+              existingVaccines={existingVaccinesWithNames}
+              loadingHistory={loadingAnimalVaccines}
+              duplicateWarnings={duplicateWarnings}
+              onRgnChange={(rgn) => setFormData((prev) => ({ ...prev, rgn }))}
+              onMultipleAnimalsChange={setMultipleAnimals}
+              className="border-0 rounded-none shadow-none p-0 bg-transparent"
+            />
+
+            {/* Botões de ação */}
+            <VaccineFormActions
+              isSubmitting={isSubmitting}
+              onCancel={() => router.push(getDeviceHomeRoute())}
+            />
+
+            {/* Erro global do formulário */}
+            {error && (
+              <div className="bg-destructive/10 border border-destructive/30 text-destructive px-3.5 py-2.5 rounded-xl text-xs font-semibold">
+                {error}
+              </div>
+            )}
+
+            {/* Data da vacinação */}
+            <section>
+              <DatePicker
+                label="Data da vacinação *"
+                value={formData.data}
+                onChange={(value) => setFormData((prev) => ({ ...prev, data: value }))}
+                required
+              />
+            </section>
+          </div>
         </form>
       </div>
 

@@ -4,6 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VaccinesMultiSelect } from "@/components/features/vaccines/vaccines/VaccinesMultiSelect";
 import { Vaccine } from "@/types/vaccine.type";
+import { cn } from "@/lib/utils";
 
 interface VaccineSelectionCardProps {
   vaccines: Vaccine[];
@@ -12,6 +13,7 @@ interface VaccineSelectionCardProps {
   onToggle: (name: string, checked: boolean) => void;
   onAddClick: () => void;
   onDeleteClick: () => void;
+  className?: string;
 }
 
 export function VaccineSelectionCard({
@@ -21,9 +23,15 @@ export function VaccineSelectionCard({
   onToggle,
   onAddClick,
   onDeleteClick,
+  className,
 }: VaccineSelectionCardProps) {
   return (
-    <section className="p-3.5 border border-border rounded-[15px] bg-card shadow-xs">
+    <section
+      className={cn(
+        "p-3.5 border border-border rounded-[15px] bg-card shadow-xs",
+        className,
+      )}
+    >
       <div className="flex items-center justify-between mb-3">
         <label className="text-xs font-extrabold uppercase text-primary">Vacinas: *</label>
         <div className="flex items-center gap-1.5">

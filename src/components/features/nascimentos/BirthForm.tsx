@@ -21,7 +21,7 @@ import { useMovements } from "@/hooks/db/movements/useMovements";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { useUserProfile } from "@/hooks/db/user_profiles/useUserProfile";
 import { getSupabase } from "@/lib/supabase/client";
-import { Animal } from "@/types/animal.type";
+import { Animal, AnimalBreed } from "@/types/animal.type";
 import { toast } from "sonner";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, isFutureDate } from "@/utils/dates";
@@ -38,10 +38,29 @@ const getDefaultFormData = () => ({
   farmId: "",
   cor: "Branco",
   sexo: "",
+  raca: "Nelore" as AnimalBreed,
 });
 
 const SEX_OPTIONS = ["Macho", "Fêmea"] as const;
-const COLOR_OPTIONS = ["Branco", "Vermelho", "Chuveirado"] as const;
+const COLOR_OPTIONS = ["Branco", "Vermelho"] as const;
+const BREED_OPTIONS: AnimalBreed[] = [
+  "Nelore",
+  "Nelore Mocha",
+  "Gir",
+  "Guzerá",
+  "Brahman",
+  "Tabapuã",
+  "Caracu",
+  "Curraleiro",
+  "Girolando",
+  "Canchim",
+  "Brangus",
+  "Charolês",
+  "Angus",
+  "Holandês",
+  "Hereford",
+  "Senepol",
+];
 
 const FIELD_CLASS = "h-10 w-full border-0 bg-muted/40 text-sm";
 
@@ -155,7 +174,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
         status: "Ativo",
         animal_state: "ATIVO",
         farm_id: effectiveFarmId,
-        breed: "Nelore",
+        breed: formData.raca,
         created_at: timestamp,
         updated_at: timestamp,
         _deleted: false,
@@ -211,7 +230,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
           p_mother_rgn: formData.mae,
           p_mother_serie_rgd: "INDI",
           p_farm_id: effectiveFarmId,
-          p_breed: "Nelore",
+          p_breed: formData.raca,
           p_weight: weightValue,
           p_created_by: userProfile?.id ?? null,
         });
@@ -410,6 +429,24 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
                 </SelectTrigger>
                 <SelectContent>
                   {COLOR_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormRow>
+
+            <FormRow label="Raça" htmlFor="birth-breed">
+              <Select
+                value={formData.raca}
+                onValueChange={(value) => setField("raca", value as AnimalBreed)}
+              >
+                <SelectTrigger id="birth-breed" className={FIELD_CLASS}>
+                  <SelectValue placeholder="Selecione a raça" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BREED_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>
