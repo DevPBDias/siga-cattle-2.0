@@ -704,26 +704,48 @@ CREATE TRIGGER trg_retreats_updated_at          BEFORE UPDATE ON retreats       
 -- =============================================================================
 -- FUNCAO: criar perfil automaticamente apos signup
 -- =============================================================================
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO user_profiles (id, email, created_at, updated_at, _deleted)
+  INSERT INTO public.user_profiles (
+    id,
+    email,
+    full_name,
+    role,
+    permissions,
+    created_at,
+    updated_at,
+    _deleted
+  )
   VALUES (
     NEW.id::text,
     NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', ''),
+    'member',
+    '{"home": true, "consulta": true}'::jsonb,
     (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
     FALSE
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    updated_at = EXCLUDED.updated_at;
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Blindagem crítica: se houver qualquer divergência em user_profiles,
+  -- não cancela a transação em auth.users (evita o erro 500 'Database error saving new user')
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
 
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- =============================================================================
 -- REALTIME

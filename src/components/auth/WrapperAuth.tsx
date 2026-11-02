@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import LoadingScreen from "./LoadingScreen";
@@ -15,6 +15,11 @@ import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
  */
 const SPLASH_DONE_KEY = "splash_done";
 
+// Tempo máximo que o WrapperAuth pode ficar em loading antes de liberar o
+// conteúdo de qualquer forma. Evita que o overlay fique preso indefinidamente
+// caso a replicação ou o auth não resolvam (ex: offline, token expirado).
+const LOADING_TIMEOUT_MS = 4000;
+
 export default function ProtectedClient({ children }: { children: React.ReactNode }) {
   const { user, loading, canAccess, canAccessPath } = useUserAccess();
   const { initialSyncReady } = useReplication();
@@ -30,6 +35,15 @@ export default function ProtectedClient({ children }: { children: React.ReactNod
       (sessionStorage.getItem(SPLASH_DONE_KEY) === "1" || hasCachedAuth()),
   );
 
+  // Safety valve: após LOADING_TIMEOUT_MS, força a saída do loading para não
+  // deixar o overlay fixed travando os cliques indefinidamente.
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  useEffect(() => {
+    if (splashAlreadyShown.current) return; // Não precisa do timer se splash já foi exibida
+    const timer = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     if (!loading && !user) router.replace("/login");
   }, [loading, user, router]);
@@ -42,9 +56,12 @@ export default function ProtectedClient({ children }: { children: React.ReactNod
 
   // Exibir loading apenas quando:
   //   1. O splash NÃO foi exibido nesta sessão (primeira navegação sem cache), E
-  //   2. O auth ainda está carregando OU o sync ainda não está pronto
+  //   2. O auth ainda está carregando OU o sync ainda não está pronto, E
+  //   3. O timeout de segurança ainda não expirou
   const shouldShowLoading =
-    !splashAlreadyShown.current && (loading || (!!user && !initialSyncReady));
+    !splashAlreadyShown.current &&
+    !loadingTimedOut &&
+    (loading || (!!user && !initialSyncReady));
 
   if (shouldShowLoading) return <LoadingScreen />;
   if (!loading && !user) return null;

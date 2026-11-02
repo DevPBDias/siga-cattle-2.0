@@ -1,6 +1,21 @@
-import type { IStatus } from "./status.type";
-
-export type AnimalBreed = "Nelore" | "Nelore Mocha" | (string & {});
+export type AnimalBreed =
+  | "Nelore"
+  | "Nelore Mocha"
+  | "Gir"
+  | "Guzerá"
+  | "Brahman"
+  | "Tabapuã"
+  | "Caracu"
+  | "Curraleiro"
+  | "Girolando"
+  | "Canchim"
+  | "Brangus"
+  | "Charolês"
+  | "Angus"
+  | "Holandês"
+  | "Hereford"
+  | "Senepol"
+  | (string & {});
 
 export interface Animal {
   rgn: string;

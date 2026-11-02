@@ -11,7 +11,7 @@ export default function CadastroAnimalPage() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background pb-12">
-      <ShortHeader title="Cadastro de Animal" />
+      <ShortHeader title="Cadastro Animal" />
 
       <main className="min-h-0 flex-1 overflow-y-auto px-6 py-6">
         <div className="mx-auto w-full max-w-2xl">

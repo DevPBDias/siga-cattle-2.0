@@ -142,14 +142,14 @@ export function MoverRebanhoForm() {
         {/* LOCAL 1 — origem */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-primary uppercase tracking-tight">
-              Local 1
+            <h3 className="text-sm font-bold text-primary tracking-tight">
+              Local atual
             </h3>
             {originFarmId && (
               <button
                 type="button"
                 onClick={handleSelectAll}
-                className="text-xs font-bold text-field-green uppercase tracking-wide"
+                className="text-xs font-bold text-field-green uppercase tracking-wide border border-field-green rounded px-2 py-1"
               >
                 {allSelected ? "Desmarcar Todas" : "Marcar Todas"}
               </button>
@@ -203,8 +203,8 @@ export function MoverRebanhoForm() {
 
         {/* LOCAL 2 — destino */}
         <div>
-          <h3 className="text-sm font-bold text-primary uppercase tracking-tight mb-2">
-            Local 2
+          <h3 className="text-sm font-bold text-primary tracking-tight mb-2">
+            Local de destino
           </h3>
           <Select value={destFarmId} onValueChange={setDestFarmId}>
             <SelectTrigger className={FIELD_CLASS}>
@@ -245,7 +245,7 @@ export function MoverRebanhoForm() {
               Movendo...
             </>
           ) : (
-            `Mover Rebanho (${selectedRgns.size} animal${selectedRgns.size !== 1 ? "is" : ""})`
+            `Mover ${selectedRgns.size <= 1  ? "animal" : `${selectedRgns.size} animais`}`
           )}
         </Button>
       </div>

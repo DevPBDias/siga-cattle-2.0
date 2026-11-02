@@ -49,7 +49,7 @@ export default function VaccinesPage() {
       <div className="flex-1 overflow-y-auto no-scrollbar p-3.5 pb-8">
         <form onSubmit={handleOpenReview} className="space-y-4">
           {/* Single unified card wrapping all form sections */}
-          <div className="border border-border rounded-[15px] space-y-4">
+          <div className="space-y-4">
             {/* Seleção de vacinas */}
             <VaccineSelectionCard
               vaccines={vaccines}
@@ -75,7 +75,6 @@ export default function VaccinesPage() {
             />
 
             {/* Data da vacinação */}
-            <section>
               <DatePicker
                 label="Data da vacinação *"
                 value={formData.data}
@@ -85,7 +84,6 @@ export default function VaccinesPage() {
                 required
                 inline
               />
-            </section>
 
             {/* Erro global do formulário */}
             {error && (

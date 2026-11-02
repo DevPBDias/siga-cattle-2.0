@@ -49,7 +49,7 @@ export function DatePicker({
   return (
     <Field className={cn("w-full", className)}>
       {inline ? (
-        <div className="flex flex-row items-center gap-2">
+        <div className="w-full grid grid-cols-2 items-center justify-between">
           {label && (
             <FieldLabel
               htmlFor={id}

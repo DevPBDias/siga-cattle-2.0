@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getSupabase } from "@/lib/supabase/client";
 import { cachePermissions, getCachedPermissions } from "@/lib/auth/permissionsCache";
 import { useAuthContext } from "./AuthProvider";
@@ -26,7 +26,22 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   const [permissions, setPermissions] = useState<UserPermissions>();
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [remoteProfileMissing, setRemoteProfileMissing] = useState(false);
-  const isConnectionOffline = typeof navigator !== "undefined" && !navigator.onLine;
+  // Estado reativo para conectividade — recalcular inline a cada render produz
+  // um valor instável que pode disparar useEffects desnecessariamente.
+  const [isConnectionOffline, setIsConnectionOffline] = useState(
+    typeof navigator !== "undefined" ? !navigator.onLine : false,
+  );
+
+  useEffect(() => {
+    const onOnline = () => setIsConnectionOffline(false);
+    const onOffline = () => setIsConnectionOffline(true);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
   const localProfileQuery = useMemo<MangoQuery<UserProfile> | null>(
     () => user?.id ? {
       selector: { id: { $eq: user.id }, _deleted: { $eq: false } },
@@ -118,14 +133,23 @@ export function AccessProvider({ children }: { children: ReactNode }) {
   }, [user?.id]);
 
   const loading = authLoading || permissionsLoading || (remoteProfileMissing && localProfileLoading);
-  const canAccess = (key: PermissionKey) => canAccessPermission(role, permissions, key);
-  const canAccessPath = (pathname: string) => {
-    if (loading) return false;
-    const key = getPermissionForPath(pathname);
-    if (!key) return pathname === "/perfil";
-    return canAccessPermission(role, permissions, key);
-  };
-  const value = useMemo(() => ({ role, permissions, loading, isConnectionOffline, canAccess, canAccessPath }), [isConnectionOffline, loading, permissions, role]);
+  const canAccess = useCallback(
+    (key: PermissionKey) => canAccessPermission(role, permissions, key),
+    [role, permissions],
+  );
+  const canAccessPath = useCallback(
+    (pathname: string) => {
+      if (loading) return false;
+      const key = getPermissionForPath(pathname);
+      if (!key) return pathname === "/perfil";
+      return canAccessPermission(role, permissions, key);
+    },
+    [loading, role, permissions],
+  );
+  const value = useMemo(
+    () => ({ role, permissions, loading, isConnectionOffline, canAccess, canAccessPath }),
+    [isConnectionOffline, loading, permissions, role, canAccess, canAccessPath],
+  );
   return <AccessContext.Provider value={value}>{children}</AccessContext.Provider>;
 }
 

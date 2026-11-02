@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useRef,
 } from "react";
 import { MyDatabase } from "@/db/collections";
 import {
@@ -52,10 +53,14 @@ export function RxDBProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [isReady, setIsReady] = useState(false);
+  // Ref para verificar se o DB já foi inicializado sem capturar `db` no closure,
+  // evitando que `initDatabase` mude de referência após cada setDb() e dispare
+  // um ciclo extra no useEffect que depende dela.
+  const dbRef = useRef<MyDatabase | null>(null);
 
   const initDatabase = useCallback(
     async (force = false) => {
-      if (typeof window === "undefined" || (db && !force)) return;
+      if (typeof window === "undefined" || (dbRef.current && !force)) return;
 
       setIsLoading(true);
       setError(null);
@@ -67,6 +72,7 @@ export function RxDBProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
+        dbRef.current = database;
         setDb(database);
         setIsReady(true);
         setIsLoading(false);
@@ -83,7 +89,7 @@ export function RxDBProvider({ children }: { children: React.ReactNode }) {
         setIsReady(false);
       }
     },
-    [db],
+    [], // deps vazios: a função é estável durante todo o ciclo de vida do componente
   );
 
   const retryConnection = useCallback(() => {

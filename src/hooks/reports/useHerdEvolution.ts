@@ -79,7 +79,9 @@ export function useHerdEvolution(
       const point: HerdEvolutionPoint = { label, date: isoDate, total: 0 };
 
       for (const animal of animals) {
+        // Apenas animais ativos e não deletados — mesma lógica do StatsFooter
         if (animal._deleted) continue;
+        if (animal.animal_state !== "ATIVO") continue;
 
         const bornDate = animal.born_date || toISODate(new Date(animal.created_at));
         if (bornDate > isoDate) continue;

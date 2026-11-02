@@ -96,15 +96,18 @@ const HomePage = () => {
             </div>
           </header>
 
-          <section className="absolute top-0 left-0 w-full h-[100dvh] bg-primary rounded-b-3xl z-0" />
+          {/* Fundo decorativo — pointer-events-none para não interceptar cliques */}
+          <section className="pointer-events-none absolute top-0 left-0 w-full h-[100dvh] bg-primary rounded-b-3xl z-0" />
 
-          <MarketQuotesCard />
+          <div className="relative z-10">
+            <MarketQuotesCard />
 
-          {/* Resumo dinâmico do Rebanho */}
-          <StatsFooter />
+            {/* Resumo dinâmico do Rebanho */}
+            <StatsFooter />
 
-          {/* Atalhos Rápidos */}
-          <HomeButtons data={homeLinks} />
+            {/* Atalhos Rápidos */}
+            <HomeButtons data={homeLinks} />
+          </div>
         </div>
         <MobileFooter />
       </main>

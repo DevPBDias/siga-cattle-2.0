@@ -65,12 +65,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void initAuth();
 
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, session: Session | null) => {
+      (event: AuthChangeEvent, session: Session | null) => {
         if (!mounted) return;
         if (session?.user) {
           setUser(session.user); cacheAuth(session.user); setIsOfflineAuth(false);
-        } else if (typeof navigator === "undefined" || navigator.onLine) {
+        } else if (event === "SIGNED_OUT") {
+          // Só limpa o cache em um logout explícito, nunca em falhas de refresh de token.
+          // TOKEN_REFRESH_FAILED ocorre quando o dispositivo está offline mas navigator.onLine
+          // ainda retorna true (Wi-Fi sem internet), o que causaria um loop infinito de
+          // re-renders se limpássemos o cache aqui.
           setUser(null); clearAuthCache(); clearPermissionsCache();
+        } else if ((event as string) === "TOKEN_REFRESH_FAILED") {
+          // Falha de refresh por falta de internet (evento emitido em runtime mas não
+          // exposto no tipo desta versão do Supabase): mantém o usuário em cache e
+          // ativa o modo offline em vez de deslogar.
+          const cachedUser = getCachedAuth();
+          if (cachedUser) { setUser(cachedUser); setIsOfflineAuth(true); }
         }
         setLoading(false);
       },
