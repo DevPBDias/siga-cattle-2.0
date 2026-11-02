@@ -151,7 +151,7 @@ export function MoverRebanhoForm() {
                 onClick={handleSelectAll}
                 className="text-xs font-bold text-field-green uppercase tracking-wide"
               >
-                {allSelected ? "Desselecionar Todos" : "Selecionar Todos"}
+                {allSelected ? "Desmarcar Todas" : "Marcar Todas"}
               </button>
             )}
           </div>
