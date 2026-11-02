@@ -22,6 +22,7 @@ export function AnimalChipGrid({
   }
 
   return (
+    <div className="max-h-48 overflow-y-auto md:max-h-none md:overflow-visible">
     <div className="flex flex-wrap gap-2">
       {animals.map((animal) => {
         const selected = selectedRgns.has(animal.rgn);
@@ -40,6 +41,7 @@ export function AnimalChipGrid({
           </button>
         );
       })}
+    </div>
     </div>
   );
 }
