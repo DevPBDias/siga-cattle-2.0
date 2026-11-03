@@ -33,17 +33,22 @@ export default function LoadingPage() {
     if (redirectTriggered.current) return;
     redirectTriggered.current = true;
 
-    setIsExiting(true);
-    setTimeout(() => {
-      const isAuthenticated = (!authLoading && !!user) || hasCachedAuth();
-      if (!isAuthenticated) {
-        router.replace("/login");
-        return;
-      }
+    // Grava a flag ANTES do timeout para que o WrapperAuth da rota de destino
+    // já a encontre mesmo que monte antes do setTimeout disparar.
+    const isAuthenticated = (!authLoading && !!user) || hasCachedAuth();
+    if (isAuthenticated) {
       try {
         sessionStorage.setItem("splash_done", "1");
       } catch {
         // sessionStorage indisponível (modo privado restrito)
+      }
+    }
+
+    setIsExiting(true);
+    setTimeout(() => {
+      if (!isAuthenticated) {
+        router.replace("/login");
+        return;
       }
       // Desktop (≥768px) → /dashboard | Mobile (<768px) → /home
       router.replace(getDeviceHomeRoute());
