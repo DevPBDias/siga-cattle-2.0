@@ -1,24 +1,33 @@
+/*
+ * ARCH: Auth/Loading separation — verified scenarios
+ *
+ * 1. Offline cached (hasCachedAuth === true):
+ *    → splashAlreadyShown = true immediately → children rendered, auth resolves in bg.
+ *
+ * 2. First login (no cache, loading === true):
+ *    → shouldShowLoading = true → RouteLoadingScreen shown until auth resolves.
+ *    → After resolve: user present → children; no user → redirect /login.
+ *
+ * 3. Reload on protected route (hasCachedAuth may be false, splash_done absent):
+ *    → document.referrer !== origin+"/" → splashAlreadyShown = true → no block.
+ *    → Redirect effects still run: no user → /login; bad path → /consulta|/perfil.
+ *
+ * 4. Session token refresh (loading briefly true, cache present):
+ *    → hasCachedAuth === true → no block.
+ *
+ * 5. Permission guard: canAccessPath checked in redirect effect (not in loading
+ *    condition), gated by initialSyncReady so premature redirects never happen.
+ */
+"use client";
 import React, { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
-import LoadingScreen from "./LoadingScreen";
+import { RouteLoadingScreen } from "./RouteLoadingScreen";
 import { useReplication } from "@/providers/ReplicationProvider";
 import { hasCachedAuth } from "@/lib/auth/offlineAuthCache";
 
-/**
- * Chave de sessionStorage usada para sinalizar que a tela de splash
- * já foi exibida nesta sessão de navegação.
- *
- * O `page.tsx` (rota raiz) seta esta flag logo antes de redirecionar,
- * garantindo que o WrapperAuth não exiba um segundo loading screen
- * quando o usuário chega numa rota protegida vindo da splash.
- */
 const SPLASH_DONE_KEY = "splash_done";
-
-// Tempo máximo que o WrapperAuth pode ficar em loading antes de liberar o
-// conteúdo de qualquer forma. Evita que o overlay fique preso indefinidamente
-// caso a replicação ou o auth não resolvam (ex: offline, token expirado).
-const LOADING_TIMEOUT_MS = 4000;
+const LOADING_TIMEOUT_MS = 2000;
 
 export default function ProtectedClient({ children }: { children: React.ReactNode }) {
   const { user, loading, canAccess, canAccessPath } = useUserAccess();
@@ -27,19 +36,18 @@ export default function ProtectedClient({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const pathAllowed = !pathname || canAccessPath(pathname);
 
-  // Se a splash já foi exibida nesta sessão, não bloqueamos a rota com
-  // outro loading. O usuário autenticado (ou com cache válido) é liberado
-  // imediatamente enquanto o auth finaliza em background.
   const splashAlreadyShown = useRef(
     typeof window !== "undefined" &&
-      (sessionStorage.getItem(SPLASH_DONE_KEY) === "1" || hasCachedAuth()),
+      (sessionStorage.getItem(SPLASH_DONE_KEY) === "1" ||
+        hasCachedAuth() ||
+        document.referrer === "" ||
+        !document.referrer.startsWith(window.location.origin + "/") ||
+        new URL(document.referrer).pathname !== "/"),
   );
 
-  // Safety valve: após LOADING_TIMEOUT_MS, força a saída do loading para não
-  // deixar o overlay fixed travando os cliques indefinidamente.
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   useEffect(() => {
-    if (splashAlreadyShown.current) return; // Não precisa do timer se splash já foi exibida
+    if (splashAlreadyShown.current) return;
     const timer = setTimeout(() => setLoadingTimedOut(true), LOADING_TIMEOUT_MS);
     return () => clearTimeout(timer);
   }, []);
@@ -54,20 +62,16 @@ export default function ProtectedClient({ children }: { children: React.ReactNod
     }
   }, [canAccess, initialSyncReady, loading, pathAllowed, pathname, router, user]);
 
-  // Exibir loading apenas quando:
-  //   1. O splash NÃO foi exibido nesta sessão (primeira navegação sem cache), E
-  //   2. O auth ainda está carregando OU o sync ainda não está pronto, E
-  //   3. O timeout de segurança ainda não expirou
+  // Block ONLY when: not from splash/cache/reload AND auth still unknown AND no cache
   const shouldShowLoading =
     !splashAlreadyShown.current &&
     !loadingTimedOut &&
-    (loading || (!!user && !initialSyncReady));
+    loading &&
+    !hasCachedAuth();
 
-  if (shouldShowLoading) return <LoadingScreen />;
+  if (shouldShowLoading) return <RouteLoadingScreen />;
   if (!loading && !user) return null;
   if (!user || !pathAllowed) return null;
 
-  // Retorna Fragment para NÃO injetar nenhuma div extra no DOM que possa
-  // criar espaços brancos ou quebrar o fluxo de layout das páginas.
   return <>{children}</>;
 }

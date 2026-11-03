@@ -1,11 +1,2 @@
 "use client";
-
-import React from "react";
-import { TenantLoadingScreen } from "@/components/loading/TenantLoadingScreen";
-
-const LoadingScreen = () => {
-  return <TenantLoadingScreen />;
-};
-
-export default LoadingScreen;
-export { LoadingScreen };
+export { RouteLoadingScreen as default, RouteLoadingScreen as LoadingScreen } from "./RouteLoadingScreen";
