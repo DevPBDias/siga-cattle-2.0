@@ -27,7 +27,7 @@ export const CalvingForecast = ({ startDate, endDate }: CalvingForecastProps) =>
     </div>
     <div className="grid grid-cols-2 gap-2">
       <DateCard label="Início (270d)" date={startDate} />
-      <DateCard label="Final (305d)" date={endDate} />
+      <DateCard label="Final (315d)" date={endDate} />
     </div>
   </div>
 );
