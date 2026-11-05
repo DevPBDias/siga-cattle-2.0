@@ -16,14 +16,19 @@ import { v4 as uuidv4 } from "uuid";
 import { toast } from "sonner";
 import type { MangoQuery } from "rxdb";
 import { getSupabase } from "@/lib/supabase/client";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
 export function useMovements() {
+  const { role } = useUserAccess();
   const query = useMemo<MangoQuery<Movement>>(
     () => ({
-      selector: { _deleted: { $eq: false } },
+      selector: {
+        _deleted: { $eq: false },
+        ...(role === "owner" ? {} : { type: { $nin: ["venda"] } }),
+      },
       sort: [{ date: "desc" } as any],
     }),
-    [],
+    [role],
   );
 
   const {
@@ -51,6 +56,11 @@ export function useMovements() {
       > & { details: any },
     ) => {
       try {
+        if (data.type === "venda" && role !== "owner") {
+          toast.error("Apenas o proprietário pode registrar vendas.");
+          throw new Error("Venda restrita ao proprietário");
+        }
+
         const db = await getDatabase();
         const id = uuidv4();
         const timestamp = Date.now();
@@ -193,7 +203,7 @@ export function useMovements() {
         throw err;
       }
     },
-    [movementActions, saleActions, deathActions, exchangeActions],
+    [movementActions, saleActions, deathActions, exchangeActions, role],
   );
 
   const updateMovement = useCallback(

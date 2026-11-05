@@ -13,8 +13,11 @@ import { Sale } from "@/types/sale.type";
 import { Death } from "@/types/death.type";
 import { Exchange } from "@/types/exchange.type";
 import type { MangoQuery } from "rxdb";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
 export function MovementList() {
+  const { role } = useUserAccess();
+  const isOwner = role === "owner";
   const {
     data: movements = [],
     loading,
@@ -23,9 +26,17 @@ export function MovementList() {
     () => ({ selector: { _deleted: { $eq: false } } }),
     [],
   );
+  const salesQuery = useMemo<MangoQuery<Sale>>(
+    () => ({
+      selector: isOwner
+        ? { _deleted: { $eq: false } }
+        : { id: "__owner_only_sales__" },
+    }),
+    [isOwner],
+  );
   const { data: sales = [], loading: salesLoading } = useLocalQuery<Sale>(
     "sales",
-    recordsQuery as MangoQuery<Sale>,
+    salesQuery,
   );
   const { data: deaths = [], loading: deathsLoading } = useLocalQuery<Death>(
     "deaths",
@@ -59,6 +70,7 @@ export function MovementList() {
       })),
     ];
     return [...movements, ...missingRecords]
+      .filter((movement) => isOwner || movement.type !== "venda")
       .filter((movement) => {
         // Filter by Tab (Type)
         if (activeTab !== "all" && movement.type !== activeTab) {
@@ -76,7 +88,7 @@ export function MovementList() {
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [movements, sales, deaths, exchanges, activeTab, searchTerm]);
+  }, [movements, sales, deaths, exchanges, activeTab, searchTerm, isOwner]);
 
   if (loading || salesLoading || deathsLoading || exchangesLoading) {
     return (
@@ -120,7 +132,7 @@ export function MovementList() {
           tabs={[
             { value: "all", label: "Todas" },
             { value: "morte", label: "Morte" },
-            { value: "venda", label: "Venda" },
+            ...(isOwner ? [{ value: "venda", label: "Venda" }] : []),
             { value: "troca", label: "Troca" },
           ]}
           activeTab={activeTab}

@@ -19,6 +19,7 @@ import { useSaleById } from "@/hooks/db/sales/useSaleById";
 import { useExchangeById } from "@/hooks/db/exchanges/useExchangeById";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, toISODate } from "@/utils/dates";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
 interface MovementFormProps {
   onSuccess?: () => void;
@@ -33,6 +34,8 @@ export function MovementForm({
   initialType,
   hideTypeSelector = false,
 }: MovementFormProps) {
+  const { role } = useUserAccess();
+  const isOwner = role === "owner";
   const {
     actions: { createMovement, updateMovement },
   } = useMovements();
@@ -145,6 +148,7 @@ export function MovementForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!movementType || !animalId || !animalExists) return;
+    if (movementType === "venda" && !isOwner) return;
     if (movementType === "venda" && !clientId && !initialMovement) return;
 
     setIsSubmitting(true);
@@ -203,6 +207,14 @@ export function MovementForm({
       setIsSubmitting(false);
     }
   };
+
+  if ((initialType === "venda" || initialMovement?.type === "venda") && !isOwner) {
+    return (
+      <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive" role="alert">
+        Apenas o proprietário pode acessar e registrar vendas.
+      </p>
+    );
+  }
 
   if (showSuccess) {
     return (

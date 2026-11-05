@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
 export type CreateMovementType = Exclude<MovementType, "nascimento">;
 
@@ -17,6 +18,8 @@ interface MovementTypeSelectorProps {
 }
 
 export function MovementTypeSelector({ value, onChange }: MovementTypeSelectorProps) {
+  const { role } = useUserAccess();
+
   return (
     <div className="mb-5 space-y-2">
       <label className="text-xs font-semibold uppercase text-primary">
@@ -28,7 +31,7 @@ export function MovementTypeSelector({ value, onChange }: MovementTypeSelectorPr
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="morte">Morte</SelectItem>
-          <SelectItem value="venda">Venda</SelectItem>
+          {role === "owner" && <SelectItem value="venda">Venda</SelectItem>}
           <SelectItem value="troca">Troca</SelectItem>
         </SelectContent>
       </Select>
