@@ -8,8 +8,10 @@ export default function ImportCsvFilesPage() {
   return (
     <main className="min-h-screen bg-background pb-12">
       <ShortHeader title="Importar planilhas" />
-      <SearchCsvFile />
-      <DatabaseDangerZone />
+      <div className="mx-auto w-full max-w-lg">
+        <SearchCsvFile />
+        <DatabaseDangerZone />
+      </div>
     </main>
   );
 }

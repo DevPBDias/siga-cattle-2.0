@@ -16,25 +16,27 @@ export default function ReproducaoPage() {
       <ShortHeader title="Reprodução" />
 
       <main className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 no-scrollbar">
-        <ReproductionSelector
-          selectedMatriz={data.selectedMatriz}
-          rgnOptions={data.rgnOptions}
-          selectedRgn={actions.selectedRgn}
-          loading={loading.matrizesLoading}
-          onSelect={actions.setSelectedRgn}
-          onClear={actions.clearSelection}
-        />
-
-        {data.selectedMatriz && (
-          <ReproductionEventList
-            matriz={data.selectedMatriz}
-            events={data.reproductionEvents}
-            loading={loading.eventsLoading}
-            onCreate={() => actions.setIsCreateModalOpen(true)}
-            onEdit={actions.handleEditEvent}
-            onDelete={actions.handleDeleteEvent}
+        <div className="mx-auto w-full max-w-lg space-y-4">
+          <ReproductionSelector
+            selectedMatriz={data.selectedMatriz}
+            rgnOptions={data.rgnOptions}
+            selectedRgn={actions.selectedRgn}
+            loading={loading.matrizesLoading}
+            onSelect={actions.setSelectedRgn}
+            onClear={actions.clearSelection}
           />
-        )}
+
+          {data.selectedMatriz && (
+            <ReproductionEventList
+              matriz={data.selectedMatriz}
+              events={data.reproductionEvents}
+              loading={loading.eventsLoading}
+              onCreate={() => actions.setIsCreateModalOpen(true)}
+              onEdit={actions.handleEditEvent}
+              onDelete={actions.handleDeleteEvent}
+            />
+          )}
+        </div>
       </main>
 
       {data.selectedMatriz && (

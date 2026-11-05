@@ -7,7 +7,9 @@ export default function PesagemPage() {
   return (
     <main className="min-h-screen bg-background pb-12">
       <ShortHeader title="Pesagem / CE" />
-      <PesagemCeWorkspace />
+      <div className="mx-auto w-full max-w-lg">
+        <PesagemCeWorkspace />
+      </div>
     </main>
   );
 }

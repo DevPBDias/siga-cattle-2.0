@@ -13,21 +13,23 @@ export default function GerenciarPage() {
       <ShortHeader title="Gestão Animal" />
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 no-scrollbar">
-        <AnimalManageSelector
-          selectedAnimal={data.selectedAnimal}
-          rgnOptions={data.rgnOptions}
-          selectedRgn={actions.selectedRgn}
-          onSelect={actions.setSelectedRgn}
-          onClear={actions.clearSelection}
-        />
-
-        {data.selectedAnimal && (
-          <AnimalManageTabs
-            animal={data.selectedAnimal}
-            activeTab={actions.activeTab}
-            onTabChange={actions.setActiveTab}
+        <div className="mx-auto w-full max-w-lg space-y-4">
+          <AnimalManageSelector
+            selectedAnimal={data.selectedAnimal}
+            rgnOptions={data.rgnOptions}
+            selectedRgn={actions.selectedRgn}
+            onSelect={actions.setSelectedRgn}
+            onClear={actions.clearSelection}
           />
-        )}
+
+          {data.selectedAnimal && (
+            <AnimalManageTabs
+              animal={data.selectedAnimal}
+              activeTab={actions.activeTab}
+              onTabChange={actions.setActiveTab}
+            />
+          )}
+        </div>
       </div>
     </main>
   );

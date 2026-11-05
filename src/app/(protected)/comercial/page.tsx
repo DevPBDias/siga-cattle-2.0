@@ -8,7 +8,9 @@ export default function ComercialPage() {
     <main className="h-[100dvh] min-h-[100dvh] overflow-hidden bg-background pb-12 flex flex-col">
       <ShortHeader title="Gestão Comercial" />
       <div className="flex-1 overflow-y-auto no-scrollbar p-3 pb-8">
-        <CommercialDashboard />
+        <div className="mx-auto w-full max-w-2xl">
+          <CommercialDashboard />
+        </div>
       </div>
     </main>
   );

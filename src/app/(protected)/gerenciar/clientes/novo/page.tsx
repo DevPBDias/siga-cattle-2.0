@@ -11,7 +11,7 @@ export default function NovoClientePage() {
   return (
     <main className="min-h-screen bg-background pb-12">
       <ShortHeader title="Novo Cliente" />
-      <div className="p-5">
+      <div className="mx-auto w-full max-w-lg p-5">
         <section className="bg-card rounded-2xl p-6 border border-border/60">
           <h2 className="text-base font-bold text-primary mb-6 uppercase tracking-tight">
             Cadastro de Cliente

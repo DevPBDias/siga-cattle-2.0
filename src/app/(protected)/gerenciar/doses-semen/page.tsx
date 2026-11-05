@@ -6,8 +6,10 @@ import { DosesSemenWorkspace } from "@/components/features/doses/DosesSemenWorks
 export default function DosesSemenPage() {
   return (
     <main className="min-h-screen bg-background pb-12">
-      <ShortHeader title="TOUROS / SEMÊN" />
-      <DosesSemenWorkspace />
+      <ShortHeader title="TOUROS / SÊMEN" />
+      <div className="mx-auto w-full max-w-lg">
+        <DosesSemenWorkspace />
+      </div>
     </main>
   );
 }
