@@ -4,17 +4,13 @@ export type AnimalBreed =
   | "Gir"
   | "Guzerá"
   | "Brahman"
-  | "Tabapuã"
   | "Caracu"
-  | "Curraleiro"
   | "Girolando"
-  | "Canchim"
-  | "Brangus"
   | "Charolês"
   | "Angus"
-  | "Holandês"
-  | "Hereford"
+  | "Sindi"
   | "Senepol"
+  | "Retinta"
   | (string & {});
 
 export interface Animal {

@@ -4,12 +4,14 @@ import { useState } from "react";
 import ShortHeader from "@/components/layout/ShortHeader";
 import { BirthHistory } from "@/components/features/nascimentos/BirthHistory";
 import { BirthForm } from "@/components/features/nascimentos/BirthForm";
+import { BirthReport } from "@/components/features/nascimentos/BirthReport";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { StandardTabList } from "@/components/ui/StandardTabList";
 
 const TABS = [
   { value: "registro", label: "Registrar" },
   { value: "historico", label: "Histórico" },
+  { value: "relatorio", label: "Relatório" },
 ];
 
 export default function NascimentosPage() {
@@ -38,6 +40,10 @@ export default function NascimentosPage() {
 
           <TabsContent value="historico" className="mt-0">
             <BirthHistory />
+          </TabsContent>
+
+          <TabsContent value="relatorio" className="mt-0">
+            <BirthReport />
           </TabsContent>
         </Tabs>
       </main>

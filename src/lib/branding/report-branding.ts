@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import { getTenantBranding, TenantBranding } from "./get-tenant-branding";
-import { formatDate, getTodayFormatted } from "@/utils/dates";
+import { getTodayFormatted } from "@/utils/dates";
 
 export interface ReportHeaderOptions {
   reportName: string;
@@ -35,19 +35,93 @@ const LAYOUT_CONFIG = {
   },
 };
 
+// Cache de logos já carregados para não re-fetchear em cada página
+const logoCache = new Map<string, { base64: string; format: string } | null>();
+
 /**
- * Desenha o emblema institucional / logo no cabeçalho do documento jsPDF.
+ * Carrega o logo de uma URL pública e retorna base64 com formato.
+ * SVG não é suportado nativamente pelo jsPDF addImage, retorna null.
  */
-function drawEmblemLogo(
+async function fetchLogoBase64(url: string): Promise<{ base64: string; format: string } | null> {
+  if (typeof window === "undefined") return null;
+
+  // Verifica cache (incluindo entradas null para URLs que falharam)
+  if (logoCache.has(url)) return logoCache.get(url) ?? null;
+
+  try {
+    const fullUrl = url.startsWith("http") ? url : `${window.location.origin}${url}`;
+    const response = await fetch(fullUrl);
+    if (!response.ok) {
+      logoCache.set(url, null);
+      return null;
+    }
+    const blob = await response.blob();
+    const mimeType = blob.type || "image/png";
+
+    // SVGs não têm suporte nativo no jsPDF addImage
+    if (mimeType.includes("svg")) {
+      logoCache.set(url, null);
+      return null;
+    }
+
+    const format = mimeType.includes("png") ? "PNG" : "JPEG";
+
+    const result: { base64: string; format: string } | null = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === "string") resolve({ base64: reader.result, format });
+        else resolve(null);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+
+    logoCache.set(url, result);
+    return result;
+  } catch {
+    logoCache.set(url, null);
+    return null;
+  }
+}
+
+/**
+ * Desenha o logo da fazenda no cabeçalho.
+ * Tenta a imagem real primeiro; cai no emblema de texto se falhar.
+ */
+function drawLogoOrEmblem(
   doc: jsPDF,
   x: number,
   y: number,
   branding: TenantBranding,
-  width: number = 36,
-  height: number = 14
+  logoData: { base64: string; format: string } | null,
+  width: number = 45,
+  height: number = 15,
+): void {
+  if (logoData) {
+    try {
+      doc.addImage(logoData.base64, logoData.format, x, y, width, height);
+      return;
+    } catch (err) {
+      console.warn("[PDF] Falha ao inserir logo, usando emblema de texto:", err);
+    }
+  }
+
+  // Fallback: emblema de texto com iniciais
+  drawEmblemFallback(doc, x, y, branding, width, height);
+}
+
+/**
+ * Emblema de texto como fallback quando a imagem não está disponível.
+ */
+function drawEmblemFallback(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  branding: TenantBranding,
+  width: number,
+  height: number,
 ): void {
   try {
-    // Tenta renderizar um bloco institucional harmonioso com iniciais e anel
     const initials = branding.farmName
       .split(" ")
       .filter(Boolean)
@@ -56,22 +130,18 @@ function drawEmblemLogo(
       .join("")
       .toUpperCase();
 
-    // Fundo do emblema
     doc.setFillColor(255, 255, 255, 0.15);
     doc.roundedRect(x, y, width, height, 2, 2, "F");
 
-    // Borda secundária (dourada ou accent)
     doc.setDrawColor(...branding.secondaryRgb);
     doc.setLineWidth(0.3);
     doc.roundedRect(x, y, width, height, 2, 2, "D");
 
-    // Iniciais da Fazenda
     doc.setTextColor(255, 255, 255);
     doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.bold);
     doc.setFontSize(8);
     doc.text(initials, x + 3.5, y + 8.5);
 
-    // Texto de identificação
     doc.setFontSize(6);
     doc.setTextColor(...branding.secondaryRgb);
     doc.text(branding.tenant.badgeText ?? "SIGA", x + 12, y + 6);
@@ -79,14 +149,15 @@ function drawEmblemLogo(
     doc.setTextColor(255, 255, 255);
     doc.text("CATTLE", x + 12, y + 10.5);
   } catch (error) {
-    console.warn("Aviso ao desenhar logo no cabeçalho do PDF:", error);
+    console.warn("[PDF] Aviso ao desenhar emblema no cabeçalho:", error);
   }
 }
 
 /**
- * Aplica o cabeçalho padronizado em todas as páginas do PDF com a identidade visual do cliente.
+ * Aplica o cabeçalho padronizado em todas as páginas do PDF.
+ * Assíncrono para carregar a imagem do logo antes de renderizar.
  */
-export function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): void {
+export async function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): Promise<void> {
   const branding = getTenantBranding(options.tenantId);
   const pageCount = doc.getNumberOfPages();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -94,42 +165,39 @@ export function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): void 
   const marginLeft = 10;
   const marginRight = 10;
 
+  // Carrega o logo antes de iterar pelas páginas
+  const logoData = await fetchLogoBase64(branding.reportLogoUrl);
+
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
 
-    // 1. Barra superior colorida com a cor primária da fazenda
+    // 1. Barra superior colorida
     doc.setFillColor(...branding.primaryRgb);
     doc.rect(0, 0, pageWidth, 23, "F");
 
-    // Linha de acento sutil na base do cabeçalho
+    // Linha de acento na base do cabeçalho
     doc.setFillColor(...branding.secondaryRgb);
     doc.rect(0, 22.4, pageWidth, 0.6, "F");
 
-    // 2. Logo / Emblema da Fazenda
-    drawEmblemLogo(doc, marginLeft, 4.5, branding);
+    // 2. Logo / Emblema
+    drawLogoOrEmblem(doc, marginLeft, 5, branding, logoData, 38, 12);
 
-    // 3. Título Centralizado do Relatório
+    // 3. Título centralizado
     doc.setTextColor(255, 255, 255);
     doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.bold);
-
     doc.setFontSize(LAYOUT_CONFIG.sizes.title);
-    doc.text(options.reportName.toUpperCase(), centerX, 9, {
-      align: "center",
-    });
+    doc.text(options.reportName.toUpperCase(), centerX, 9, { align: "center" });
 
-    // 4. Nome da Fazenda e Identificação Siga Cattle
+    // 4. Nome da fazenda
     doc.setFontSize(LAYOUT_CONFIG.sizes.headerDept);
-    const farmDisplay = options.farmName && options.farmName !== "GERAL"
-      ? `Fazenda: ${options.farmName.toUpperCase()}`
-      : branding.farmName.toUpperCase();
+    const farmDisplay =
+      options.farmName && options.farmName !== "GERAL"
+        ? `Fazenda: ${options.farmName.toUpperCase()}`
+        : branding.farmName.toUpperCase();
+    doc.text(farmDisplay, centerX, 14, { align: "center" });
 
-    doc.text(farmDisplay, centerX, 14, {
-      align: "center",
-    });
-
-    // 5. Linha de Quantidade / Categoria
+    // 5. Quantidade / Categoria
     doc.setFontSize(LAYOUT_CONFIG.sizes.infoValue);
-
     let unitLabel = options.gender || "";
     if (unitLabel === "M") unitLabel = "machos";
     else if (unitLabel === "F") unitLabel = "fêmeas";
@@ -142,19 +210,12 @@ export function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): void 
     }
 
     if (options.totalItems !== undefined) {
-      doc.text(
-        `Quantidade: ${options.totalItems} ${unitLabel}`,
-        centerX,
-        19,
-        {
-          align: "center",
-        }
-      );
+      doc.text(`Quantidade: ${options.totalItems} ${unitLabel}`, centerX, 19, { align: "center" });
     } else if (options.subtitle) {
       doc.text(options.subtitle, centerX, 19, { align: "center" });
     }
 
-    // 6. Data de Emissão (canto direito)
+    // 6. Data de emissão (canto direito)
     const reportDateStr = options.reportDate || getTodayFormatted();
     const isDescriptivePeriod =
       reportDateStr.toLowerCase().startsWith("todas") ||
@@ -166,6 +227,7 @@ export function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): void 
     const dateValueWidth = doc.getTextWidth(reportDateStr);
     const totalDateWidth = dateLabelWidth + dateValueWidth;
 
+    doc.setTextColor(255, 255, 255);
     if (dateLabel) {
       doc.text(dateLabel, pageWidth - marginRight - totalDateWidth, 14);
     }
@@ -181,7 +243,7 @@ export function addReportHeader(doc: jsPDF, options: ReportHeaderOptions): void 
 }
 
 /**
- * Aplica o rodapé padronizado em todas as páginas do PDF com a identidade visual do cliente.
+ * Aplica o rodapé padronizado em todas as páginas do PDF.
  */
 export function addReportFooter(doc: jsPDF, options?: ReportFooterOptions): void {
   const branding = getTenantBranding(options?.tenantId);
@@ -199,18 +261,14 @@ export function addReportFooter(doc: jsPDF, options?: ReportFooterOptions): void
 
     const footerY = pageHeight - 8;
 
-    // Linha separadora do footer
     doc.setDrawColor(220, 220, 220);
     doc.setLineWidth(0.1);
     doc.line(marginLeft, footerY - 3, pageWidth - marginRight, footerY - 3);
 
-    // Texto institucional dinâmico do cliente
     const defaultText = `Siga Cattle - ${branding.farmName} • Gestão Pecuária`;
     const footerText = options?.customText ?? defaultText;
-
     doc.text(footerText, marginLeft, footerY);
 
-    // Numeração de páginas
     doc.text(`Página ${i} de ${pageCount}`, pageWidth - marginRight, footerY, {
       align: "right",
     });
@@ -220,19 +278,16 @@ export function addReportFooter(doc: jsPDF, options?: ReportFooterOptions): void
 /**
  * Gera capa institucional para relatórios que requerem capa.
  */
-export function addReportCoverPage(doc: jsPDF, options: ReportHeaderOptions): void {
+export async function addReportCoverPage(doc: jsPDF, options: ReportHeaderOptions): Promise<void> {
   const branding = getTenantBranding(options.tenantId);
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
 
-  // Centro: Nome do Relatório na cor primária da fazenda
   doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.bold);
   doc.setFontSize(24);
   doc.setTextColor(...branding.primaryRgb);
-  doc.text(options.reportName.toUpperCase(), centerX, pageHeight / 3, {
-    align: "center",
-  });
+  doc.text(options.reportName.toUpperCase(), centerX, pageHeight / 3, { align: "center" });
 
   doc.setFontSize(16);
   doc.setTextColor(80, 80, 80);
@@ -241,33 +296,25 @@ export function addReportCoverPage(doc: jsPDF, options: ReportHeaderOptions): vo
   doc.setFontSize(12);
   if (options.gender) {
     doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.normal);
-    doc.text(`Filtro Sexo: ${options.gender}`, centerX, pageHeight / 2, {
-      align: "center",
-    });
+    doc.text(`Filtro Sexo: ${options.gender}`, centerX, pageHeight / 2, { align: "center" });
   }
 
   if (options.totalItems !== undefined) {
     doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.normal);
-    doc.text(
-      `Total de Registros: ${options.totalItems}`,
-      centerX,
-      pageHeight / 2 + 10,
-      { align: "center" }
-    );
+    doc.text(`Total de Registros: ${options.totalItems}`, centerX, pageHeight / 2 + 10, { align: "center" });
   }
 
   doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.normal);
   doc.setFontSize(10);
   const reportDateStr = options.reportDate || getTodayFormatted();
-  doc.text(`Data de Emissão: ${reportDateStr}`, centerX, pageHeight - 30, {
-    align: "center",
-  });
+  doc.text(`Data de Emissão: ${reportDateStr}`, centerX, pageHeight - 30, { align: "center" });
   doc.text(`Siga Cattle - ${branding.farmName}`, centerX, pageHeight - 20, { align: "center" });
 
   doc.addPage();
 }
 
-// Aliases mantendo compatibilidade direta com a assinatura existente de branding-utils
+// Aliases de compatibilidade
 export const drawHeader = addReportHeader;
-export const drawFooter = (doc: jsPDF, options?: { customText?: string }) => addReportFooter(doc, options);
+export const drawFooter = (doc: jsPDF, options?: { customText?: string }) =>
+  addReportFooter(doc, options);
 export const generateCoverPage = addReportCoverPage;

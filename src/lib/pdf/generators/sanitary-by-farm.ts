@@ -26,7 +26,7 @@ export const generateSanitaryByFarmPDF = async (
   };
 
   // 1. Capa Institucional (Personalizada para Sanitário)
-  generateCoverPage(doc, {
+  await generateCoverPage(doc, {
     ...brandingOptions,
     gender: `Período: ${reportData.startDate} a ${reportData.endDate}`,
   });
@@ -68,7 +68,7 @@ export const generateSanitaryByFarmPDF = async (
   });
 
   // 4. Aplicação de Branding
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   // 5. Salvar

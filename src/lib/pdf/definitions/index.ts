@@ -13,14 +13,13 @@ import { sanitaryByFarmDefinition } from "./sanitaryByFarm.definition";
 import { weightPerformanceDefinition } from "./weightPerformance.definition";
 import { reproductionDefinition } from "./reproduction.definition";
 import { semenDoseDefinition } from "./semenDose.definition";
-import { birthForecastDefinition } from "./birthForecast.definition";
 import { ReportDefinition } from "./types";
 
+// birthForecastDefinition foi movido para a tela de Nascimentos (src/components/features/nascimentos/BirthReport.tsx)
 export const AVAILABLE_REPORTS: ReportDefinition[] = [
   animalByFarmDefinition,
   sanitaryByFarmDefinition,
   weightPerformanceDefinition,
   reproductionDefinition,
   semenDoseDefinition,
-  birthForecastDefinition,
 ];

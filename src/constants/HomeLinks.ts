@@ -104,7 +104,7 @@ export const homeLinks: Links[] = [
   },
   {
     id: 12,
-    name: "Mover rebanho",
+    name: "Giro de pasto",
     href: "/mover-rebanho",
     iconSrc: moveCattle,
     className: "h-10 w-9 object-cover",

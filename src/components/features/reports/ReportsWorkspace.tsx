@@ -1,7 +1,5 @@
 "use client";
 
-import React from "react";
-
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -15,7 +13,6 @@ import {
   Syringe,
   Upload,
   VenusAndMars,
-  Baby,
   BarChart3,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -34,8 +31,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useReports } from "@/context/ReportsContext";
 import { useFarms } from "@/hooks/db/farms/useFarms";
-import { useMovements } from "@/hooks/db/movements/useMovements";
-import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { AVAILABLE_REPORTS } from "@/lib/pdf/definitions";
 import { reproductionByCowDefinition } from "@/lib/pdf/definitions/reproductionByCow.definition";
 
@@ -44,7 +39,6 @@ const reportLabels: Record<string, string> = {
   "sanitary-by-farm": "Vacinas",
   reproduction: "Reprodução",
   "weight-performance": "Pesagem",
-  "birth-forecast": "Nascimentos",
   "semen-dose": "Sêmen",
 };
 
@@ -54,7 +48,6 @@ const reportIcons: Record<string, LucideIcon> = {
   Heart: VenusAndMars,
   Scale: RulerDimensionLine,
   FlaskConical,
-  Baby,
 };
 
 export default function ReportsWorkspace() {
@@ -68,53 +61,7 @@ export default function ReportsWorkspace() {
     generateReport,
   } = useReports();
   const { data: farms = [] } = useFarms();
-  const { data: movements = [] } = useMovements();
-  const { data: animals = [] } = useAnimals();
 
-  // Contagem de nascimentos com os filtros atuais (para badge em tempo real)
-  const matchingBirthCount = React.useMemo(() => {
-    if (selectedReport?.id !== "birth-forecast") return 0;
-    const targetYear = filters.year ? Number(filters.year) : undefined;
-    const targetFarmId =
-      filters.farmFilterMode === "specific"
-        ? filters.farmId || filters.farmIds?.[0]
-        : undefined;
-    const animalMap = new Map(animals.map((a) => [a.rgn, a]));
-    return movements.filter((m) => {
-      if (m.type !== "nascimento" || m._deleted || !m.animal_id) return false;
-      const animal = animalMap.get(m.animal_id);
-      if (!animal) return false;
-      if (targetFarmId && animal.farm_id !== targetFarmId) return false;
-      if (targetYear) {
-        const rawDate = m.event_date || m.date || animal.born_date;
-        let movYear: number | null = null;
-        if (rawDate) {
-          const y = parseInt(rawDate.slice(0, 4), 10);
-          if (!isNaN(y)) movYear = y;
-        }
-        if (!movYear && m.created_at) movYear = new Date(m.created_at).getFullYear();
-        if (movYear !== targetYear) return false;
-      }
-      return true;
-    }).length;
-  }, [selectedReport?.id, movements, animals, filters.year, filters.farmFilterMode, filters.farmId, filters.farmIds]);
-
-  // Anos disponíveis para o relatório de nascimentos
-  const birthYears = React.useMemo(() => {
-    const yearsSet = new Set<number>();
-    const currentYear = new Date().getFullYear();
-    yearsSet.add(currentYear);
-    for (const m of movements) {
-      if (m.type === "nascimento" && !m._deleted) {
-        const rawDate = m.event_date || m.date;
-        if (rawDate) {
-          const y = parseInt(rawDate.slice(0, 4), 10);
-          if (!isNaN(y)) yearsSet.add(y);
-        }
-      }
-    }
-    return Array.from(yearsSet).sort((a, b) => b - a);
-  }, [movements]);
   const [step, setStep] = useState(1);
   const [isGeneratingCowReport, setIsGeneratingCowReport] = useState(false);
   const [generationError, setGenerationError] = useState<string | null>(null);
@@ -312,152 +259,53 @@ export default function ReportsWorkspace() {
 
                     {step === 1 && (
                       <section className="space-y-3 rounded-xl border border-border bg-card p-3">
-                        {selectedReport?.id === "birth-forecast" ? (
-                          <>
-                            <div className="space-y-1">
-                              <h2 className="text-base font-bold uppercase text-primary">
-                                Filtros do relatório
-                              </h2>
-                              <p className="text-sm text-muted-foreground">
-                                Selecione o ano e a fazenda para o relatório de nascimentos.
-                              </p>
-                            </div>
+                        <>
+                          <div className="space-y-1">
+                            <h2 className="text-base font-bold uppercase text-primary">
+                              Local dos animais
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                              Escolha a fazenda que entra neste relatório.
+                            </p>
+                          </div>
 
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                              {/* Ano */}
-                              <div className="space-y-1.5 sm:w-36">
-                                <Label
-                                  htmlFor="birth-year-step1"
-                                  className="text-[10px] font-bold uppercase text-primary"
-                                >
-                                  Ano
-                                </Label>
-                                <Select
-                                  value={filters.year || String(new Date().getFullYear())}
-                                  onValueChange={(y) => updateFilters({ year: y })}
-                                >
-                                  <SelectTrigger id="birth-year-step1" className="h-11 bg-white">
-                                    <SelectValue placeholder="Ano" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {birthYears.map((y) => (
-                                      <SelectItem key={y} value={String(y)}>
-                                        {y}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {/* Fazenda */}
-                              <div className="min-w-0 flex-1 space-y-1.5">
-                                <Label
-                                  htmlFor="birth-farm-step1"
-                                  className="text-[10px] font-bold uppercase text-primary"
-                                >
-                                  Fazenda
-                                </Label>
-                                <Select
-                                  value={
-                                    filters.farmFilterMode === "specific"
-                                      ? (filters.farmId ?? "all")
+                          <div className="grid gap-3">
+                            <div className="min-w-0 space-y-1.5">
+                              <Label
+                                htmlFor="report-farm"
+                                className="text-[10px] font-bold uppercase text-primary"
+                              >
+                                Fazenda
+                              </Label>
+                              <Select
+                                value={
+                                  isGlobalSemenReport
+                                    ? "all"
+                                    : filters.farmFilterMode === "specific"
+                                      ? filters.farmId ?? "all"
                                       : "all"
-                                  }
-                                  onValueChange={(farmId) => {
-                                    if (farmId === "all") {
-                                      updateFilters({
-                                        farmId: undefined,
-                                        farmIds: [],
-                                        farmName: undefined,
-                                        farmNames: [],
-                                        farmFilterMode: "all",
-                                      });
-                                    } else {
-                                      const farm = farms.find((f) => f.id === farmId);
-                                      if (farm) {
-                                        updateFilters({
-                                          farmId: farm.id,
-                                          farmIds: [farm.id],
-                                          farmName: farm.farm_name,
-                                          farmNames: [farm.farm_name],
-                                          farmFilterMode: "specific",
-                                        });
-                                      }
-                                    }
-                                  }}
-                                >
-                                  <SelectTrigger id="birth-farm-step1" className="h-11 bg-white">
-                                    <SelectValue placeholder="Todas as fazendas" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">Todas as fazendas</SelectItem>
-                                    {farms.map((farm) => (
+                                }
+                                onValueChange={handleFarmSelect}
+                                disabled={isGlobalSemenReport}
+                              >
+                                <SelectTrigger id="report-farm" className="h-11 bg-white">
+                                  <SelectValue placeholder="Selecione a fazenda" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">
+                                    {isGlobalSemenReport ? "Estoque geral" : "Todas as fazendas"}
+                                  </SelectItem>
+                                  {!isGlobalSemenReport &&
+                                    farms.map((farm) => (
                                       <SelectItem key={farm.id} value={farm.id}>
                                         {farm.farm_name}
                                       </SelectItem>
                                     ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-
-                              {/* Badge de contagem */}
-                              <div className="flex h-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 px-3 text-primary">
-                                <span className="text-lg font-black">{matchingBirthCount}</span>
-                                <span className="ml-1 text-[10px] font-bold uppercase leading-tight text-primary/70">
-                                  registro{matchingBirthCount !== 1 ? "s" : ""}
-                                </span>
-                              </div>
+                                </SelectContent>
+                              </Select>
                             </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="space-y-1">
-                              <h2 className="text-base font-bold uppercase text-primary">
-                                Local dos animais
-                              </h2>
-                              <p className="text-sm text-muted-foreground">
-                                Escolha a fazenda que entra neste relatório.
-                              </p>
-                            </div>
-
-                            <div className="grid gap-3">
-                              <div className="min-w-0 space-y-1.5">
-                                <Label
-                                  htmlFor="report-farm"
-                                  className="text-[10px] font-bold uppercase text-primary"
-                                >
-                                  Fazenda
-                                </Label>
-                                <Select
-                                  value={
-                                    isGlobalSemenReport
-                                      ? "all"
-                                      : filters.farmFilterMode === "specific"
-                                        ? filters.farmId ?? "all"
-                                        : "all"
-                                  }
-                                  onValueChange={handleFarmSelect}
-                                  disabled={isGlobalSemenReport}
-                                >
-                                  <SelectTrigger id="report-farm" className="h-11 bg-white">
-                                    <SelectValue placeholder="Selecione a fazenda" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="all">
-                                      {isGlobalSemenReport ? "Estoque geral" : "Todas as fazendas"}
-                                    </SelectItem>
-                                    {!isGlobalSemenReport &&
-                                      farms.map((farm) => (
-                                        <SelectItem key={farm.id} value={farm.id}>
-                                          {farm.farm_name}
-                                        </SelectItem>
-                                      ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                          </>
-                        )}
+                          </div>
+                        </>
 
                         <div className="flex justify-end">
                           <Button
@@ -534,15 +382,6 @@ export default function ReportsWorkspace() {
                               </dd>
                             </div>
                           )}
-                          {selectedReport?.id === "birth-forecast" &&
-                            filters.year && (
-                              <div className="flex justify-between gap-3 border-b border-border pb-2">
-                                <dt className="text-muted-foreground">Ano</dt>
-                                <dd className="text-right font-semibold text-primary">
-                                  {filters.year}
-                                </dd>
-                              </div>
-                            )}
                         </dl>
 
                         {generationError && (

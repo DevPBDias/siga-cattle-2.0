@@ -12,7 +12,7 @@ async function generateBirthForecastReport({
   const db = await getDatabase();
   if (!db) throw new Error("Database not initialized");
 
-  // 1. Buscar as movimentações cujo tipo seja 'nascimento' não deletadas
+  // 1. Movimentações de nascimento não deletadas
   const movementDocs = await db.movements
     .find({
       selector: {
@@ -23,7 +23,7 @@ async function generateBirthForecastReport({
     .exec();
   const movements = movementDocs.map((doc) => doc.toJSON() as Movement);
 
-  // 2. Buscar animais para interligar ao registro da movimentação
+  // 2. Animais
   const animalDocs = await db.animals
     .find({ selector: { _deleted: { $eq: false } } })
     .exec();
@@ -33,7 +33,7 @@ async function generateBirthForecastReport({
     if (a.rgn) animalMap.set(a.rgn, a);
   }
 
-  // 3. Buscar fazendas
+  // 3. Fazendas
   const farmDocs = await db.farms
     .find({ selector: { _deleted: { $eq: false } } })
     .exec();
@@ -44,7 +44,7 @@ async function generateBirthForecastReport({
     }),
   );
 
-  // 4. Buscar pesos ao nascer (born_metric=true)
+  // 4. Pesos ao nascer (born_metric=true)
   const weightDocs = await db.animal_metrics_weight
     .find({
       selector: {
@@ -61,7 +61,7 @@ async function generateBirthForecastReport({
     }
   }
 
-  // 5. Buscar perfis de usuários para mapear created_by ao nome de quem fez o registro
+  // 5. Perfis de usuários
   const profileDocs = await db.user_profiles
     .find({ selector: { _deleted: { $eq: false } } })
     .exec();
@@ -69,47 +69,53 @@ async function generateBirthForecastReport({
   for (const doc of profileDocs) {
     const p = doc.toJSON() as { id: string; full_name?: string; email?: string };
     const name = p.full_name?.trim() || p.email?.trim() || "";
-    if (name) {
-      profileMap.set(p.id, name);
-    }
+    if (name) profileMap.set(p.id, name);
   }
 
-  // 6. Filtros por fazenda e ano
-  const targetYear = filters.year ? Number(filters.year) : undefined;
+  // 6. Montar filtros
   const targetFarmId =
     filters.farmFilterMode === "specific"
       ? filters.farmId || filters.farmIds?.[0]
       : undefined;
+
+  // Modo intervalo de datas tem precedência sobre ano/mês
+  const hasDateRange = Boolean(filters.startDate || filters.endDate);
+  const targetYear = !hasDateRange && filters.year ? Number(filters.year) : undefined;
+  // Mês: startDate/endDate com mesmo mês indicam filtro por mês no modo mês/ano
+  // Deixamos o filtro de data range cuidar disso nativamente
 
   const filteredMovements = movements.filter((m) => {
     if (!m.animal_id) return false;
     const animal = animalMap.get(m.animal_id);
     if (!animal) return false;
 
-    // Filtro por fazenda do animal
-    if (targetFarmId) {
-      if (animal.farm_id !== targetFarmId) return false;
-    }
+    // Filtro por fazenda
+    if (targetFarmId && animal.farm_id !== targetFarmId) return false;
 
-    // Filtro por ano da movimentação de nascimento (usando event_date, date ou ano do registro)
-    if (targetYear) {
-      const rawDate = m.event_date || m.date || animal.born_date;
+    const rawDate = m.event_date || m.date || animal.born_date;
+
+    if (hasDateRange) {
+      // Filtro por intervalo de datas (YYYY-MM-DD)
+      if (!rawDate) return false;
+      const dateStr = rawDate.slice(0, 10); // garante YYYY-MM-DD
+      if (filters.startDate && dateStr < filters.startDate) return false;
+      if (filters.endDate && dateStr > filters.endDate) return false;
+    } else if (targetYear) {
+      // Filtro por ano
       let movYear: number | null = null;
       if (rawDate) {
         const y = parseInt(rawDate.slice(0, 4), 10);
         if (!isNaN(y)) movYear = y;
       }
-      if (!movYear && m.created_at) {
-        movYear = new Date(m.created_at).getFullYear();
-      }
+      if (!movYear && m.created_at) movYear = new Date(m.created_at).getFullYear();
       if (movYear !== targetYear) return false;
     }
 
     return true;
   });
 
-  // Ordenar conforme o filtro selecionado pelo usuário
-  const sortBy = filters.birthForecastSortBy || "rgn";
+  // 7. Ordenação
+  const sortBy = filters.birthForecastSortBy || "birthDate";
   filteredMovements.sort((a, b) => {
     const animalA = animalMap.get(a.animal_id);
     const animalB = animalMap.get(b.animal_id);
@@ -119,19 +125,18 @@ async function generateBirthForecastReport({
       const cmp = farmA.localeCompare(farmB, "pt-BR");
       if (cmp !== 0) return cmp;
     }
-    if (sortBy === "birthDate") {
-      const dateA = a.event_date || a.date || animalA?.born_date || "";
-      const dateB = b.event_date || b.date || animalB?.born_date || "";
-      return dateB.localeCompare(dateA); // desc
+    if (sortBy === "rgn") {
+      const rgnA = animalA?.rgn || "";
+      const rgnB = animalB?.rgn || "";
+      return rgnA.localeCompare(rgnB, "pt-BR");
     }
-    // default: sort by animal (rgn)
-    const rgnA = animalA?.rgn || "";
-    const rgnB = animalB?.rgn || "";
-    return rgnA.localeCompare(rgnB, "pt-BR");
+    // default: birthDate desc
+    const dateA = a.event_date || a.date || animalA?.born_date || "";
+    const dateB = b.event_date || b.date || animalB?.born_date || "";
+    return dateA.localeCompare(dateB); // asc para leitura natural
   });
 
-  // Interligar cada movimentação ao registro em animals
-  // Usar event_date para a data efetiva do nascimento e created_at para o momento do registro
+  // 8. Montar linhas do relatório
   const reportRows: BirthReportItem[] = filteredMovements.map((m) => {
     const animal = animalMap.get(m.animal_id)!;
     const animalName = `${animal.serie_rgd ? animal.serie_rgd + " " : ""}${animal.rgn}`.trim();
@@ -150,16 +155,15 @@ async function generateBirthForecastReport({
     const weightVal = weightMap.get(animal.rgn);
     const weightFormatted = weightVal ? `${weightVal} kg` : "---";
 
+    const colorFormatted = animal.born_color?.trim() || "---";
+
     const motherFormatted = animal.mother_rgn
       ? `${animal.mother_serie_rgd ? animal.mother_serie_rgd + " " : ""}${animal.mother_rgn}`.trim()
       : "---";
 
-    const farmName =
-      farmMap.get(animal.farm_id || "") || "---";
+    const farmName = farmMap.get(animal.farm_id || "") || "---";
 
-    const regDateFormatted = m.created_at
-      ? formatDate(m.created_at)
-      : "---";
+    const regDateFormatted = m.created_at ? formatDate(m.created_at) : "---";
 
     const registeredBy =
       (m.created_by ? profileMap.get(m.created_by) : null) ||
@@ -171,6 +175,7 @@ async function generateBirthForecastReport({
       sex,
       birth_date: birthDateFormatted,
       weight: weightFormatted,
+      color: colorFormatted,
       mother: motherFormatted,
       farm_name: farmName,
       registration_date: regDateFormatted,
@@ -183,9 +188,24 @@ async function generateBirthForecastReport({
     filters.farmName ||
     "Todas as Fazendas";
 
+  // Monta label do período para o cabeçalho do PDF
+  let periodLabel: string | undefined;
+  let yearFilter: string | undefined;
+
+  if (hasDateRange) {
+    const from = filters.startDate ? formatDate(filters.startDate) : "";
+    const to = filters.endDate ? formatDate(filters.endDate) : "";
+    if (from && to) periodLabel = `${from} – ${to}`;
+    else if (from) periodLabel = `A partir de ${from}`;
+    else if (to) periodLabel = `Até ${to}`;
+  } else {
+    yearFilter = targetYear ? String(targetYear) : undefined;
+  }
+
   await generateBirthForecastPDF({
     farmName: farmLabel,
-    yearFilter: targetYear ? String(targetYear) : undefined,
+    yearFilter,
+    periodLabel,
     reportDate: getTodayFormatted(),
     systemName: "INDI Ouro 2.0",
     data: reportRows,

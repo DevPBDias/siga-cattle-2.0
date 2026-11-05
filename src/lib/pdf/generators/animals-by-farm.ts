@@ -136,7 +136,7 @@ export const generateAnimalsByFarmPDF = async (
   });
 
   // 4. Aplicação de Branding (Header/Footer em todas as páginas)
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   // 5. Salvar/Download

@@ -75,7 +75,7 @@ export const generateReproductionByCowPDF = async (
     },
   });
 
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   const filename = `relatorio-reproducao-por-vaca-${reportData.farmName

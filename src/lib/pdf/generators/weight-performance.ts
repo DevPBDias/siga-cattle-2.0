@@ -28,7 +28,7 @@ export const generateWeightPerformancePDF = async (
   };
 
   // 1. Capa
-  generateCoverPage(doc, brandingOptions);
+  await generateCoverPage(doc, brandingOptions);
 
   // 2. Colunas Fixas
   const columns = [
@@ -81,7 +81,7 @@ export const generateWeightPerformancePDF = async (
   });
 
   // 4. Branding
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   // 5. Salvar

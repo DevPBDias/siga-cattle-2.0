@@ -129,7 +129,7 @@ export const generateReproductionPDF = async (
   });
 
   // 4. Branding (Header/Footer on all pages)
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   // 5. Save/Download

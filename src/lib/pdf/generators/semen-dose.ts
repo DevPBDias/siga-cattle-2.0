@@ -51,7 +51,7 @@ export const generateSemenDosePDF = async (reportData: SemenDoseReportData) => {
   });
 
   // 3. Aplicação de Branding
-  drawHeader(doc, brandingOptions);
+  await drawHeader(doc, brandingOptions);
   drawFooter(doc);
 
   // 4. Download

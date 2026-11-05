@@ -82,6 +82,7 @@ export interface BirthReportItem {
   sex: string;
   birth_date: string;
   weight: string;
+  color: string;
   mother: string;
   farm_name: string;
   registration_date: string;
@@ -91,6 +92,8 @@ export interface BirthReportItem {
 
 export interface BirthForecastReportData extends ReportBaseData {
   yearFilter?: string;
+  /** Label descritivo do período quando o filtro é por intervalo (ex: "01/01/2025 – 31/03/2025") */
+  periodLabel?: string;
   data: BirthReportItem[];
 }
 
