@@ -1,6 +1,7 @@
 "use client";
 
-import { Users } from "lucide-react";
+import { Trash2, Users } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -18,8 +19,10 @@ interface ProfileMemberListProps {
   loading: boolean;
   editing: boolean;
   savingId: string | null;
+  ownerId?: string;
   onChangeRole: (profile: UserProfile, role: UserRole) => void;
   onChangePermission: (profile: UserProfile, key: PermissionKey, value: boolean) => void;
+  onRemoveMember: (profile: UserProfile) => void;
 }
 
 export function ProfileMemberList({
@@ -27,8 +30,10 @@ export function ProfileMemberList({
   loading,
   editing,
   savingId,
+  ownerId,
   onChangeRole,
   onChangePermission,
+  onRemoveMember,
 }: ProfileMemberListProps) {
   if (loading) {
     return (
@@ -61,6 +66,7 @@ export function ProfileMemberList({
       {profiles.map((profile) => {
         const profileRole = profile.role === "member" ? "member" : "owner";
         const isSaving = savingId === profile.id;
+        const isCurrentOwner = profile.id === ownerId;
         const title = profile.full_name || profile.email || profile.id;
 
         return (
@@ -77,7 +83,7 @@ export function ProfileMemberList({
               </div>
               <Select
                 value={profileRole}
-                disabled={!editing || isSaving}
+                disabled={!editing || isSaving || isCurrentOwner}
                 onValueChange={(value) => onChangeRole(profile, value as UserRole)}
               >
                 <SelectTrigger
@@ -92,6 +98,23 @@ export function ProfileMemberList({
                 </SelectContent>
               </Select>
             </div>
+
+            {profile.role === "member" &&
+              ownerId &&
+              profile.owner_id === ownerId && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="xs"
+                  className="w-full"
+                  disabled={isSaving}
+                  aria-label={`Remover ${title} da fazenda`}
+                  onClick={() => onRemoveMember(profile)}
+                >
+                  <Trash2 />
+                  Remover da fazenda
+                </Button>
+              )}
 
             {profileRole === "member" && (
               <div className="grid grid-cols-2 gap-1.5">

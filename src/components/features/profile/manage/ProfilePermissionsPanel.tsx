@@ -3,6 +3,14 @@
 import { useMemo, useState } from "react";
 import { Lock, Unlock, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { InviteMemberDialog } from "@/components/features/profile/manage/InviteMemberDialog";
 import { ProfileMemberList } from "@/components/features/profile/manage/ProfileMemberList";
 import { useInviteMember } from "@/hooks/auth/useInviteMember";
@@ -24,20 +32,24 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   } = useUserProfiles();
   const { data: inviteData, actions } = useInviteMember();
   const [inviteOpen, setInviteOpen] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<UserProfile | null>(null);
+  const ownerId = user?.id;
 
-  // Ordena a equipe: donos primeiro e depois ordem alfabética por nome/e-mail.
-  // Todos os perfis sincronizados (incluindo membros de outros donos da mesma
-  // fazenda) já chegam via RxDB graças à política RLS que agora permite
-  // SELECT irrestrito para usuários autenticados.
   const members = useMemo(() => {
-    return [...allProfiles].sort((a, b) => {
-      if (a.role === "owner" && b.role !== "owner") return -1;
-      if (b.role === "owner" && a.role !== "owner") return 1;
-      const nameA = a.full_name?.trim() || a.email?.trim() || "";
-      const nameB = b.full_name?.trim() || b.email?.trim() || "";
-      return nameA.localeCompare(nameB, "pt-BR");
-    });
-  }, [allProfiles]);
+    return allProfiles
+      .filter(
+        (profile) =>
+          !!ownerId &&
+          (profile.id === ownerId || profile.owner_id === ownerId),
+      )
+      .sort((a, b) => {
+        if (a.id === ownerId) return -1;
+        if (b.id === ownerId) return 1;
+        const nameA = a.full_name?.trim() || a.email?.trim() || "";
+        const nameB = b.full_name?.trim() || b.email?.trim() || "";
+        return nameA.localeCompare(nameB, "pt-BR");
+      });
+  }, [allProfiles, ownerId]);
 
   const handleRole = (profile: UserProfile, role: UserRole) => {
     if (!editing) return;
@@ -51,6 +63,16 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   ) => {
     if (!editing) return;
     void actions.updateAccess(profile, { permission, value }, update);
+  };
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove || !ownerId) return;
+    const removed = await actions.removeFromFarm(
+      memberToRemove,
+      ownerId,
+      update,
+    );
+    if (removed) setMemberToRemove(null);
   };
 
   return (
@@ -88,9 +110,55 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
         loading={loading}
         editing={editing}
         savingId={inviteData.savingId}
+        ownerId={user?.id}
         onChangeRole={handleRole}
         onChangePermission={handlePermission}
+        onRemoveMember={setMemberToRemove}
       />
+
+      <Dialog
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open && inviteData.savingId !== memberToRemove?.id) {
+            setMemberToRemove(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md rounded-2xl border border-border/60 bg-card p-6">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-primary">
+              Remover membro da fazenda?
+            </DialogTitle>
+            <DialogDescription>
+              {memberToRemove?.full_name || memberToRemove?.email || "Este membro"}{" "}
+              perderá o vínculo e as permissões desta fazenda. A conta continuará
+              existindo, mas sem acesso à equipe.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-row gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1"
+              disabled={inviteData.savingId === memberToRemove?.id}
+              onClick={() => setMemberToRemove(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              className="flex-1"
+              disabled={inviteData.savingId === memberToRemove?.id}
+              onClick={() => void handleRemoveMember()}
+            >
+              {inviteData.savingId === memberToRemove?.id
+                ? "Removendo..."
+                : "Remover membro"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <InviteMemberDialog
         open={inviteOpen}

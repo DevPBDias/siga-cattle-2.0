@@ -226,10 +226,90 @@ export function useInviteMember() {
     }
   };
 
+  const removeFromFarm = async (
+    profile: UserProfile,
+    ownerId: string,
+    onUpdate: (id: string, data: Partial<UserProfile>) => Promise<void>,
+  ): Promise<boolean> => {
+    if (
+      profile.role !== "member" ||
+      !ownerId ||
+      profile.owner_id !== ownerId
+    ) {
+      toast.error("Este membro não pertence à sua equipe.");
+      return false;
+    }
+
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      toast.error("Conecte-se à internet para remover o membro da fazenda.");
+      return false;
+    }
+
+    setSavingId(profile.id);
+    try {
+      const supabase = getSupabase();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || user?.id !== ownerId) {
+        throw new Error("Somente o administrador autenticado pode remover membros.");
+      }
+
+      const { data: ownerProfile, error: ownerError } = await supabase
+        .from("user_profiles")
+        .select("role")
+        .eq("id", ownerId)
+        .maybeSingle();
+
+      if (ownerError) throw ownerError;
+      if (ownerProfile?.role !== "owner") {
+        throw new Error("Apenas o administrador da fazenda pode remover membros.");
+      }
+
+      const permissions: UserPermissions = {};
+      const { data: removedProfile, error: removeError } = await supabase
+        .from("user_profiles")
+        .update({
+          owner_id: "",
+          permissions,
+          updated_at: Date.now(),
+        })
+        .eq("id", profile.id)
+        .eq("owner_id", ownerId)
+        .eq("role", "member")
+        .select("id")
+        .maybeSingle();
+
+      if (removeError) throw removeError;
+      if (!removedProfile) {
+        throw new Error("O membro não foi encontrado na equipe desta fazenda.");
+      }
+
+      await onUpdate(profile.id, {
+        owner_id: "",
+        permissions,
+      });
+
+      toast.success(`${profile.full_name || profile.email || "Membro"} removido da fazenda.`);
+      return true;
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Não foi possível remover o membro da fazenda.";
+      toast.error(message);
+      return false;
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   return {
     data: { credentials, savingId },
     loading,
     error,
-    actions: { invite, reset, previewPassword, updateAccess },
+    actions: { invite, reset, previewPassword, updateAccess, removeFromFarm },
   };
 }
