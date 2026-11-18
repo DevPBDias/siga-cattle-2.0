@@ -135,7 +135,7 @@ async function loadLegacyAnimalDocuments(): Promise<
     name: LEGACY_DB_NAME,
     storage: getStorage(),
     multiInstance: true,
-    ignoreDuplicate: true,
+    ignoreDuplicate: process.env.NODE_ENV === "development",
     eventReduce: true,
   });
 
