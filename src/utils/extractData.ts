@@ -482,6 +482,18 @@ export function parseMotherField(maeStr: unknown): {
   };
 }
 
+function extractBreedFromAbczMetadata(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+
+  const match = value
+    .trim()
+    .match(/RA[ÇC]A\s*:\s*(?:\d+\s*-\s*)?([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
+  const breed = match?.[1]?.trim();
+
+  if (!breed) return undefined;
+  return breed.charAt(0).toUpperCase() + breed.slice(1).toLowerCase();
+}
+
 /**
  * Extrai dados da planilha de Produtos Ativos (RelatorioProdutosAtivos da ABCZ).
  * Mapeia RG (Série e RGN), Nome, Sexo, Dt.Nasc., Pai, Mãe e Status ativo.
@@ -517,19 +529,8 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
         for (let r = 0; r < Math.min(25, rows.length); r++) {
           const row = rows[r] || [];
           for (const cell of row) {
-            if (!cell) continue;
-            const str = String(cell).trim();
-            // Identifica seção de Raça
-            if (
-              str.toUpperCase().includes("RAÇA:") ||
-              str.toUpperCase().includes("RACA:")
-            ) {
-              const match = str.match(/RA[ÇC]A:\s*\d*\s*-?\s*([A-Za-zÀ-ÖØ-öø-ÿ\s]+)/i);
-              if (match && match[1].trim()) {
-                const b = match[1].trim();
-                detectedBreed = b.charAt(0).toUpperCase() + b.slice(1).toLowerCase();
-              }
-            }
+            const breed = extractBreedFromAbczMetadata(cell);
+            if (breed) detectedBreed = breed;
           }
 
           // Identifica linha de cabeçalho: deve conter 'RG' e 'NOME' e ('SEXO' ou 'DT.NASC.')
@@ -605,7 +606,7 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
             document_situation: statusVal,
             status: statusVal || "-",
             animal_state: "ATIVO",
-            breed: (detectedBreed as any) || "Nelore",
+            breed: detectedBreed,
             farm_id: undefined,
           };
 
@@ -622,5 +623,4 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
     reader.readAsArrayBuffer(file);
   });
 }
-
 
