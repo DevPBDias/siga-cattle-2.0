@@ -29,6 +29,33 @@ export function cleanStringValue(value: unknown): string | undefined {
   return s;
 }
 
+export function sheetToRowsIncludingPopulatedCells(
+  sheet: XLSX.WorkSheet,
+): unknown[][] {
+  let range = sheet["!ref"]
+    ? XLSX.utils.decode_range(sheet["!ref"])
+    : undefined;
+
+  for (const address of Object.keys(sheet)) {
+    if (!/^[A-Z]+[1-9]\d*$/i.test(address)) continue;
+
+    const cell = XLSX.utils.decode_cell(address);
+    if (!range) {
+      range = { s: { ...cell }, e: { ...cell } };
+      continue;
+    }
+
+    range.s.r = Math.min(range.s.r, cell.r);
+    range.s.c = Math.min(range.s.c, cell.c);
+    range.e.r = Math.max(range.e.r, cell.r);
+    range.e.c = Math.max(range.e.c, cell.c);
+  }
+
+  if (range) sheet["!ref"] = XLSX.utils.encode_range(range);
+
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+}
+
 /**
  * Converte data de planilha para string ISO (YYYY-MM-DD)
  */
@@ -118,10 +145,7 @@ export async function extractDataFromExcel(file: File): Promise<Animal[]> {
 
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: "",
-        });
+        const rows = sheetToRowsIncludingPopulatedCells(sheet);
 
         if (rows.length < 2) {
           throw new Error("Planilha vazia ou com poucas linhas.");
@@ -513,10 +537,7 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
 
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rows: unknown[][] = XLSX.utils.sheet_to_json(sheet, {
-          header: 1,
-          defval: "",
-        });
+        const rows = sheetToRowsIncludingPopulatedCells(sheet);
 
         if (rows.length < 2) {
           throw new Error("Planilha vazia ou com poucas linhas.");
@@ -623,4 +644,3 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
     reader.readAsArrayBuffer(file);
   });
 }
-

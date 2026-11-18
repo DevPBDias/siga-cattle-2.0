@@ -1,6 +1,34 @@
 import * as XLSX from "xlsx";
 import { describe, expect, it } from "vitest";
-import { extractActiveProductsFromExcel } from "@/utils/extractData";
+import {
+  extractActiveProductsFromExcel,
+  sheetToRowsIncludingPopulatedCells,
+} from "@/utils/extractData";
+
+function createAbczRows(): unknown[][] {
+  const animals = Array.from({ length: 18 }, (_, index) => [
+    `GIRR ${55 + index}`,
+    `Animal ${index + 1}`,
+    index === 0 ? "F" : "M",
+    "02/09/2010",
+    "",
+    "",
+    "",
+    "RG D",
+  ]);
+
+  return [
+    ["ASSOCIAÇÃO BRASILEIRA DOS CRIADORES DE ZEBU"],
+    ["Criador: 57282", "", "", "", "Raça: 2 - GIR"],
+    ["Fazenda: HARAS FAZENDA LUMA"],
+    ["Órgão: ABCZ-SEDE"],
+    [],
+    [],
+    [],
+    ["RG", "Nome", "Sexo", "Dt.Nasc.", "Pai", "Mãe", "Receptora", "Status"],
+    ...animals,
+  ];
+}
 
 function createAbczWorkbookFile(rows: unknown[][]): File {
   const workbook = XLSX.utils.book_new();
@@ -14,19 +42,25 @@ function createAbczWorkbookFile(rows: unknown[][]): File {
 }
 
 describe("extractActiveProductsFromExcel", () => {
-  it("applies the race declared in the ABCZ header to every animal", async () => {
-    const file = createAbczWorkbookFile([
-      ["ASSOCIAÇÃO BRASILEIRA DOS CRIADORES DE ZEBU"],
-      ["Criador: 57282", "", "", "", "Raça: 2 - GIR"],
-      ["RG", "Nome", "Sexo", "Dt.Nasc.", "Pai", "Mãe", "Receptora", "Status"],
-      ["GIRR 55", "Animal 1", "F", "02/09/2010", "", "", "", "RG D"],
-      ["GIRR 56", "Animal 2", "M", "03/09/2011", "", "", "", "RG D"],
-    ]);
+  it("includes populated cells beyond a stale worksheet range", () => {
+    const sheet = XLSX.utils.aoa_to_sheet(createAbczRows());
+    sheet["!ref"] = "A1:H9";
+
+    const rows = sheetToRowsIncludingPopulatedCells(sheet);
+
+    expect(rows).toHaveLength(26);
+    expect(rows[25][0]).toBe("GIRR 72");
+  });
+
+  it("extracts all 18 animals and applies the ABCZ race to every animal", async () => {
+    const file = createAbczWorkbookFile(createAbczRows());
 
     const animals = await extractActiveProductsFromExcel(file);
 
-    expect(animals).toHaveLength(2);
-    expect(animals.map((animal) => animal.rgn)).toEqual(["55", "56"]);
-    expect(animals.map((animal) => animal.breed)).toEqual(["Gir", "Gir"]);
+    expect(animals).toHaveLength(18);
+    expect(animals.map((animal) => animal.rgn)).toEqual(
+      Array.from({ length: 18 }, (_, index) => String(55 + index)),
+    );
+    expect(animals.every((animal) => animal.breed === "Gir")).toBe(true);
   });
 });
