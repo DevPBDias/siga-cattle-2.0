@@ -17,6 +17,7 @@ export const movementReplication = createReplication<Movement>({
     date: doc.date,
     event_date: doc.event_date ?? doc.date,
     animal_id: doc.animal_id,
+    animal_key: doc.animal_key ?? null,
     details_id: doc.details_id,
     created_by: doc.created_by ?? null,
     created_at: doc.created_at,

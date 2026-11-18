@@ -156,7 +156,8 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
 
     try {
       // Localizar a mãe para herdar fazenda e atualizar status
-      const mother = animals.find((a) => a.rgn === formData.mae);
+      const motherMatches = animals.filter((a) => a.rgn === formData.mae);
+      const mother = motherMatches.length === 1 ? motherMatches[0] : undefined;
 
       // Gerar RGN temporário se estiver em branco: N<RGN da mãe>
       let finalRgn = formData.rgn;
@@ -181,12 +182,13 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       };
 
       // 1. Criar o animal na tabela de animais
-      await createAnimal(newAnimal);
+      const createdAnimal = await createAnimal(newAnimal);
 
       // 2. Criar a movimentação do tipo 'nascimento' com created_by do usuário
       await createMovement({
         type: "nascimento",
         animal_id: finalRgn,
+        animal_key: createdAnimal.animal_key,
         date: formData.data,
         event_date: formData.data,
         details: {},
@@ -200,18 +202,19 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       if (weightValue !== null && !isNaN(weightValue) && weightValue > 0) {
         await createWeight({
           rgn: finalRgn,
+          animal_key: createdAnimal.animal_key,
           value: weightValue,
           born_metric: true,
           date: formData.data,
-        } as any);
+        });
       }
 
       // 4. Atualizar mãe se ela existir no rebanho
       if (mother) {
-        await updateAnimal(mother.rgn, {
+        await updateAnimal(mother.animal_key || mother.rgn, {
           condition: "Parida",
           parturition_from: {
-            baby_sex: (formData.sexo === "Macho" ? "M" : "F") as any,
+            baby_sex: formData.sexo === "Macho" ? "M" : "F",
             baby_rgn: finalRgn,
           },
           updated_at: timestamp,
@@ -245,9 +248,13 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       toast.success("Nascimento registrado com sucesso!");
       setShowSuccess(true);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao cadastrar nascimento:", error);
-      setErrorMessage(error?.message || "Ocorreu um erro ao salvar os dados.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao salvar os dados.",
+      );
       toast.error("Erro ao registrar nascimento.");
     } finally {
       setIsSubmitting(false);

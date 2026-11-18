@@ -1,7 +1,8 @@
 import { RxJsonSchema } from "rxdb";
+import { Movement } from "@/types/movement.type";
 
-export const movementSchema: RxJsonSchema<any> = {
-  version: 1,
+export const movementSchema: RxJsonSchema<Movement> = {
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -22,6 +23,9 @@ export const movementSchema: RxJsonSchema<any> = {
       maxLength: 50,
     },
     animal_id: {
+      type: "string",
+    },
+    animal_key: {
       type: "string",
     },
     details_id: {

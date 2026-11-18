@@ -3,11 +3,12 @@ import { RxJsonSchema } from "rxdb";
 
 export const reproductionEventSchema: RxJsonSchema<ReproductionEvent> = {
   title: "reproduction schema",
-  version: 1,
+  version: 2,
   primaryKey: "event_id",
   type: "object",
   properties: {
     event_id: { type: "string", maxLength: 36 },
+    animal_key: { type: "string" },
     rgn: { type: "string", maxLength: 10 },
     event_type: { type: "string", maxLength: 10 },
     productive_status: { type: "string", maxLength: 20 },

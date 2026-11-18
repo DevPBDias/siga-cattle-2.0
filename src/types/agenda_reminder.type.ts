@@ -8,6 +8,7 @@ export interface AgendaReminder {
   id: string;
   type: AgendaReminderType;
   scheduled_date: string;
+  animal_key?: string;
   rgn?: string;
   notes?: string;
   created_at: number;

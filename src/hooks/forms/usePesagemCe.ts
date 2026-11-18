@@ -11,6 +11,7 @@ import { useAnimalCE } from "@/hooks/db/animal_ce/useAnimalCE";
 import { useCreateAnimalCE } from "@/hooks/db/animal_ce/useCreateAnimalCE";
 import { useUpdateAnimalCE } from "@/hooks/db/animal_ce/useUpdateAnimalCE";
 import { useDeleteAnimalCE } from "@/hooks/db/animal_ce/useDeleteAnimalCE";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export function usePesagemCe() {
   const { data: animals = [] } = useAnimals();
@@ -22,15 +23,23 @@ export function usePesagemCe() {
 
   const selectedAnimal = useMemo(() => {
     if (!rgn) return null;
-    return animals.find((d) => d.rgn?.toLowerCase() === rgn.toLowerCase()) ?? null;
+    const exactKey = animals.find((animal) => animal.animal_key === rgn);
+    if (exactKey) return exactKey;
+    const matches = animals.filter(
+      (animal) => animal.rgn?.toLowerCase() === rgn.toLowerCase(),
+    );
+    return matches.length === 1 ? matches[0] : null;
   }, [rgn, animals]);
 
-  const { data: pesosMedidos = [], loading: loadingWeights } = useAnimalWeights(selectedAnimal?.rgn);
+  const selectedAnimalKey = selectedAnimal
+    ? getAnimalKeyFromReference(selectedAnimal)
+    : undefined;
+  const { data: pesosMedidos = [], loading: loadingWeights } = useAnimalWeights(undefined, selectedAnimalKey);
   const { actions: { createAnimalWeight: createWeight } } = useCreateAnimalWeight();
   const { actions: { updateAnimalWeight: updateWeight } } = useUpdateAnimalWeight();
   const { actions: { deleteAnimalWeight: deleteWeight } } = useDeleteAnimalWeight();
 
-  const { data: circunferenciaEscrotal = [], loading: loadingCE } = useAnimalCE(selectedAnimal?.rgn);
+  const { data: circunferenciaEscrotal = [], loading: loadingCE } = useAnimalCE(undefined, selectedAnimalKey);
   const { actions: { createAnimalCE: createCE } } = useCreateAnimalCE();
   const { actions: { updateAnimalCE: updateCE } } = useUpdateAnimalCE();
   const { actions: { deleteAnimalCE: deleteCE } } = useDeleteAnimalCE();
@@ -38,7 +47,10 @@ export function usePesagemCe() {
   const rgnOptions = useMemo(
     () =>
       animals
-        .map((animal) => ({ label: animal.rgn || "", value: animal.rgn || "" }))
+        .map((animal) => ({
+          label: `${animal.serie_rgd} ${animal.rgn}`,
+          value: getAnimalKeyFromReference(animal),
+        }))
         .filter((option) => option.value),
     [animals],
   );
@@ -53,7 +65,7 @@ export function usePesagemCe() {
     setError(null);
     if (!selectedAnimal?.rgn) return fail("Selecione um animal");
     try {
-      await createWeight({ rgn: selectedAnimal.rgn, date, value: valor, born_metric: isBorn });
+      await createWeight({ rgn: selectedAnimal.rgn, animal_key: selectedAnimalKey, date, value: valor, born_metric: isBorn });
       setIsBorn(false);
       setSuccessModal({ open: true, title: "Peso registrado!" });
     } catch (err) {
@@ -65,7 +77,7 @@ export function usePesagemCe() {
     setError(null);
     if (!selectedAnimal?.rgn) return fail("Selecione um animal");
     try {
-      await createCE({ rgn: selectedAnimal.rgn, date, value: valor, born_metric: isBorn });
+      await createCE({ rgn: selectedAnimal.rgn, animal_key: selectedAnimalKey, date, value: valor, born_metric: isBorn });
       setIsBorn(false);
       setSuccessModal({ open: true, title: "CE registrada!" });
     } catch (err) {

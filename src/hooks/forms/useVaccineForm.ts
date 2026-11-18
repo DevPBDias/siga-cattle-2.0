@@ -11,6 +11,7 @@ import { useAnimalVaccines } from "@/hooks/db/animal_vaccines/useAnimalVaccines"
 import { compareDates, todayISO } from "@/utils/dates";
 import { toast } from "sonner";
 import { VaccineHistoryEntry } from "@/types/vaccine.type";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export function useVaccineForm() {
   const router = useRouter();
@@ -35,7 +36,10 @@ export function useVaccineForm() {
   });
 
   const { data: animalVaccines = [], loading: loadingAnimalVaccines } =
-    useAnimalVaccines(!multipleAnimals ? formData.rgn || undefined : undefined);
+    useAnimalVaccines(
+      undefined,
+      !multipleAnimals ? formData.rgn || undefined : undefined,
+    );
 
   const existingVaccinesWithNames = useMemo<VaccineHistoryEntry[]>(() => {
     if (!animalVaccines || animalVaccines.length === 0) return [];
@@ -59,7 +63,10 @@ export function useVaccineForm() {
   const rgnOptions = useMemo(
     () =>
       animals
-        .map((animal) => ({ label: animal.rgn || "", value: animal.rgn || "" }))
+        .map((animal) => ({
+          label: `${animal.serie_rgd} ${animal.rgn}`,
+          value: getAnimalKeyFromReference(animal),
+        }))
         .filter((option) => option.value),
     [animals],
   );
@@ -79,19 +86,26 @@ export function useVaccineForm() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const targetRgns = multipleAnimals
+      const targetAnimalKeys = multipleAnimals
         ? formData.rgn.split(/[\n,;]+/).map((r) => r.trim()).filter(Boolean)
         : [formData.rgn.trim()];
 
-      for (const rgnItem of targetRgns) {
-        const animal = animals.find((a) => a.rgn?.toLowerCase() === rgnItem.toLowerCase());
+      for (const animalKey of targetAnimalKeys) {
+        const animal = animals.find((item) =>
+          getAnimalKeyFromReference(item) === animalKey,
+        );
         if (animal) {
           for (const vacinaNome of formData.vacinas) {
             const vaccine = vaccines.find(
               (v) => v.vaccine_name.toLowerCase() === vacinaNome.toLowerCase(),
             );
             if (vaccine) {
-              await createAnimalVaccine({ rgn: animal.rgn, vaccine_id: vaccine.id, date: formData.data });
+              await createAnimalVaccine({
+                rgn: animal.rgn,
+                animal_key: getAnimalKeyFromReference(animal),
+                vaccine_id: vaccine.id,
+                date: formData.data,
+              });
             }
           }
         }

@@ -77,7 +77,7 @@ const ManageSituationContent = ({
     setError(null);
 
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         document_situation:
           selectedSituationNames.length > 0
             ? selectedSituationNames.join(" / ")

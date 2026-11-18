@@ -468,7 +468,7 @@ export function MyBullsTab() {
     setError(null);
 
     try {
-      await updateAnimal(animal.rgn, { is_natural_bull: selected });
+      await updateAnimal(animal.animal_key || animal.rgn, { is_natural_bull: selected });
       if (selected) {
         setSearch("");
         toast.success(`Touro ${getBullName(animal)} adicionado a Meus touros!`);

@@ -1,6 +1,6 @@
 "use client";
 
-import { createRxDatabase, addRxPlugin, RxStorage } from "rxdb";
+import { createRxDatabase, addRxPlugin, RxJsonSchema, RxStorage } from "rxdb";
 import { getRxStorageDexie } from "rxdb/plugins/storage-dexie";
 import { RxDBUpdatePlugin } from "rxdb/plugins/update";
 import { RxDBQueryBuilderPlugin } from "rxdb/plugins/query-builder";
@@ -27,6 +27,8 @@ import { saleSchema } from "./schemas/sale.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
 import { setupReplication } from "./replication";
+import { getAnimalKey, normalizeAnimalRegistration } from "@/utils/animalIdentity";
+import { v4 as uuidv4 } from "uuid";
 
 addRxPlugin(RxDBUpdatePlugin);
 addRxPlugin(RxDBQueryBuilderPlugin);
@@ -50,8 +52,254 @@ async function loadDevModePlugin(): Promise<void> {
   }
 }
 
-const DB_VERSION = "v1";
+const DB_VERSION = "v2";
 const DB_NAME = `indi_ouro_db_${DB_VERSION}`;
+const LEGACY_DB_NAME = "indi_ouro_db_v1";
+
+const LEGACY_COLLECTIONS = [
+  "animals",
+  "vaccines",
+  "farms",
+  "user_profiles",
+  "animal_metrics_ce",
+  "animal_metrics_weight",
+  "animal_vaccines",
+  "reproduction_events",
+  "animal_statuses",
+  "animal_situations",
+  "semen_doses",
+  "clients",
+  "movements",
+  "sales",
+  "deaths",
+  "exchanges",
+] as const;
+
+function legacySchema<T>(
+  schema: RxJsonSchema<T>,
+  version: number,
+  removedProperties: string[] = [],
+): RxJsonSchema<T> {
+  const result = JSON.parse(JSON.stringify(schema)) as RxJsonSchema<T>;
+  result.version = version;
+  for (const property of removedProperties) {
+    Reflect.deleteProperty(result.properties, property);
+    if (result.required) {
+      result.required = result.required.filter((required) => required !== property);
+    }
+  }
+  return result;
+}
+
+const animalMigrationStrategies = {
+  1: (oldDocument: Record<string, unknown>) => ({
+    ...oldDocument,
+    is_natural_bull: oldDocument.is_natural_bull === true,
+  }),
+  2: (oldDocument: Record<string, unknown>) => oldDocument,
+  3: (oldDocument: Record<string, unknown>) => oldDocument,
+  4: (oldDocument: Record<string, unknown>) => ({
+    ...oldDocument,
+    breed: (oldDocument.breed as string) || "Nelore",
+  }),
+  5: (oldDocument: Record<string, unknown>) => ({
+    ...oldDocument,
+    animal_image: oldDocument.animal_image ?? undefined,
+  }),
+  6: (oldDocument: Record<string, unknown>) => ({
+    ...oldDocument,
+    animal_key: getAnimalKey({
+      serie_rgd: String(oldDocument.serie_rgd ?? ""),
+      rgn: String(oldDocument.rgn ?? ""),
+    }),
+    id: oldDocument.id ?? uuidv4(),
+  }),
+};
+
+const legacyAnimalMigrationStrategies = {
+  1: animalMigrationStrategies[1],
+  2: animalMigrationStrategies[2],
+  3: animalMigrationStrategies[3],
+  4: animalMigrationStrategies[4],
+  5: animalMigrationStrategies[5],
+};
+
+async function loadLegacyAnimalDocuments(): Promise<
+  Map<string, Record<string, unknown>[]> | null
+> {
+  if (typeof indexedDB === "undefined") return null;
+  const migrationKey = "animal_identity_v2_migrated";
+  if (localStorage.getItem(migrationKey) === "true") return null;
+
+  const legacyDb = await createRxDatabase<MyDatabaseCollections>({
+    name: LEGACY_DB_NAME,
+    storage: getStorage(),
+    multiInstance: true,
+    ignoreDuplicate: true,
+    eventReduce: true,
+  });
+
+  try {
+    const oldAnimalSchema = legacySchema(animalSchema, 5, ["animal_key", "id"]);
+    oldAnimalSchema.primaryKey = "rgn";
+    delete oldAnimalSchema.indexes;
+
+    await legacyDb.addCollections({
+      animals: {
+        schema: oldAnimalSchema,
+        migrationStrategies: legacyAnimalMigrationStrategies,
+      },
+      vaccines: { schema: vaccineSchema },
+      farms: { schema: farmSchema },
+      user_profiles: {
+        schema: userProfileSchema,
+        migrationStrategies: {
+          1: (oldDocument: Record<string, unknown>) => ({
+            ...oldDocument,
+            role: oldDocument.role ?? "owner",
+            permissions: oldDocument.permissions ?? {},
+          }),
+        },
+      },
+      animal_metrics_ce: {
+        schema: legacySchema(animalMetricCESchema, 0, ["animal_key"]),
+      },
+      animal_metrics_weight: {
+        schema: legacySchema(animalMetricWeightSchema, 0, ["animal_key"]),
+      },
+      animal_vaccines: {
+        schema: legacySchema(animalVaccineSchema, 0, ["animal_key"]),
+      },
+      reproduction_events: {
+        schema: legacySchema(reproductionEventSchema, 1, ["animal_key"]),
+        migrationStrategies: {
+          1: (oldDoc: Record<string, unknown>) => ({
+            ...oldDoc,
+            d11_date: oldDoc.d11_date ?? undefined,
+          }),
+        },
+      },
+      animal_statuses: { schema: animalStatusSchema },
+      animal_situations: { schema: animalSituationSchema },
+      semen_doses: { schema: semenDoseSchema },
+      clients: { schema: clientSchema },
+      movements: {
+        schema: legacySchema(movementSchema, 1, ["animal_key"]),
+        migrationStrategies: {
+          1: (oldDocument: Record<string, unknown>) => ({
+            ...oldDocument,
+            event_date: oldDocument.event_date ?? oldDocument.date,
+          }),
+        },
+      },
+      sales: { schema: legacySchema(saleSchema, 0, ["animal_key"]) },
+      deaths: {
+        schema: legacySchema(deathSchema, 1, ["animal_key"]),
+        migrationStrategies: {
+          1: (oldDocument: Record<string, unknown>) => ({
+            ...oldDocument,
+            photos: Array.isArray(oldDocument.photos) ? oldDocument.photos : [],
+            photo_paths: Array.isArray(oldDocument.photo_paths)
+              ? oldDocument.photo_paths
+              : [],
+          }),
+        },
+      },
+      exchanges: {
+        schema: legacySchema(exchangeSchema, 0, [
+          "animal_key",
+          "traded_animal_key",
+          "substitute_animal_key",
+        ]),
+      },
+    } as any);
+
+    const legacyDocuments = new Map<string, Record<string, unknown>[]>();
+    for (const collectionName of LEGACY_COLLECTIONS) {
+      const collection = (legacyDb as any)[collectionName];
+      const documents = await collection.find().exec();
+      legacyDocuments.set(
+        collectionName,
+        documents.map((document: { toJSON: () => Record<string, unknown> }) =>
+          document.toJSON(),
+        ),
+      );
+    }
+
+    const animals = legacyDocuments.get("animals") ?? [];
+    const animalsByRgn = new Map<string, Record<string, unknown>[]>();
+    for (const animal of animals) {
+      const registration = getAnimalKey({
+        serie_rgd: String(animal.serie_rgd ?? ""),
+        rgn: String(animal.rgn ?? ""),
+      });
+      animal.animal_key = registration;
+
+      const normalizedRgn = normalizeAnimalRegistration(String(animal.rgn ?? ""));
+      const matchingAnimals = animalsByRgn.get(normalizedRgn) ?? [];
+      matchingAnimals.push(animal);
+      animalsByRgn.set(normalizedRgn, matchingAnimals);
+    }
+
+    for (const collectionName of LEGACY_COLLECTIONS) {
+      if (collectionName === "animals") continue;
+      const documents = legacyDocuments.get(collectionName) ?? [];
+      for (const document of documents) {
+        const linkedFields =
+          collectionName === "exchanges"
+            ? [
+                ["animal_rgn", "animal_key"],
+                ["traded_animal_rgn", "traded_animal_key"],
+                ["substitute_animal_rgn", "substitute_animal_key"],
+              ]
+            : [
+                [
+                  collectionName === "movements"
+                    ? "animal_id"
+                    : collectionName === "deaths" || collectionName === "sales"
+                      ? "animal_rgn"
+                      : "rgn",
+                  collectionName === "movements" ? "animal_key" : "animal_key",
+                ],
+              ];
+
+        for (const [rgnField, keyField] of linkedFields) {
+          if (typeof document[keyField] === "string" && document[keyField]) continue;
+          const rgn = document[rgnField];
+          if (typeof rgn !== "string") continue;
+          const matchingAnimals = animalsByRgn.get(normalizeAnimalRegistration(rgn));
+          if (matchingAnimals?.length === 1) {
+            document[keyField] = matchingAnimals[0].animal_key;
+          }
+        }
+      }
+    }
+
+    return legacyDocuments;
+  } finally {
+    await legacyDb.close();
+  }
+}
+
+async function migrateLegacyAnimalDatabase(
+  targetDb: MyDatabase,
+  legacyDocuments: Map<string, Record<string, unknown>[]> | null,
+): Promise<void> {
+  if (!legacyDocuments) return;
+
+  for (const collectionName of LEGACY_COLLECTIONS) {
+    const collection = (targetDb as any)[collectionName];
+    const documents = legacyDocuments.get(collectionName) ?? [];
+    for (let offset = 0; offset < documents.length; offset += 100) {
+      await Promise.all(
+        documents.slice(offset, offset + 100).map((document) =>
+          collection.upsert(document),
+        ),
+      );
+    }
+  }
+  localStorage.setItem("animal_identity_v2_migrated", "true");
+}
 
 let storageInstance: RxStorage<any, any> | null = null;
 
@@ -73,6 +321,9 @@ let dbPromise: Promise<MyDatabase> | null = null;
 async function createDatabase(): Promise<MyDatabase> {
   await loadDevModePlugin();
 
+  // The legacy and current databases each contain 16 collections; read and
+  // close the legacy database before opening the current one.
+  const legacyDocuments = await loadLegacyAnimalDocuments();
   const storage = getStorage();
 
   try {
@@ -106,6 +357,7 @@ async function createDatabase(): Promise<MyDatabase> {
         });
         console.log("[RxDB] user_profiles migrated to v1 in existing database");
       }
+      await migrateLegacyAnimalDatabase(db, legacyDocuments);
       console.log(
         `[RxDB] Database already has ${collectionsCount} collections, skipping addCollections`,
       );
@@ -130,20 +382,7 @@ async function createDatabase(): Promise<MyDatabase> {
           schema: animalSchema,
           conflictHandler: customConflictHandler,
           migrationStrategies: {
-            1: (oldDocument: Record<string, unknown>) => ({
-              ...oldDocument,
-              is_natural_bull: oldDocument.is_natural_bull === true,
-            }),
-            2: (oldDocument: Record<string, unknown>) => oldDocument,
-            3: (oldDocument: Record<string, unknown>) => oldDocument,
-            4: (oldDocument: Record<string, unknown>) => ({
-              ...oldDocument,
-              breed: (oldDocument.breed as string) || "Nelore",
-            }),
-            5: (oldDocument: Record<string, unknown>) => ({
-              ...oldDocument,
-              animal_image: oldDocument.animal_image ?? undefined,
-            }),
+            ...animalMigrationStrategies,
           },
         },
         vaccines: {
@@ -165,14 +404,23 @@ async function createDatabase(): Promise<MyDatabase> {
         animal_metrics_ce: {
           schema: animalMetricCESchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => oldDocument,
+          },
         },
         animal_metrics_weight: {
           schema: animalMetricWeightSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => oldDocument,
+          },
         },
         animal_vaccines: {
           schema: animalVaccineSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => oldDocument,
+          },
         },
         reproduction_events: {
           schema: reproductionEventSchema,
@@ -181,6 +429,7 @@ async function createDatabase(): Promise<MyDatabase> {
             1: (oldDoc) => {
               return { ...oldDoc, d11_date: oldDoc.d11_date ?? undefined };
             },
+            2: (oldDoc) => oldDoc,
           },
         },
         animal_statuses: {
@@ -207,11 +456,15 @@ async function createDatabase(): Promise<MyDatabase> {
               ...oldDocument,
               event_date: oldDocument.event_date ?? oldDocument.date,
             }),
+            2: (oldDocument: Record<string, unknown>) => oldDocument,
           },
         },
         sales: {
           schema: saleSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => oldDocument,
+          },
         },
         deaths: {
           schema: deathSchema,
@@ -224,11 +477,15 @@ async function createDatabase(): Promise<MyDatabase> {
                 ? oldDocument.photo_paths
                 : [],
             }),
+            2: (oldDocument: Record<string, unknown>) => oldDocument,
           },
         },
         exchanges: {
           schema: exchangeSchema,
           conflictHandler: customConflictHandler,
+          migrationStrategies: {
+            1: (oldDocument: Record<string, unknown>) => oldDocument,
+          },
         },
       });
     } catch (err: any) {
@@ -251,6 +508,7 @@ async function createDatabase(): Promise<MyDatabase> {
       throw err;
     }
 
+    await migrateLegacyAnimalDatabase(db, legacyDocuments);
     return db;
   } catch (err) {
     console.error("[RxDB] Error creating database:", err);

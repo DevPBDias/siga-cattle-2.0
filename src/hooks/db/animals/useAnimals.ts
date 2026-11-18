@@ -15,7 +15,7 @@ export function useAnimals() {
       selector: {
         _deleted: { $eq: false },
       },
-      sort: [{ rgn: "asc" } as any], // Cast necessário para compatibilidade com MangoQuery do RxDB
+      sort: [{ serie_rgd: "asc", rgn: "asc" }],
     }),
     []
   );

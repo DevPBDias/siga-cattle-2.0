@@ -9,10 +9,20 @@ import { REMINDER_TYPE_LABEL } from "./agenda.config";
 
 function animalLabel(
   rgn: string,
-  names: Map<string, string>,
-  identifiers: Map<string, string>,
+  animalKey: string | undefined,
+  animalsByKey: Map<string, Animal>,
+  animalsByRgn: Map<string, Animal[]>,
 ) {
-  return identifiers.get(rgn) || names.get(rgn) || rgn;
+  const keyedAnimal = animalKey ? animalsByKey.get(animalKey) : undefined;
+  if (keyedAnimal) {
+    return `${keyedAnimal.serie_rgd || "INDI"} ${keyedAnimal.rgn}`;
+  }
+  const matchingAnimals = animalsByRgn.get(rgn) ?? [];
+  if (matchingAnimals.length === 1) {
+    const animal = matchingAnimals[0];
+    return `${animal.serie_rgd || "INDI"} ${animal.rgn}`;
+  }
+  return matchingAnimals.length > 1 ? `${rgn} (RGN duplicado)` : rgn;
 }
 
 export function buildHerdAgenda(input: {
@@ -23,10 +33,15 @@ export function buildHerdAgenda(input: {
   movements: Movement[];
   reminders: AgendaReminder[];
 }): AgendaItem[] {
-  const names = new Map(input.animals.map((a) => [a.rgn, a.name || a.rgn]));
-  const identifiers = new Map(
-    input.animals.map((a) => [a.rgn, `${a.serie_rgd || "INDI"} ${a.rgn}`]),
+  const animalsByKey = new Map(
+    input.animals.map((animal) => [animal.animal_key || "", animal]),
   );
+  const animalsByRgn = new Map<string, Animal[]>();
+  input.animals.forEach((animal) => {
+    const matches = animalsByRgn.get(animal.rgn) ?? [];
+    matches.push(animal);
+    animalsByRgn.set(animal.rgn, matches);
+  });
   const vaccineNames = new Map(input.vaccines.map((v) => [v.id, v.vaccine_name]));
   const items: AgendaItem[] = [];
 
@@ -40,7 +55,9 @@ export function buildHerdAgenda(input: {
       type: "lembrete",
       title: REMINDER_TYPE_LABEL[reminder.type] || "Lembrete",
       subtitle: [
-        rgn ? `Animal ${animalLabel(rgn, names, identifiers)}` : "Rebanho",
+        rgn
+          ? `Animal ${animalLabel(rgn, reminder.animal_key, animalsByKey, animalsByRgn)}`
+          : "Rebanho",
         reminder.notes,
       ]
         .filter(Boolean)
@@ -58,14 +75,14 @@ export function buildHerdAgenda(input: {
       date,
       type: "vacina",
       title: vaccineNames.get(record.vaccine_id) || "Vacina registrada",
-      subtitle: `Animal ${animalLabel(record.rgn, names, identifiers)}`,
+      subtitle: `Animal ${animalLabel(record.rgn, record.animal_key, animalsByKey, animalsByRgn)}`,
       rgn: record.rgn,
       source: "vaccine",
     });
   });
 
   input.reproductionEvents.forEach((event) => {
-    const animal = animalLabel(event.rgn, names, identifiers);
+    const animal = animalLabel(event.rgn, event.animal_key, animalsByKey, animalsByRgn);
     const stages = [
       { date: event.d0_date, label: "Início do protocolo (D0)", bull: event.bull_name },
       { date: event.d10_date, label: "Inseminação", bull: event.bull_name },
@@ -112,7 +129,7 @@ export function buildHerdAgenda(input: {
       date,
       type: "nascimento",
       title: "Nascimento registrado",
-      subtitle: `Animal ${animalLabel(rgn, names, identifiers)}`,
+      subtitle: `Animal ${animalLabel(rgn, movement.animal_key, animalsByKey, animalsByRgn)}`,
       rgn,
       source: "birth",
     });

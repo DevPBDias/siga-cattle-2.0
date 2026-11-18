@@ -44,6 +44,7 @@ export default function ReproducaoPage() {
           isOpen={actions.isCreateModalOpen}
           onClose={() => actions.setIsCreateModalOpen(false)}
           rgn={data.selectedMatriz.rgn}
+          animalKey={data.selectedMatriz.animal_key || ""}
         />
       )}
 

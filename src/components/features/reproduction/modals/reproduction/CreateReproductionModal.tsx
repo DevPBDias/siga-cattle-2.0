@@ -19,6 +19,7 @@ interface CreateReproductionModalProps {
   isOpen: boolean;
   onClose: () => void;
   rgn: string;
+  animalKey: string;
   onSuccess?: () => void;
 }
 
@@ -26,6 +27,7 @@ export function CreateReproductionModal({
   isOpen,
   onClose,
   rgn,
+  animalKey,
   onSuccess,
 }: CreateReproductionModalProps) {
   const {
@@ -41,8 +43,12 @@ export function CreateReproductionModal({
     try {
       // 1. Criar o evento
       await createEvent({
-        ...(data as any),
+        ...(data as Omit<
+          ReproductionEvent,
+          "event_id" | "updated_at" | "_deleted" | "created_at"
+        >),
         rgn,
+        animal_key: animalKey,
       });
 
       // 2. Subtrair doses do estoque (Touro D0 e Resync)
@@ -103,7 +109,7 @@ export function CreateReproductionModal({
           onSubmit={handleSubmit}
           isLoading={isLoading}
           onCancel={onClose}
-          initialData={{ rgn }}
+          initialData={{ rgn, animal_key: animalKey }}
         />
       </DialogContent>
     </Dialog>

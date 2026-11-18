@@ -1,5 +1,6 @@
 export interface Sale {
   id: string;
+  animal_key?: string;
   animal_rgn: string;
   client_id: string;
   date: string;

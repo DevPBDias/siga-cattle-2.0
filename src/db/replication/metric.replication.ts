@@ -11,6 +11,7 @@ export const animalMetricWeightReplication = createReplication<AnimalMetric>({
   replicationIdentifier: "animal-metrics-weight-replication-v13",
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     born_metric: doc.born_metric ?? false,
     date: doc.date,
@@ -44,6 +45,7 @@ export const animalMetricCEReplication = createReplication<AnimalMetric>({
   replicationIdentifier: "animal-metrics-ce-replication-v13",
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     born_metric: doc.born_metric ?? false,
     date: doc.date,

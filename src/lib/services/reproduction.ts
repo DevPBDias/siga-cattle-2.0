@@ -10,6 +10,7 @@ import {
   ReproductionEvent,
 } from "@/types/reproduction_event.type";
 import { DateOnly } from "@/utils/dates";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 import { v4 as uuidv4 } from "uuid";
 
 export interface BulkReproductionPayload {
@@ -93,6 +94,7 @@ function calculateCalvingDates(
 function mapToSupabaseRow(event: ReproductionEvent) {
   return cleanSupabaseDocument({
     event_id: event.event_id,
+    animal_key: event.animal_key ?? null,
     rgn: event.rgn,
     event_type: event.event_type,
     productive_status: event.productive_status ?? null,
@@ -151,6 +153,7 @@ export async function createBulkReproductionEvents(
 
   const newEvents: ReproductionEvent[] = cows.map((cow) => ({
     event_id: uuidv4(),
+    animal_key: getAnimalKeyFromReference(cow),
     rgn: cow.rgn,
     event_type: payload.event_type,
     protocol_name: protocolName,
@@ -164,7 +167,7 @@ export async function createBulkReproductionEvents(
   }));
 
   try {
-    await db.reproduction_events.bulkInsert(newEvents as any);
+    await db.reproduction_events.bulkInsert(newEvents);
   } catch (error) {
     return {
       insertedEvents: [],
@@ -212,7 +215,7 @@ export async function syncReproductionEventsByIds(
   );
 
   const events = docs
-    .filter((doc): doc is any => !!doc)
+    .filter((doc): doc is NonNullable<typeof doc> => !!doc)
     .map((doc) => doc.toJSON() as ReproductionEvent)
     .filter((event) => event._deleted === false);
 

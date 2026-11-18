@@ -17,6 +17,7 @@ export type PregnancyOrigin = "d10" | "resync" | "natural_mating";
 export interface ReproductionEvent {
   /** Identification */
   event_id: string; // UUID
+  animal_key?: string;
   rgn: string;
 
   /** Type and Status */

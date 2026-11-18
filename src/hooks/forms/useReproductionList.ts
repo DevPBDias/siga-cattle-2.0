@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useMatrizes } from "@/hooks/matrizes/useMatrizes";
 import { useReproductionEvents } from "@/hooks/db/reproduction_event/useReproductionEvents";
 import { ReproductionEvent } from "@/types/reproduction_event.type";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export function useReproductionList() {
   const { matrizes, isLoading: matrizesLoading } = useMatrizes();
@@ -16,22 +17,27 @@ export function useReproductionList() {
 
   const selectedMatriz = useMemo(() => {
     if (!selectedRgn) return null;
-    return matrizes.find((m) => m.rgn?.toLowerCase() === selectedRgn.toLowerCase()) || null;
+    return matrizes.find(
+      (matriz) => getAnimalKeyFromReference(matriz) === selectedRgn,
+    ) || null;
   }, [selectedRgn, matrizes]);
 
   const rgnOptions = useMemo(
     () =>
       matrizes
         .map((matriz) => ({
-          label: matriz.name ? `${matriz.rgn} - ${matriz.name}` : matriz.rgn || "",
-          value: matriz.rgn || "",
+          label: `${matriz.serie_rgd} ${matriz.rgn}${matriz.name ? ` - ${matriz.name}` : ""}`,
+          value: getAnimalKeyFromReference(matriz),
         }))
         .filter((option) => option.value),
     [matrizes],
   );
 
   const { data: reproductionEvents = [], loading: eventsLoading } =
-    useReproductionEvents(selectedMatriz?.rgn);
+    useReproductionEvents(
+      undefined,
+      selectedMatriz ? getAnimalKeyFromReference(selectedMatriz) : undefined,
+    );
 
   const handleEditEvent = (event: ReproductionEvent) => {
     setEventToEdit(event);

@@ -10,12 +10,13 @@ import { SkeletonSearchAnimal } from "@/components/ui/skeletons/SkeletonSearchAn
 import ShortHeader from "@/components/layout/ShortHeader";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { SelectedEntityCard } from "@/components/shared/SelectedEntityCard";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export default function SearchAnimal() {
   const { canAccess } = useUserAccess();
   const { data: animals, loading: isLoading } = useAnimals();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRgn, setSelectedRgn] = useState<string | null>(null);
+  const [selectedAnimalKey, setSelectedAnimalKey] = useState<string | null>(null);
   const [isEditingAnimal, setIsEditingAnimal] = useState(false);
 
   const searchResults = useMemo(() => {
@@ -25,12 +26,12 @@ export default function SearchAnimal() {
     const query = rawQuery.toLowerCase();
     const compactQuery = query.replace(/\s+/g, "");
 
-    const exactMatch = (animals || []).find(
+    const exactMatches = (animals || []).filter(
       (animal) =>
         animal.rgn?.toLowerCase() === query ||
         `${animal.serie_rgd || "INDI"} ${animal.rgn}`.toLowerCase() === query,
     );
-    if (exactMatch) return [exactMatch];
+    if (exactMatches.length === 1) return exactMatches;
 
     return (animals || []).filter((animal) => {
       const rgn = animal.rgn?.toString().toLowerCase() || "";
@@ -50,19 +51,23 @@ export default function SearchAnimal() {
   }, [animals, searchQuery]);
 
   const selectedAnimal = useMemo(() => {
-    if (!selectedRgn) return null;
-    return (animals || []).find((a) => a.rgn === selectedRgn) || null;
-  }, [animals, selectedRgn]);
+    if (!selectedAnimalKey) return null;
+    return (
+      (animals || []).find(
+        (animal) => getAnimalKeyFromReference(animal) === selectedAnimalKey,
+      ) || null
+    );
+  }, [animals, selectedAnimalKey]);
 
   const hasSearched = searchQuery.trim().length > 0;
 
-  const handleSelectAnimal = (rgn: string) => {
-    setSelectedRgn(rgn);
+  const handleSelectAnimal = (animalKey: string) => {
+    setSelectedAnimalKey(animalKey);
     setIsEditingAnimal(false);
   };
 
   const handleClearSelection = () => {
-    setSelectedRgn(null);
+    setSelectedAnimalKey(null);
     setIsEditingAnimal(false);
   };
 
@@ -105,7 +110,7 @@ export default function SearchAnimal() {
 
             {/* Componente de detalhes do animal */}
             <DetailsAnimalLayout
-              rgn={selectedAnimal.rgn}
+              animalKey={getAnimalKeyFromReference(selectedAnimal)}
               isEditing={isEditingAnimal}
               onToggleEdit={() => setIsEditingAnimal((prev) => !prev)}
               onSaveSuccess={() => setIsEditingAnimal(false)}
@@ -161,9 +166,11 @@ export default function SearchAnimal() {
                     <div className="grid gap-3">
                       {searchResults.map((animal) => (
                         <SearchCard
-                          key={animal.rgn}
+                          key={getAnimalKeyFromReference(animal)}
                           animal={animal}
-                          onDetailsClick={() => handleSelectAnimal(animal.rgn)}
+                          onDetailsClick={() =>
+                            handleSelectAnimal(getAnimalKeyFromReference(animal))
+                          }
                         />
                       ))}
                     </div>

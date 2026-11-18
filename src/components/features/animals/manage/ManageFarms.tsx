@@ -65,7 +65,7 @@ const ManageFarmsContent = ({
     setError(null);
 
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         farm_id: selectedFarmId || undefined,
       });
       setSuccessModalOpen(true);

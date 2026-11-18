@@ -33,7 +33,7 @@ const ALLOWED_TABLES = new Set([
 // PK override: mapeia a chave primária real do Supabase quando necessário
 // ---------------------------------------------------------------------------
 const SERVER_PK_OVERRIDE: Record<string, string> = {
-  animals: "rgn",
+  animals: "animal_key",
   reproduction_events: "event_id",
 };
 
@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
   // Prepara os dados para o cliente RxDB
   let processedData = data || [];
   if (Array.isArray(processedData)) {
-    processedData = processedData.map((row: any) => {
+    processedData = processedData.map((row: Record<string, unknown>) => {
       // Garante que server_updated_at seja compatível com o checkpoint do cliente
       if (row.server_updated_at === undefined && row.updated_at !== undefined) {
         row.server_updated_at = row.updated_at;

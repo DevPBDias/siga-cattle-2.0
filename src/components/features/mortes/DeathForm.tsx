@@ -21,6 +21,7 @@ import { PhotoPicker } from "./PhotoPicker";
 import { CALF_MAX_MONTHS, DEATH_REASONS, NATIMORTO } from "@/utils/death.utils";
 import { todayISO, isFutureDate, calculateAgeInMonths } from "@/utils/dates";
 import { Death } from "@/types/death.type";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 interface DeathFormProps {
   onSuccess?: () => void;
@@ -51,10 +52,19 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
     actions: { createMovement },
   } = useMovements();
 
-  const rgn = formData.rgn.trim();
-  const animal = rgn
-    ? animals.find((a) => a.rgn?.toLowerCase() === rgn.toLowerCase())
-    : undefined;
+  const identifier = formData.rgn.trim();
+  const rgn = identifier.includes("::")
+    ? animals.find((a) => getAnimalKeyFromReference(a) === identifier)?.rgn
+    : identifier;
+  const rgnMatches = rgn
+    ? animals.filter((a) => a.rgn?.toLowerCase() === rgn.toLowerCase())
+    : [];
+  const animal =
+    identifier.includes("::")
+      ? animals.find((a) => getAnimalKeyFromReference(a) === identifier)
+      : rgnMatches.length === 1
+        ? rgnMatches[0]
+        : undefined;
 
   const ageMonths = animal?.born_date
     ? calculateAgeInMonths(animal.born_date)
@@ -67,8 +77,10 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
   const rgnHint = animal
     ? `${animal.sex === "M" ? "Macho" : "Fêmea"}${ageMonths !== null ? ` · ${ageMonths} m` : ""
     }`
-    : rgn
-      ? "Não encontrado"
+    : identifier
+      ? rgnMatches.length > 1
+        ? "RGN duplicado; informe Série::RGN"
+        : "Não encontrado"
       : undefined;
 
   const setField = <K extends keyof ReturnType<typeof getDefaultFormData>>(
@@ -77,10 +89,11 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
   ) => setFormData((prev) => ({ ...prev, [field]: value }));
 
   const handleRgnChange = (value: string) => {
-    const upper = value.toUpperCase();
-    const found = animals.find(
-      (a) => a.rgn?.toLowerCase() === upper.trim().toLowerCase(),
-    );
+    const upper = value.toUpperCase().trim();
+    const matches = upper.includes("::")
+      ? animals.filter((a) => getAnimalKeyFromReference(a) === upper)
+      : animals.filter((a) => a.rgn?.toLowerCase() === upper.toLowerCase());
+    const found = matches.length === 1 ? matches[0] : undefined;
 
     setFormData((prev) => ({
       ...prev,
@@ -127,6 +140,7 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
       const now = Date.now();
       const death: Partial<Death> = {
         animal_rgn: rgn,
+        animal_key: animal?.animal_key,
         date: formData.date,
         reason: formData.reason,
         mother_name: showMother ? formData.mother.trim() : undefined,
@@ -141,6 +155,7 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
         await createMovement({
           type: "morte",
           animal_id: rgn,
+          animal_key: animal?.animal_key,
           date: formData.date,
           event_date: formData.date,
           details: {
@@ -156,9 +171,13 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
       toast.success("Morte registrada com sucesso!");
       setShowSuccess(true);
       onSuccess?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Erro ao registrar morte:", error);
-      setErrorMessage(error?.message || "Ocorreu um erro ao salvar os dados.");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocorreu um erro ao salvar os dados.",
+      );
       toast.error("Erro ao registrar morte.");
     } finally {
       setIsSubmitting(false);
@@ -225,7 +244,7 @@ export function DeathForm({ onSuccess, movementMode = false }: DeathFormProps) {
               autoComplete="off"
               spellCheck={false}
               className={`${FIELD_CLASS} placeholder:text-xs`}
-              placeholder="Digite o RGN"
+              placeholder="RGN ou Série::RGN"
               required
             />
           </FormRow>

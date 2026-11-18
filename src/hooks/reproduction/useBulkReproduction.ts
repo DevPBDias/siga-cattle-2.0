@@ -2,13 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { Animal } from "@/types/animal.type";
-import { EventType, ReproductionEvent } from "@/types/reproduction_event.type";
 import {
   BulkReproductionPayload,
   BulkReproductionResult,
   createBulkReproductionEvents,
   syncReproductionEventsByIds,
 } from "@/lib/services/reproduction";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export type BulkReproductionStatus =
   | "pending"
@@ -41,7 +41,12 @@ export function useBulkReproduction() {
   );
 
   const addCow = (cow: Animal): boolean => {
-    if (selectedCows.some((item) => item.rgn === cow.rgn)) {
+    const cowKey = getAnimalKeyFromReference(cow);
+    if (
+      selectedCows.some(
+        (item) => getAnimalKeyFromReference(item) === cowKey,
+      )
+    ) {
       return false;
     }
 
@@ -49,16 +54,18 @@ export function useBulkReproduction() {
     return true;
   };
 
-  const removeCow = (rgn: string) => {
-    setSelectedCows((prev) => prev.filter((cow) => cow.rgn !== rgn));
+  const removeCow = (animalKey: string) => {
+    setSelectedCows((prev) =>
+      prev.filter((cow) => getAnimalKeyFromReference(cow) !== animalKey),
+    );
     setCheckedCowRgns((prev) => {
       const next = new Set(prev);
-      next.delete(rgn);
+      next.delete(animalKey);
       return next;
     });
     setStatusMap((prev) => {
       const next = { ...prev };
-      delete next[rgn];
+      delete next[animalKey];
       return next;
     });
   };
@@ -90,12 +97,14 @@ export function useBulkReproduction() {
     }
 
     setSelectedCows((prev) =>
-      prev.filter((cow) => !checkedCowRgns.has(cow.rgn)),
+      prev.filter(
+        (cow) => !checkedCowRgns.has(getAnimalKeyFromReference(cow)),
+      ),
     );
     setCheckedCowRgns(new Set());
     setStatusMap((prev) => {
       const next = { ...prev };
-      checkedCowRgns.forEach((rgn) => delete next[rgn]);
+      checkedCowRgns.forEach((animalKey) => delete next[animalKey]);
       return next;
     });
   };
@@ -103,7 +112,7 @@ export function useBulkReproduction() {
   const initializeStatuses = (status: BulkReproductionStatus) => {
     const nextStatuses: Record<string, BulkReproductionStatus> = {};
     selectedCows.forEach((cow) => {
-      nextStatuses[cow.rgn] = status;
+      nextStatuses[getAnimalKeyFromReference(cow)] = status;
     });
     setStatusMap(nextStatuses);
   };
@@ -133,7 +142,7 @@ export function useBulkReproduction() {
 
       const nextStatus = selectedCows.reduce<Record<string, BulkReproductionStatus>>(
         (acc, cow) => {
-          acc[cow.rgn] = result.synced ? "success" : "error";
+          acc[getAnimalKeyFromReference(cow)] = result.synced ? "success" : "error";
           return acc;
         },
         {},
@@ -141,7 +150,11 @@ export function useBulkReproduction() {
 
       setStatusMap(nextStatus);
       setFailedEventIds(result.synced ? [] : result.insertedEvents.map((event) => event.event_id));
-      setFailedCowRgns(result.synced ? [] : selectedCows.map((cow) => cow.rgn));
+      setFailedCowRgns(
+        result.synced
+          ? []
+          : selectedCows.map((cow) => getAnimalKeyFromReference(cow)),
+      );
       setError(result.error ?? null);
 
       if (result.synced) {
@@ -166,9 +179,9 @@ export function useBulkReproduction() {
     setIsProcessing(true);
     setStatusMap((prev) => {
       const next = { ...prev };
-      failedCowRgns.forEach((rgn) => {
-        if (next[rgn] !== "success") {
-          next[rgn] = "syncing";
+      failedCowRgns.forEach((animalKey) => {
+        if (next[animalKey] !== "success") {
+          next[animalKey] = "syncing";
         }
       });
       return next;
@@ -178,10 +191,11 @@ export function useBulkReproduction() {
       const result = await syncReproductionEventsByIds(failedEventIds);
       const nextStatus = selectedCows.reduce<Record<string, BulkReproductionStatus>>(
         (acc, cow) => {
-          if (failedCowRgns.includes(cow.rgn)) {
-            acc[cow.rgn] = result.synced ? "success" : "error";
+          const animalKey = getAnimalKeyFromReference(cow);
+          if (failedCowRgns.includes(animalKey)) {
+            acc[animalKey] = result.synced ? "success" : "error";
           } else {
-            acc[cow.rgn] = statusMap[cow.rgn] ?? "pending";
+            acc[animalKey] = statusMap[animalKey] ?? "pending";
           }
           return acc;
         },

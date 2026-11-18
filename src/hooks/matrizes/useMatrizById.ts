@@ -18,21 +18,19 @@ export function useMatrizById(rgn: string | null) {
 
     setIsLoading(true);
 
-    const query = db.animals.findOne({
+    const query = db.animals.find({
       selector: {
-        rgn: { $eq: rgn },
+        ...(rgn.includes("::")
+          ? { animal_key: { $eq: rgn } }
+          : { rgn: { $eq: rgn } }),
         sex: { $eq: "F" }, // Apenas fêmeas
         _deleted: { $eq: false },
       },
     });
 
     const subscription = query.$.subscribe({
-      next: (doc) => {
-        if (doc) {
-          setMatriz(doc.toJSON() as Animal);
-        } else {
-          setMatriz(null);
-        }
+      next: (docs) => {
+        setMatriz(docs.length === 1 ? (docs[0].toJSON() as Animal) : null);
         setIsLoading(false);
       },
       error: (err) => {

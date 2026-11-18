@@ -74,14 +74,15 @@ vi.mock("@/hooks/auth/useUserAccess", () => ({
 // Mock do componente DetailsAnimalLayout para isolar o teste da tela de consulta
 vi.mock("@/components/features/animals/details/DetailsAnimalLayout", () => ({
   default: ({
-    rgn,
+    animalKey,
     isEditing,
   }: {
-    rgn: string;
+    animalKey: string;
     isEditing?: boolean;
   }) => (
     <div data-testid="details-animal-layout">
-      Ficha do animal RGN: {rgn} {isEditing ? "(editando)" : "(visualizando)"}
+      Ficha do animal RGN: {animalKey}{" "}
+      {isEditing ? "(editando)" : "(visualizando)"}
     </div>
   ),
 }));

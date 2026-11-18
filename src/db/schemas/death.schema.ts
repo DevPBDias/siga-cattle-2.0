@@ -3,11 +3,12 @@ import { RxJsonSchema } from "rxdb";
 
 export const deathSchema: RxJsonSchema<Death> = {
   title: "deaths",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
     id: { type: "string", maxLength: 36 },
+    animal_key: { type: "string" },
     animal_rgn: { type: "string" },
     date: { type: "string", maxLength: 50 },
     reason: { type: "string" },

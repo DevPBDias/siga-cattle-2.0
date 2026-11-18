@@ -51,7 +51,7 @@ const ManageClassificationContent = ({
     setError(null);
 
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         classification: selectedClassification || "-",
       });
       setSuccessModalOpen(true);
@@ -65,7 +65,7 @@ const ManageClassificationContent = ({
   const handleConfirmClear = async () => {
     if (!selectedAnimal) return;
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         classification: "-",
       });
       setSelectedClassification(null);

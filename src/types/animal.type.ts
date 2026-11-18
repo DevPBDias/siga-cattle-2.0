@@ -14,6 +14,8 @@ export type AnimalBreed =
   | (string & {});
 
 export interface Animal {
+  animal_key?: string;
+  id?: string;
   rgn: string;
   name?: string;
   sex?: "M" | "F" | string;

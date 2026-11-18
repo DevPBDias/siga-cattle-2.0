@@ -26,7 +26,7 @@ export function useMovements() {
         _deleted: { $eq: false },
         ...(role === "owner" ? {} : { type: { $nin: ["venda"] } }),
       },
-      sort: [{ date: "desc" } as any],
+      sort: [{ date: "desc" as const }],
     }),
     [role],
   );
@@ -53,7 +53,13 @@ export function useMovements() {
       data: Omit<
         Movement,
         "id" | "created_at" | "updated_at" | "_deleted" | "details_id"
-      > & { details: any },
+      > & {
+        details:
+          | SalePayload
+          | MortePayload
+          | TrocaPayload
+          | Record<string, unknown>;
+      },
     ) => {
       try {
         if (data.type === "venda" && role !== "owner") {
@@ -62,6 +68,28 @@ export function useMovements() {
         }
 
         const db = await getDatabase();
+        const animalMatches = data.animal_key
+          ? [await db.animals.findOne(data.animal_key).exec()].filter(Boolean)
+          : await db.animals
+              .find({
+                selector: {
+                  rgn: { $eq: data.animal_id },
+                  _deleted: { $eq: false },
+                },
+              })
+              .exec();
+        if (animalMatches.length !== 1 || !animalMatches[0]) {
+          throw new Error(
+            animalMatches.length > 1
+              ? `O RGN ${data.animal_id} pertence a mais de um animal. Selecione pela combinação Série/RGD e RGN.`
+              : `Animal ${data.animal_id} não encontrado.`,
+          );
+        }
+        const animalDoc = animalMatches[0];
+        const animalData = animalDoc.toJSON();
+        if (animalData._deleted) {
+          throw new Error(`Animal ${animalData.rgn} está excluído e não pode receber movimentações.`);
+        }
         const id = uuidv4();
         const timestamp = Date.now();
         const {
@@ -71,7 +99,8 @@ export function useMovements() {
         // 1. Create the Movement record
         await movementActions.create({
           type: data.type,
-          animal_id: data.animal_id,
+          animal_id: animalData.rgn,
+          animal_key: animalData.animal_key,
           date: data.date,
           event_date: data.event_date ?? data.date,
           details_id: "", // Will be patched later
@@ -85,13 +114,10 @@ export function useMovements() {
         // 2. Handle Side Effects based on Type
         if (["morte", "venda", "troca"].includes(data.type)) {
           // 3. Update Animal Status to INATIVO
-          const animalDoc = await db.animals.findOne(data.animal_id).exec();
-          if (animalDoc) {
-            await animalDoc.patch({
-              animal_state: "INATIVO",
-              updated_at: timestamp,
-            });
-          }
+          await animalDoc.patch({
+            animal_state: "INATIVO",
+            updated_at: timestamp,
+          });
 
           // 4. If it's a Venda, also create a record in the 'sales' collection
           if (data.type === "venda") {
@@ -101,7 +127,8 @@ export function useMovements() {
             try {
               await saleActions.create({
                 id: saleId,
-                animal_rgn: data.animal_id,
+                animal_key: animalData.animal_key,
+                animal_rgn: animalData.rgn,
                 client_id: vendaDetails.client_id || "",
                 date: data.date,
                 total_value: vendaDetails.total_value || 0,
@@ -144,7 +171,8 @@ export function useMovements() {
             try {
               await deathActions.create({
                 id: deathId,
-                animal_rgn: data.animal_id,
+                animal_key: animalData.animal_key,
+                animal_rgn: animalData.rgn,
                 date: data.date,
                 reason: morteDetails.reason || "",
                 mother_name: morteDetails.mother_name,
@@ -174,10 +202,12 @@ export function useMovements() {
             try {
               await exchangeActions.create({
                 id: exchangeId,
-                animal_rgn: data.animal_id,
+                animal_key: animalData.animal_key,
+                animal_rgn: animalData.rgn,
                 date: data.date,
                 client_id: trocaDetails.client_id || "",
                 traded_animal_rgn: data.animal_id,
+                traded_animal_key: animalData.animal_key,
                 substitute_animal_rgn: trocaDetails.substitute_animal_rgn || "",
                 created_at: timestamp,
                 updated_at: timestamp,
@@ -207,7 +237,16 @@ export function useMovements() {
   );
 
   const updateMovement = useCallback(
-    async (id: string, data: Partial<Movement> & { details?: any }) => {
+    async (
+      id: string,
+      data: Partial<Movement> & {
+        details?:
+          | SalePayload
+          | MortePayload
+          | TrocaPayload
+          | Record<string, unknown>;
+      },
+    ) => {
       try {
         const db = await getDatabase();
         const timestamp = Date.now();
@@ -232,21 +271,22 @@ export function useMovements() {
           // Sync Venda
           if (movement.type === "venda" && details_id) {
             const saleDoc = await db.sales.findOne(details_id).exec();
-            if (saleDoc && patchData) {
+            const saleData = patchData as SalePayload | undefined;
+            if (saleDoc && saleData) {
               await saleDoc.patch({
                 date: data.date || movement.date,
                 animal_rgn: data.animal_id || movement.animal_id,
-                client_id: patchData.client_id,
-                total_value: patchData.total_value,
-                down_payment: patchData.down_payment,
-                payment_method: patchData.payment_method,
-                installments: patchData.installments,
-                installment_value: patchData.installment_value,
+                client_id: saleData.client_id,
+                total_value: saleData.total_value,
+                down_payment: saleData.down_payment,
+                payment_method: saleData.payment_method,
+                installments: saleData.installments,
+                installment_value: saleData.installment_value,
                 financial_status:
-                  patchData.payment_method === "À Vista" ? "pago" : "pendente",
-                gta_number: patchData.gta_number,
-                invoice_number: patchData.invoice_number,
-                sale_type: patchData.sale_type,
+                  saleData.payment_method === "À Vista" ? "pago" : "pendente",
+                gta_number: saleData.gta_number,
+                invoice_number: saleData.invoice_number,
+                sale_type: saleData.sale_type,
                 updated_at: timestamp,
               });
             }
@@ -255,11 +295,12 @@ export function useMovements() {
           // Sync Morte
           if (movement.type === "morte" && details_id) {
             const deathDoc = await db.deaths.findOne(details_id).exec();
-            if (deathDoc && patchData) {
+            const deathData = patchData as MortePayload | undefined;
+            if (deathDoc && deathData) {
               await deathDoc.patch({
                 date: data.date || movement.date,
                 animal_rgn: data.animal_id || movement.animal_id,
-                reason: patchData.reason,
+                reason: deathData.reason,
                 updated_at: timestamp,
               });
             }
@@ -268,12 +309,13 @@ export function useMovements() {
           // Sync Troca
           if (movement.type === "troca" && details_id) {
             const exchangeDoc = await db.exchanges.findOne(details_id).exec();
-            if (exchangeDoc && patchData) {
+            const exchangeData = patchData as TrocaPayload | undefined;
+            if (exchangeDoc && exchangeData) {
               await exchangeDoc.patch({
                 date: data.date || movement.date,
                 animal_rgn: data.animal_id || movement.animal_id,
-                client_id: patchData.client_id,
-                substitute_animal_rgn: patchData.substitute_animal_rgn,
+                client_id: exchangeData.client_id,
+                substitute_animal_rgn: exchangeData.substitute_animal_rgn,
                 updated_at: timestamp,
               });
             }
@@ -302,7 +344,7 @@ export function useMovements() {
           },
         })
         .exec();
-      return docs.map((d: any) => d.toJSON() as Movement);
+      return docs.map((doc) => doc.toJSON() as Movement);
     },
     [],
   );
@@ -342,7 +384,25 @@ export function useMovements() {
 
         // 2. If it's "morte", "venda" or "troca", restore animal state to "ATIVO"
         if (["morte", "venda", "troca"].includes(movement.type)) {
-          const animalDoc = await db.animals.findOne(movement.animal_id).exec();
+          let animalDoc = movement.animal_key
+            ? await db.animals.findOne(movement.animal_key).exec()
+            : null;
+          if (!movement.animal_key) {
+            const animalMatches = await db.animals
+              .find({
+                selector: {
+                  rgn: { $eq: movement.animal_id },
+                  _deleted: { $eq: false },
+                },
+              })
+              .exec();
+            if (animalMatches.length > 1) {
+              throw new Error(
+                `O RGN ${movement.animal_id} pertence a mais de um animal; a movimentação não pode ser desfeita sem a chave do animal.`,
+              );
+            }
+            animalDoc = animalMatches[0] ?? null;
+          }
           if (animalDoc) {
             await animalDoc.patch({
               animal_state: "ATIVO",

@@ -12,6 +12,7 @@ export const animalVaccineReplication = createReplication<AnimalVaccine>({
 
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     vaccine_id: doc.vaccine_id,
     date: doc.date ?? null,

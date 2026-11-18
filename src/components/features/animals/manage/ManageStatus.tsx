@@ -71,7 +71,7 @@ const ManageStatusContent = ({
     setError(null);
 
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         status:
           selectedStatusNames.length > 0
             ? selectedStatusNames.join(" / ")

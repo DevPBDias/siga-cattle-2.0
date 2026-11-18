@@ -3,11 +3,14 @@ import { RxJsonSchema } from "rxdb";
 
 export const exchangeSchema: RxJsonSchema<Exchange> = {
   title: "exchanges",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
     id: { type: "string", maxLength: 36 },
+    animal_key: { type: "string" },
+    traded_animal_key: { type: "string" },
+    substitute_animal_key: { type: "string" },
     animal_rgn: { type: "string" },
     date: { type: "string", maxLength: 50 },
     client_id: { type: "string", maxLength: 36 },

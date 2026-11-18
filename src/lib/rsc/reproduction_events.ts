@@ -26,7 +26,7 @@ export async function getReproductionEventRSC(
 }
 
 export async function getReproductionEventsByRgnRSC(
-  rgn: string
+  animalKeyOrRgn: string
 ): Promise<ReproductionEvent[]> {
   const db = await getDatabase();
   if (!db) throw new Error("Database not initialized");
@@ -34,7 +34,9 @@ export async function getReproductionEventsByRgnRSC(
     .find({
       selector: {
         _deleted: { $eq: false },
-        rgn: { $eq: rgn },
+        ...(animalKeyOrRgn.includes("::")
+          ? { animal_key: { $eq: animalKeyOrRgn } }
+          : { rgn: { $eq: animalKeyOrRgn } }),
       },
       sort: [{ d0_date: "desc" as const }],
     })
@@ -72,4 +74,3 @@ export async function countReproductionEventsRSC(): Promise<number> {
     })
     .exec();
 }
-

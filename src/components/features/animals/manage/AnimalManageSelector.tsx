@@ -34,7 +34,7 @@ export function AnimalManageSelector({
   return (
     <SelectedEntityCard
       caption="Animal Selecionado"
-      title={selectedAnimal.rgn}
+      title={`${selectedAnimal.serie_rgd} ${selectedAnimal.rgn}`}
       onClear={onClear}
     />
   );

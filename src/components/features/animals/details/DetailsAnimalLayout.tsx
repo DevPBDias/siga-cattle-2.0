@@ -38,7 +38,6 @@ import Link from "next/link";
 import { DetailsWeightList } from "@/components/features/animals/lists/DetailsWeightList";
 import { DetailsCircunfList } from "@/components/features/animals/lists/DetailsCircunfList";
 import { DetailsSkeleton } from "@/components/ui/skeletons/DetailsSkeleton";
-import { cn } from "@/lib/utils";
 import { useReproductionEvents } from "@/hooks/db/reproduction_event/useReproductionEvents";
 import { Accordion } from "@/components/ui/accordion";
 import { EditReproductionModal } from "@/components/features/reproduction/modals/reproduction/EditReproductionModal";
@@ -47,7 +46,7 @@ import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { ReproductionEventCard } from "@/components/features/reproduction/ReproductionEventCard";
 
 interface DetailsAnimalLayoutProps {
-  rgn: string;
+  animalKey: string;
   isEditing?: boolean;
   onToggleEdit?: () => void;
   onSaveSuccess?: () => void;
@@ -77,15 +76,15 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
 );
 
 const DetailsAnimalLayout = ({
-  rgn,
+  animalKey,
   isEditing: externalIsEditing,
   onToggleEdit,
   onSaveSuccess,
 }: DetailsAnimalLayoutProps) => {
   const { role } = useUserAccess();
-  const { data: animal, loading: animalLoading } = useAnimalById(rgn);
+  const { data: animal, loading: animalLoading } = useAnimalById(animalKey);
   const { data: animalVaccines, loading: vaccinesLoading } =
-    useAnimalVaccines(rgn);
+    useAnimalVaccines(undefined, animalKey);
   const { data: vaccines, loading: allVaccinesLoading } = useVaccines();
   const {
     actions: { deleteAnimalVaccine },
@@ -94,12 +93,9 @@ const DetailsAnimalLayout = ({
   const isLoading = animalLoading || vaccinesLoading || allVaccinesLoading;
   const { data: farms } = useFarms();
   const getMonths = getAgeMonths(animal?.born_date);
-  const { data: weights, loading: weightsLoading } = useAnimalWeights(
-    rgn ?? undefined,
-  );
-  const { data: ceMetrics, loading: ceLoading } = useAnimalCE(rgn ?? undefined);
-  const { data: reproductionEvents, loading: reproductionLoading } =
-    useReproductionEvents(rgn);
+  const { data: weights } = useAnimalWeights(undefined, animalKey);
+  const { data: ceMetrics } = useAnimalCE(undefined, animalKey);
+  const { data: reproductionEvents } = useReproductionEvents(undefined, animalKey);
 
   const [activeTab, setActiveTab] = useState("dados");
 
@@ -204,7 +200,7 @@ const selectRow = (
     if (!animal) return;
     setSaveError(null);
     try {
-      await updateAnimal(animal.rgn, editData);
+      await updateAnimal(animal.animal_key || animalKey, editData);
       setEditing(false);
       if (onSaveSuccess) onSaveSuccess();
     } catch (err) {
@@ -672,7 +668,7 @@ const selectRow = (
                 value="reproduction"
                 className="mt-0 animate-in fade-in-0 duration-200"
               >
-                {reproductionEvents.length > 0 ? (
+                {animal && reproductionEvents.length > 0 ? (
                   <div className="space-y-6">
                     {reproductionEvents.map((event) => (
                       <Accordion
@@ -683,7 +679,7 @@ const selectRow = (
                       >
                         <ReproductionEventCard
                           event={event}
-                          matriz={animal as any}
+                          matriz={animal}
                           onEdit={handleEditReproduction}
                           onDelete={handleDeleteReproduction}
                         />
@@ -708,7 +704,7 @@ const selectRow = (
                 value="history"
                 className="mt-0 animate-in fade-in-0 duration-200"
               >
-                <DetailsMovementList rgn={rgn} />
+                <DetailsMovementList animalKey={animalKey} />
               </TabsContent>
             </Tabs>
           </div>

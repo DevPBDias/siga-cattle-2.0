@@ -1,6 +1,7 @@
 import { createReplication } from "./base";
 import { Animal } from "@/types/animal.type";
 import { cleanSupabaseDocument } from "@/lib/supabase/auth-helper";
+import { getAnimalKey } from "@/utils/animalIdentity";
 
 /**
  * Interface estendida de Animal que garante campos de replicação.
@@ -17,7 +18,7 @@ interface ReplicableAnimal extends Omit<Animal, "_deleted" | "updated_at"> {
  * Replicação de Animais usando o template padronizado.
  *
  * Esta entidade usa:
- * - Primary Key: rgn (não UUID - exceção histórica)
+ * - Primary Key: animal_key (série/RGD + RGN)
  * - Todos os campos são mapeados explicitamente para o Supabase
  */
 export const animalReplication = createReplication<ReplicableAnimal>({
@@ -27,6 +28,7 @@ export const animalReplication = createReplication<ReplicableAnimal>({
 
   // Mapeia documento RxDB → Supabase
   mapToSupabase: (doc) => ({
+    animal_key: doc.animal_key ?? getAnimalKey(doc),
     rgn: doc.rgn,
     name: doc.name ?? null,
     sex: doc.sex ?? null,
@@ -69,7 +71,10 @@ export const animalReplication = createReplication<ReplicableAnimal>({
 
   mapFromSupabase: (doc) => {
     const cleaned = cleanSupabaseDocument(doc);
-    delete cleaned.id; // Remove Supabase-specific ID
+    cleaned.animal_key =
+      typeof cleaned.animal_key === "string" && cleaned.animal_key
+        ? cleaned.animal_key
+        : getAnimalKey(cleaned as Pick<Animal, "serie_rgd" | "rgn">);
     return {
       ...cleaned,
       _deleted: !!cleaned._deleted,

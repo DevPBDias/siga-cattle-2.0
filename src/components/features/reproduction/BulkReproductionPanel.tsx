@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Loader2, Repeat } from "lucide-react";
+import { Loader2, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -30,6 +30,7 @@ import {
 import { EventType } from "@/types/reproduction_event.type";
 import { toast } from "sonner";
 import { todayISO } from "@/utils/dates";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 const eventTypes: EventType[] = ["IATF", "FIV"];
 const protocolOptions = ["Sync D10", "Sync D11"] as const;
@@ -53,20 +54,20 @@ export function BulkReproductionPanel() {
 
   const handleComboboxValueChange = (value: string[] | string) => {
     const values = Array.isArray(value) ? value : [value];
-    const currentRgns = selectedCows.map((cow) => cow.rgn);
+    const currentKeys = selectedCows.map(getAnimalKeyFromReference);
     const nextSet = new Set(values);
 
-    currentRgns.forEach((rgn) => {
-      if (!nextSet.has(rgn)) {
-        removeCow(rgn);
+    currentKeys.forEach((animalKey) => {
+      if (!nextSet.has(animalKey)) {
+        removeCow(animalKey);
       }
     });
 
-    const addedRgns = values.filter((rgn) => !currentRgns.includes(rgn));
-    if (addedRgns.length > 0) {
-      addedRgns.forEach((rgn) => {
+    const addedKeys = values.filter((animalKey) => !currentKeys.includes(animalKey));
+    if (addedKeys.length > 0) {
+      addedKeys.forEach((animalKey) => {
         const cow = matrizes.find(
-          (item) => item.rgn.toLowerCase() === rgn.toLowerCase(),
+          (item) => getAnimalKeyFromReference(item) === animalKey,
         );
         if (cow) {
           addCow(cow);
@@ -84,7 +85,11 @@ export function BulkReproductionPanel() {
   const selectedCowsSorted = useMemo(
     () =>
       [...selectedCows].sort((a, b) =>
-        a.rgn.localeCompare(b.rgn, undefined, { numeric: true }),
+        `${a.serie_rgd} ${a.rgn}`.localeCompare(
+          `${b.serie_rgd} ${b.rgn}`,
+          undefined,
+          { numeric: true },
+        ),
       ),
     [selectedCows],
   );
@@ -97,15 +102,22 @@ export function BulkReproductionPanel() {
       .filter((cow) => {
         const rgn = cow.rgn.toLowerCase();
         const name = cow.name?.toLowerCase() ?? "";
-        return rgn.includes(term) || name.includes(term);
+        const registration = `${cow.serie_rgd}::${cow.rgn}`.toLowerCase();
+        return rgn.includes(term) || name.includes(term) || registration.includes(term);
       })
-      .sort((a, b) => a.rgn.localeCompare(b.rgn, undefined, { numeric: true }))
+      .sort((a, b) =>
+        `${a.serie_rgd} ${a.rgn}`.localeCompare(
+          `${b.serie_rgd} ${b.rgn}`,
+          undefined,
+          { numeric: true },
+        ),
+      )
       .slice(0, 8);
   }, [query, matrizes]);
 
-  const handleAddCow = (rgn: string) => {
+  const handleAddCow = (animalKey: string) => {
     const cow = matrizes.find(
-      (item) => item.rgn.toLowerCase() === rgn.toLowerCase(),
+      (item) => getAnimalKeyFromReference(item) === animalKey,
     );
     if (!cow) {
       toast.error("Matriz não encontrada.");
@@ -114,11 +126,11 @@ export function BulkReproductionPanel() {
 
     const added = addCow(cow);
     if (!added) {
-      toast.error(`A matriz ${cow.rgn} já está na lista.`);
+      toast.error(`A matriz ${cow.serie_rgd} ${cow.rgn} já está na lista.`);
       return;
     }
 
-    toast.success(`Matriz ${cow.rgn} adicionada.`);
+    toast.success(`Matriz ${cow.serie_rgd} ${cow.rgn} adicionada.`);
     setQuery("");
   };
 
@@ -128,23 +140,27 @@ export function BulkReproductionPanel() {
     const value = query.trim();
     if (!value) return;
 
-    const exact = matrizes.find(
+    const exactKey = matrizes.find(
+      (cow) => getAnimalKeyFromReference(cow).toLowerCase() === value.toLowerCase(),
+    );
+    if (exactKey) {
+      handleAddCow(getAnimalKeyFromReference(exactKey));
+      return;
+    }
+
+    const matches = matrizes.filter(
       (cow) => cow.rgn.toLowerCase() === value.toLowerCase(),
     );
-    if (exact) {
-      handleAddCow(exact.rgn);
+    if (matches.length === 1) {
+      handleAddCow(getAnimalKeyFromReference(matches[0]));
       return;
     }
 
-    const fuzzy = matrizes.find(
-      (cow) => cow.rgn.toLowerCase().includes(value.toLowerCase()),
+    toast.error(
+      matches.length > 1
+        ? "RGN duplicado; selecione a matriz pela combinação Série::RGN."
+        : "Nenhuma matriz encontrada para esse RGN.",
     );
-    if (fuzzy) {
-      handleAddCow(fuzzy.rgn);
-      return;
-    }
-
-    toast.error("Nenhuma matriz encontrada para esse RGN.");
   };
 
   const handleCreateEvents = async () => {
@@ -185,8 +201,8 @@ export function BulkReproductionPanel() {
           <Combobox
             multiple
             autoHighlight
-            items={searchOptions.map((cow) => cow.rgn)}
-            value={selectedCowsSorted.map((cow) => cow.rgn)}
+            items={searchOptions.map(getAnimalKeyFromReference)}
+            value={selectedCowsSorted.map(getAnimalKeyFromReference)}
             onValueChange={handleComboboxValueChange}
           >
             <ComboboxChips ref={anchor} className="min-h-[2rem] w-full">
@@ -194,8 +210,13 @@ export function BulkReproductionPanel() {
                 {() => (
                   <>
                     {selectedCowsSorted.map((cow) => (
-                      <ComboboxChip key={cow.rgn} value={cow.rgn}>
-                        <span className="font-bold text-primary">{cow.rgn}</span>
+                      <ComboboxChip
+                        key={getAnimalKeyFromReference(cow)}
+                        value={getAnimalKeyFromReference(cow)}
+                      >
+                        <span className="font-bold text-primary">
+                          {cow.serie_rgd} {cow.rgn}
+                        </span>
                       </ComboboxChip>
                     ))}
                     <ComboboxChipsInput
@@ -217,15 +238,20 @@ export function BulkReproductionPanel() {
                 <ComboboxList className="w-[200px]">
                   {(item) => {
                     const cow = searchOptions.find(
-                      (candidate) => candidate.rgn === item,
+                      (candidate) => getAnimalKeyFromReference(candidate) === item,
                     )
                     if (!cow) {
                       return null
                     }
 
                     return (
-                      <ComboboxItem key={cow.rgn} value={cow.rgn}>
-                        <span className="font-semibold">{cow.rgn}</span>
+                      <ComboboxItem
+                        key={getAnimalKeyFromReference(cow)}
+                        value={getAnimalKeyFromReference(cow)}
+                      >
+                        <span className="font-semibold">
+                          {cow.serie_rgd} {cow.rgn}
+                        </span>
                       </ComboboxItem>
                     )
                   }}

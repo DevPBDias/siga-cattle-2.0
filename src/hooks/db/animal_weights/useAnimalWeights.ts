@@ -4,16 +4,20 @@ import { useMemo } from "react";
 import { useLocalQuery } from "@/hooks/core";
 import { AnimalMetric } from "@/types/animal_metrics.type";
 
-export function useAnimalWeights(rgn?: string) {
+export function useAnimalWeights(rgn?: string, animalKey?: string) {
   const query = useMemo(
     () => ({
       selector: {
         _deleted: { $eq: false },
-        ...(rgn ? { rgn: { $eq: rgn } } : {}),
+        ...(animalKey
+          ? { animal_key: { $eq: animalKey } }
+          : rgn
+            ? { rgn: { $eq: rgn } }
+            : {}),
       },
-      sort: [{ date: "asc" } as any],
+      sort: [{ date: "asc" as const }],
     }),
-    [rgn],
+    [animalKey, rgn],
   );
 
   const { data, loading, error, actions } = useLocalQuery<AnimalMetric>(

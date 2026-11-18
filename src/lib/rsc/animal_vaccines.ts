@@ -26,7 +26,7 @@ export async function getAnimalVaccineRSC(
 }
 
 export async function getAnimalVaccinesByRgnRSC(
-  rgn: string
+  animalKeyOrRgn: string
 ): Promise<AnimalVaccine[]> {
   const db = await getDatabase();
   if (!db) throw new Error("Database not initialized");
@@ -34,7 +34,9 @@ export async function getAnimalVaccinesByRgnRSC(
     .find({
       selector: {
         _deleted: { $eq: false },
-        rgn: { $eq: rgn },
+        ...(animalKeyOrRgn.includes("::")
+          ? { animal_key: { $eq: animalKeyOrRgn } }
+          : { rgn: { $eq: animalKeyOrRgn } }),
       },
       sort: [{ date: "desc" as const }],
     })

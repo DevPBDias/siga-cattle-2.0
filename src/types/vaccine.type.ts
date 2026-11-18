@@ -8,6 +8,7 @@ export interface Vaccine {
 
 export interface AnimalVaccine {
   id: string;
+  animal_key?: string;
   rgn: string;
   vaccine_id: string;
   date?: string;

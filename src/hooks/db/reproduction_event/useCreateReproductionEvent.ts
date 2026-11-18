@@ -19,8 +19,11 @@ export function useCreateReproductionEvent() {
       event_id: uuidv4(),
       ...data,
     };
+    if (!newEvent.animal_key) {
+      throw new Error("É necessário selecionar um animal pela combinação Série/RGD e RGN.");
+    }
 
-    return await actions.create(newEvent as any);
+    return await actions.create(newEvent);
   };
 
   return {

@@ -13,10 +13,13 @@ export const exchangeReplication = createReplication<Exchange>({
   // Mapeia documento RxDB → Supabase
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     animal_rgn: doc.animal_rgn,
+    traded_animal_key: doc.traded_animal_key ?? null,
     date: doc.date,
     client_id: doc.client_id,
     traded_animal_rgn: doc.traded_animal_rgn,
+    substitute_animal_key: doc.substitute_animal_key ?? null,
     substitute_animal_rgn: doc.substitute_animal_rgn || null,
     value_difference: doc.value_difference ?? 0,
     created_at: doc.created_at,

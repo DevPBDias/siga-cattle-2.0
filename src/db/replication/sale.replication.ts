@@ -13,6 +13,7 @@ export const saleReplication = createReplication<Sale>({
   // Mapeia documento RxDB → Supabase
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     animal_rgn: doc.animal_rgn,
     client_id: doc.client_id,
     date: doc.date,

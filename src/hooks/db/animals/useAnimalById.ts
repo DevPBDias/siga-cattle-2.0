@@ -1,16 +1,32 @@
 "use client";
 
-import { useLocalDocument } from "@/hooks/core/useLocalDocument";
+import { useMemo } from "react";
+import { useLocalQuery } from "@/hooks/core/useLocalQuery";
 import { Animal } from "@/types/animal.type";
+import type { MangoQuery } from "rxdb";
 
-export function useAnimalById(rgn: string | null) {
-  const { data, loading, error, actions } = useLocalDocument<Animal>(
+export function useAnimalById(animalKeyOrRgn: string | null) {
+  const query = useMemo<MangoQuery<Animal> | null>(
+    () =>
+      animalKeyOrRgn
+        ? {
+            selector: {
+              _deleted: { $eq: false },
+              ...(animalKeyOrRgn.includes("::")
+                ? { animal_key: { $eq: animalKeyOrRgn } }
+                : { rgn: { $eq: animalKeyOrRgn } }),
+            },
+          }
+        : null,
+    [animalKeyOrRgn],
+  );
+  const { data: animals, loading, error, actions } = useLocalQuery<Animal>(
     "animals",
-    rgn,
+    query,
   );
 
   return {
-    data,
+    data: animals.length === 1 ? animals[0] : null,
     loading,
     error,
     actions,

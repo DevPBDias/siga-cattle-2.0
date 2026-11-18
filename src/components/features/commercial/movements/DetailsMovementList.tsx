@@ -4,12 +4,12 @@ import { Loader2 } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
 
 interface DetailsMovementListProps {
-  rgn: string;
+  animalKey: string;
 }
 
-export function DetailsMovementList({ rgn }: DetailsMovementListProps) {
+export function DetailsMovementList({ animalKey }: DetailsMovementListProps) {
   const { data: movements = [], loading: isLoading } =
-    useMovementsByAnimal(rgn);
+    useMovementsByAnimal(animalKey);
 
   if (isLoading) {
     return (

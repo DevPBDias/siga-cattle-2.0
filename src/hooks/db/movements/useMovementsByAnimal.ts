@@ -5,16 +5,18 @@ import { useLocalQuery } from "@/hooks/core";
 import { Movement } from "@/types/movement.type";
 import { MangoQuery } from "rxdb";
 
-export function useMovementsByAnimal(rgn: string | null) {
+export function useMovementsByAnimal(animalKeyOrRgn: string | null) {
   const query = useMemo<MangoQuery<Movement>>(() => {
     return {
       selector: {
-        animal_id: { $eq: rgn || "" },
+        ...(animalKeyOrRgn?.includes("::")
+          ? { animal_key: { $eq: animalKeyOrRgn } }
+          : { animal_id: { $eq: animalKeyOrRgn || "" } }),
         _deleted: { $eq: false },
       },
-      sort: [{ date: "desc" } as any],
+      sort: [{ date: "desc" as const }],
     };
-  }, [rgn]);
+  }, [animalKeyOrRgn]);
 
   const {
     data: movements,

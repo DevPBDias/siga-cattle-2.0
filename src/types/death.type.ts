@@ -1,5 +1,6 @@
 export interface Death {
   id: string;
+  animal_key?: string;
   animal_rgn: string;
   date: string;
   reason: string;

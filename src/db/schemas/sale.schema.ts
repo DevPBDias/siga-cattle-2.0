@@ -3,11 +3,12 @@ import { RxJsonSchema } from "rxdb";
 
 export const saleSchema: RxJsonSchema<Sale> = {
   title: "sales",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
     id: { type: "string", maxLength: 36 },
+    animal_key: { type: "string" },
     animal_rgn: { type: "string" },
     client_id: { type: "string", maxLength: 36 },
     date: { type: "string", maxLength: 50 },

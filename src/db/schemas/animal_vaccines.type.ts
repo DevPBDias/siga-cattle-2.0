@@ -3,11 +3,12 @@ import { RxJsonSchema } from "rxdb";
 
 export const animalVaccineSchema: RxJsonSchema<AnimalVaccine> = {
   title: "animal_vaccines",
-  version: 0,
+  version: 1,
   primaryKey: "id",
   type: "object",
   properties: {
     id: { type: "string", maxLength: 36 },
+    animal_key: { type: "string" },
     rgn: { type: "string", maxLength: 10 },
     vaccine_id: { type: "string", maxLength: 36 },
     date: { type: "string", format: "date" },

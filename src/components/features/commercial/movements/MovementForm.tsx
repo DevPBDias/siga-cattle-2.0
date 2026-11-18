@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { useMovements } from "@/hooks/db/movements/useMovements";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useClients } from "@/hooks/db/clients/useClients";
-import { MovementType, Movement, SalePayload } from "@/types/movement.type";
+import {
+  MovementType,
+  Movement,
+  SalePayload,
+  MortePayload,
+  TrocaPayload,
+} from "@/types/movement.type";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -20,6 +26,7 @@ import { useExchangeById } from "@/hooks/db/exchanges/useExchangeById";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, toISODate } from "@/utils/dates";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
+import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 interface MovementFormProps {
   onSuccess?: () => void;
@@ -34,6 +41,11 @@ export function MovementForm({
   initialType,
   hideTypeSelector = false,
 }: MovementFormProps) {
+  type MovementDetails =
+    | SalePayload
+    | MortePayload
+    | TrocaPayload
+    | Record<string, never>;
   const { role } = useUserAccess();
   const isOwner = role === "owner";
   const {
@@ -51,7 +63,9 @@ export function MovementForm({
   );
 
   // Common fields (for morte, venda, troca)
-  const [animalId, setAnimalId] = useState(initialMovement?.animal_id || "");
+  const [animalId, setAnimalId] = useState(
+    initialMovement?.animal_key || initialMovement?.animal_id || "",
+  );
   const [date, setDate] = useState(
     initialMovement?.date
       ? toISODate(initialMovement.date)
@@ -59,9 +73,15 @@ export function MovementForm({
   );
 
   // Animal Validation
-  const animalExists = (animals || []).some(
-    (a) => a.rgn?.toLowerCase() === animalId.toLowerCase(),
+  const matchingRgns = animals.filter(
+    (item) => item.rgn?.toLowerCase() === animalId.toLowerCase(),
   );
+  const animal = animalId.includes("::")
+    ? animals.find((item) => getAnimalKeyFromReference(item) === animalId)
+    : matchingRgns.length === 1
+      ? matchingRgns[0]
+      : undefined;
+  const animalExists = !!animal;
   const showRgnError = animalId.length > 0 && !animalExists;
 
   // Morte fields
@@ -93,26 +113,31 @@ export function MovementForm({
 
   // Legacy data population (if details still has data in old format)
   useEffect(() => {
-    if (initialMovement && (initialMovement as any).details) {
-      const d = (initialMovement as any).details;
+    const details = (
+      initialMovement as (Movement & { details?: MovementDetails }) | null
+    )?.details;
+    if (initialMovement && details) {
       if (initialMovement.type === "morte") {
-        if (d.reason) setReason(d.reason);
+        const death = details as MortePayload;
+        if (death.reason) setReason(death.reason);
       } else if (initialMovement.type === "venda") {
-        if (d.client_id) {
-          setSaleType(d.sale_type || "comprado");
-          setClientId(d.client_id || "");
-          setTotalValue(d.total_value?.toString() || "");
-          setDownPayment(d.down_payment?.toString() || "");
-          setPaymentMethod(d.payment_method || "");
-          setInstallments(d.installments?.toString() || "");
-          setInstallmentValue(d.installment_value?.toString() || "");
-          setGtaNumber(d.gta_number || "");
-          setInvoiceNumber(d.invoice_number || "");
+        const sale = details as SalePayload;
+        if (sale.client_id) {
+          setSaleType(sale.sale_type === "abate" ? "abate" : "comprado");
+          setClientId(sale.client_id || "");
+          setTotalValue(sale.total_value?.toString() || "");
+          setDownPayment(sale.down_payment?.toString() || "");
+          setPaymentMethod(sale.payment_method || "");
+          setInstallments(sale.installments?.toString() || "");
+          setInstallmentValue(sale.installment_value?.toString() || "");
+          setGtaNumber(sale.gta_number || "");
+          setInvoiceNumber(sale.invoice_number || "");
         }
       } else if (initialMovement.type === "troca") {
-        if (d.client_id) {
-          setClientId(d.client_id || "");
-          setSubstituteAnimalRgn(d.substitute_animal_rgn || "");
+        const exchange = details as TrocaPayload;
+        if (exchange.client_id) {
+          setClientId(exchange.client_id || "");
+          setSubstituteAnimalRgn(exchange.substitute_animal_rgn || "");
         }
       }
     }
@@ -126,7 +151,7 @@ export function MovementForm({
 
   useEffect(() => {
     if (fetchedSale) {
-      setSaleType((fetchedSale.sale_type as any) || "comprado");
+      setSaleType(fetchedSale.sale_type === "abate" ? "abate" : "comprado");
       setClientId(fetchedSale.client_id || "");
       setTotalValue(fetchedSale.total_value?.toString() || "");
       setDownPayment(fetchedSale.down_payment?.toString() || "");
@@ -154,7 +179,7 @@ export function MovementForm({
     setIsSubmitting(true);
 
     try {
-      let details: any = {};
+      let details: MovementDetails = {};
 
       switch (movementType) {
         case "morte":
@@ -187,14 +212,16 @@ export function MovementForm({
       if (initialMovement) {
         await updateMovement(initialMovement.id, {
           type: movementType as MovementType,
-          animal_id: animalId,
+          animal_id: animal?.rgn || animalId,
+          animal_key: animal?.animal_key,
           date,
           details,
         });
       } else {
         await createMovement({
           type: movementType as MovementType,
-          animal_id: animalId,
+          animal_id: animal?.rgn || animalId,
+          animal_key: animal?.animal_key,
           date,
           details,
         });
@@ -318,12 +345,14 @@ export function MovementForm({
                   className={`bg-muted border-0 rounded-sm mt-1 placeholder:text-xs ${
                     showRgnError ? "ring-2 ring-red-500" : ""
                   }`}
-                  placeholder="Digite o RGN do animal..."
+                  placeholder="RGN ou Série::RGN"
                   disabled={!!initialMovement}
                 />
                 {showRgnError && (
                   <p className="text-[10px] text-red-500 font-semibold mt-1 px-1">
-                    Animal não cadastrado no banco.
+                    {matchingRgns.length > 1
+                      ? "RGN duplicado; informe Série::RGN."
+                      : "Animal não cadastrado no banco."}
                   </p>
                 )}
               </div>

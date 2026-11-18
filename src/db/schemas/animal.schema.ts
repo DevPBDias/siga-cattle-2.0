@@ -3,10 +3,12 @@ import { RxJsonSchema } from "rxdb";
 
 export const animalSchema: RxJsonSchema<Animal> = {
   title: "animals",
-  version: 5,
-  primaryKey: "rgn",
+  version: 6,
+  primaryKey: "animal_key",
   type: "object",
   properties: {
+    animal_key: { type: "string", maxLength: 64 },
+    id: { type: "string", maxLength: 36 },
     rgn: { type: "string", maxLength: 10 },
     name: { type: "string" },
     sex: { type: "string" },
@@ -46,5 +48,5 @@ export const animalSchema: RxJsonSchema<Animal> = {
     updated_at: { type: "number" },
     _deleted: { type: "boolean" },
   },
-  required: ["rgn", "serie_rgd", "_deleted", "created_at", "updated_at"],
+  required: ["animal_key", "rgn", "serie_rgd", "_deleted", "created_at", "updated_at"],
 };

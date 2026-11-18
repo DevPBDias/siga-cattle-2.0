@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Animal } from "@/types/animal.type";
+import { getAnimalKey } from "@/utils/animalIdentity";
 import { isSupabaseConfigured } from "@/lib/supabase/api";
 import { getSupabase } from "@/lib/supabase/client";
 import { useRxDatabase } from "@/providers/RxDBProvider";
@@ -106,7 +107,7 @@ const SearchCsvFile = () => {
 
           // A. Procura se já existe no banco de dados local (RxDB)
           const localDoc = await db.animals
-            .findOne({ selector: { rgn: animal.rgn } })
+            .findOne(getAnimalKey(animal))
             .exec();
 
           if (localDoc) {
@@ -124,7 +125,7 @@ const SearchCsvFile = () => {
                 const { data: supaAnimal, error } = await supabase
                   .from("animals")
                   .select("*")
-                  .eq("rgn", animal.rgn)
+                  .eq("animal_key", getAnimalKey(animal))
                   .maybeSingle();
 
                 if (!error && supaAnimal) {
@@ -133,7 +134,10 @@ const SearchCsvFile = () => {
                     supaAnimal as unknown as Animal,
                     animal,
                   );
-                  await db.animals.insert(merged);
+                  await db.animals.insert({
+                    ...merged,
+                    animal_key: getAnimalKey(merged),
+                  });
                   foundInGlobal = true;
                   updatedCount++;
                 }
@@ -151,6 +155,7 @@ const SearchCsvFile = () => {
                 breed: "Nelore",
                 status: "-",
                 ...animal,
+                animal_key: getAnimalKey(animal),
                 animal_state: animal.animal_state || "ATIVO",
                 created_at: Date.now(),
                 updated_at: Date.now(),

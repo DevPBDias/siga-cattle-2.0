@@ -1,5 +1,6 @@
 export interface AnimalMetric {
   id: string;
+  animal_key?: string;
   rgn: string;
   born_metric?: boolean;
   date: string;

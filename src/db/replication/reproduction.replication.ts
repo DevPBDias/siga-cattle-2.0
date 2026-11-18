@@ -10,6 +10,7 @@ export const reproductionEventReplication = createReplication<ReproductionEvent>
 
   mapToSupabase: (doc) => ({
     event_id: doc.event_id,
+    animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     event_type: doc.event_type,
     productive_status: doc.productive_status ?? null,

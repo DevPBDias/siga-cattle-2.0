@@ -21,6 +21,7 @@ export interface Movement {
   id: string;
   type: MovementType;
   date: string; // ISO Date
+  animal_key?: string;
   /** Data efetiva do evento. Mantém date para compatibilidade com registros antigos. */
   event_date?: string;
   animal_id: string; // RGN of the main animal involved

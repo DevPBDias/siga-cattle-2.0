@@ -26,7 +26,7 @@ export async function getAnimalMetricCERSC(
 }
 
 export async function getAnimalMetricsCEByRgnRSC(
-  rgn: string
+  animalKeyOrRgn: string
 ): Promise<AnimalMetric[]> {
   const db = await getDatabase();
   if (!db) throw new Error("Database not initialized");
@@ -34,7 +34,9 @@ export async function getAnimalMetricsCEByRgnRSC(
     .find({
       selector: {
         _deleted: { $eq: false },
-        rgn: { $eq: rgn },
+        ...(animalKeyOrRgn.includes("::")
+          ? { animal_key: { $eq: animalKeyOrRgn } }
+          : { rgn: { $eq: animalKeyOrRgn } }),
       },
       sort: [{ date: "desc" as const }],
     })

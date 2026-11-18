@@ -51,7 +51,10 @@ CREATE TABLE IF NOT EXISTS user_profiles (
 
 -- ANIMALS
 CREATE TABLE IF NOT EXISTS animals (
-  rgn                       TEXT    PRIMARY KEY,
+  animal_key                TEXT    NOT NULL PRIMARY KEY,
+  id                        UUID    NOT NULL DEFAULT gen_random_uuid() UNIQUE,
+  org_id                    UUID    NOT NULL,
+  rgn                       TEXT    NOT NULL,
   name                      TEXT,
   sex                       TEXT,
   is_natural_bull           BOOLEAN,
@@ -84,6 +87,10 @@ CREATE TABLE IF NOT EXISTS animals (
   updated_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
   _deleted                  BOOLEAN NOT NULL DEFAULT FALSE
 );
+CREATE UNIQUE INDEX IF NOT EXISTS animals_registration_unique_idx
+  ON animals (upper(btrim(serie_rgd)), upper(btrim(rgn)));
+CREATE INDEX IF NOT EXISTS animals_org_id_idx ON animals (org_id);
+CREATE INDEX IF NOT EXISTS animals_rgn_idx ON animals (rgn);
 
 -- CLIENTS
 CREATE TABLE IF NOT EXISTS clients (
@@ -112,6 +119,7 @@ CREATE TABLE IF NOT EXISTS vaccines (
 -- ANIMAL_VACCINES
 CREATE TABLE IF NOT EXISTS animal_vaccines (
   id         TEXT    PRIMARY KEY,
+  animal_key TEXT,
   rgn        TEXT    NOT NULL,
   vaccine_id TEXT    NOT NULL,
   date       DATE,
@@ -123,6 +131,7 @@ CREATE TABLE IF NOT EXISTS animal_vaccines (
 -- ANIMAL_METRICS_WEIGHT
 CREATE TABLE IF NOT EXISTS animal_metrics_weight (
   id          TEXT    PRIMARY KEY,
+  animal_key  TEXT,
   rgn         TEXT    NOT NULL,
   born_metric BOOLEAN,
   date        TEXT,
@@ -135,6 +144,7 @@ CREATE TABLE IF NOT EXISTS animal_metrics_weight (
 -- ANIMAL_METRICS_CE
 CREATE TABLE IF NOT EXISTS animal_metrics_ce (
   id          TEXT    PRIMARY KEY,
+  animal_key  TEXT,
   rgn         TEXT    NOT NULL,
   born_metric BOOLEAN,
   date        TEXT,
@@ -165,6 +175,7 @@ CREATE TABLE IF NOT EXISTS animal_situations (
 -- REPRODUCTION_EVENTS
 CREATE TABLE IF NOT EXISTS reproduction_events (
   event_id                 TEXT    PRIMARY KEY,
+  animal_key               TEXT,
   rgn                      TEXT    NOT NULL,
   event_type               TEXT    NOT NULL,
   productive_status        TEXT,
@@ -203,6 +214,7 @@ CREATE TABLE IF NOT EXISTS reproduction_events (
 -- DEATHS
 CREATE TABLE IF NOT EXISTS deaths (
   id          TEXT    PRIMARY KEY,
+  animal_key  TEXT,
   animal_rgn  TEXT    NOT NULL,
   date        TEXT    NOT NULL,
   reason      TEXT    NOT NULL,
@@ -217,6 +229,7 @@ CREATE TABLE IF NOT EXISTS deaths (
 -- SALES
 CREATE TABLE IF NOT EXISTS sales (
   id                TEXT    PRIMARY KEY,
+  animal_key        TEXT,
   animal_rgn        TEXT    NOT NULL,
   client_id         TEXT    NOT NULL,
   date              TEXT    NOT NULL,
@@ -237,6 +250,9 @@ CREATE TABLE IF NOT EXISTS sales (
 -- EXCHANGES
 CREATE TABLE IF NOT EXISTS exchanges (
   id                    TEXT    PRIMARY KEY,
+  animal_key            TEXT,
+  traded_animal_key     TEXT,
+  substitute_animal_key TEXT,
   animal_rgn            TEXT    NOT NULL,
   date                  TEXT    NOT NULL,
   client_id             TEXT    NOT NULL,
@@ -251,6 +267,7 @@ CREATE TABLE IF NOT EXISTS exchanges (
 -- MOVEMENTS
 CREATE TABLE IF NOT EXISTS movements (
   id         TEXT    PRIMARY KEY,
+  animal_key TEXT,
   type       TEXT    NOT NULL,
   date       TEXT    NOT NULL,
   event_date TEXT,
@@ -282,6 +299,7 @@ CREATE TABLE IF NOT EXISTS semen_doses (
 -- AGENDA_REMINDERS
 CREATE TABLE IF NOT EXISTS agenda_reminders (
   id          TEXT    PRIMARY KEY,
+  animal_key  TEXT,
   title       TEXT    NOT NULL,
   description TEXT,
   date        TEXT,
@@ -294,6 +312,7 @@ CREATE TABLE IF NOT EXISTS agenda_reminders (
 -- RETREATS
 CREATE TABLE IF NOT EXISTS retreats (
   id         TEXT    PRIMARY KEY,
+  animal_key TEXT,
   animal_rgn TEXT,
   date       TEXT,
   reason     TEXT,
@@ -334,6 +353,9 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS permissions             JSONB
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS owner_id                TEXT;
 
 -- animals
+ALTER TABLE animals ADD COLUMN IF NOT EXISTS animal_key TEXT;
+ALTER TABLE animals ADD COLUMN IF NOT EXISTS id UUID DEFAULT gen_random_uuid();
+ALTER TABLE animals ADD COLUMN IF NOT EXISTS org_id UUID;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS updated_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS created_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS _deleted                  BOOLEAN NOT NULL DEFAULT FALSE;
@@ -360,6 +382,10 @@ ALTER TABLE animals ADD COLUMN IF NOT EXISTS is_natural_bull           BOOLEAN;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS born_color                TEXT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS farm_id                   TEXT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS type                      TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS animals_registration_unique_idx
+  ON animals (upper(btrim(serie_rgd)), upper(btrim(rgn)));
+CREATE INDEX IF NOT EXISTS animals_org_id_idx ON animals (org_id);
+CREATE INDEX IF NOT EXISTS animals_rgn_idx ON animals (rgn);
 
 -- clients
 ALTER TABLE clients ADD COLUMN IF NOT EXISTS updated_at         BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
@@ -377,12 +403,14 @@ ALTER TABLE vaccines ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NULL DEFAUL
 ALTER TABLE vaccines ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- animal_vaccines
+ALTER TABLE animal_vaccines ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE animal_vaccines ADD COLUMN IF NOT EXISTS updated_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_vaccines ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_vaccines ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE animal_vaccines ADD COLUMN IF NOT EXISTS date       DATE;
 
 -- animal_metrics_weight
+ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS updated_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS created_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS _deleted    BOOLEAN NOT NULL DEFAULT FALSE;
@@ -391,6 +419,7 @@ ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS date        TEXT;
 ALTER TABLE animal_metrics_weight ADD COLUMN IF NOT EXISTS value       NUMERIC;
 
 -- animal_metrics_ce
+ALTER TABLE animal_metrics_ce ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE animal_metrics_ce ADD COLUMN IF NOT EXISTS updated_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_metrics_ce ADD COLUMN IF NOT EXISTS created_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE animal_metrics_ce ADD COLUMN IF NOT EXISTS _deleted    BOOLEAN NOT NULL DEFAULT FALSE;
@@ -409,6 +438,7 @@ ALTER TABLE animal_situations ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NU
 ALTER TABLE animal_situations ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- reproduction_events
+ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS animal_key TEXT;
 -- Migration: renomear PK 'id' -> 'event_id' se o banco foi criado com estrutura antiga
 DO $$
 BEGIN
@@ -459,6 +489,7 @@ ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS final_diagnostic       
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS pregnancy_origin          TEXT;
 
 -- deaths (tabela com problema: faltava updated_at)
+ALTER TABLE deaths ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE deaths ADD COLUMN IF NOT EXISTS updated_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE deaths ADD COLUMN IF NOT EXISTS created_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE deaths ADD COLUMN IF NOT EXISTS _deleted    BOOLEAN NOT NULL DEFAULT FALSE;
@@ -467,6 +498,7 @@ ALTER TABLE deaths ADD COLUMN IF NOT EXISTS photos      TEXT[]  NOT NULL DEFAULT
 ALTER TABLE deaths ADD COLUMN IF NOT EXISTS photo_paths TEXT[]  NOT NULL DEFAULT '{}';
 
 -- sales
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS updated_at        BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS created_at        BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS _deleted          BOOLEAN NOT NULL DEFAULT FALSE;
@@ -481,6 +513,9 @@ ALTER TABLE sales ADD COLUMN IF NOT EXISTS invoice_number    TEXT;
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS sale_type         TEXT;
 
 -- exchanges
+ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS animal_key TEXT;
+ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS traded_animal_key TEXT;
+ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS substitute_animal_key TEXT;
 ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS updated_at             BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS created_at             BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS _deleted               BOOLEAN NOT NULL DEFAULT FALSE;
@@ -488,6 +523,7 @@ ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS substitute_animal_rgn  TEXT;
 ALTER TABLE exchanges ADD COLUMN IF NOT EXISTS value_difference        NUMERIC;
 
 -- movements
+ALTER TABLE movements ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE movements ADD COLUMN IF NOT EXISTS updated_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE movements ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE movements ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
@@ -506,6 +542,7 @@ ALTER TABLE semen_doses ADD COLUMN IF NOT EXISTS registration               TEXT
 ALTER TABLE semen_doses ADD COLUMN IF NOT EXISTS center_name               TEXT;
 
 -- agenda_reminders
+ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS updated_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS created_at  BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS _deleted    BOOLEAN NOT NULL DEFAULT FALSE;
@@ -514,6 +551,7 @@ ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS date        TEXT;
 ALTER TABLE agenda_reminders ADD COLUMN IF NOT EXISTS animal_rgn  TEXT;
 
 -- retreats
+ALTER TABLE retreats ADD COLUMN IF NOT EXISTS animal_key TEXT;
 ALTER TABLE retreats ADD COLUMN IF NOT EXISTS updated_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE retreats ADD COLUMN IF NOT EXISTS created_at BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE retreats ADD COLUMN IF NOT EXISTS _deleted   BOOLEAN NOT NULL DEFAULT FALSE;
@@ -775,4 +813,3 @@ END;
 $$;
 
 -- FIM DO SCRIPT
-

@@ -29,7 +29,7 @@ export function EditAnimalModal({
 
   const handleSave = async (data: Partial<Animal>) => {
     try {
-      await updateAnimal(animal.rgn, data);
+      await updateAnimal(animal.animal_key || animal.rgn, data);
       onClose();
     } catch (error) {
       console.error("Erro ao atualizar animal:", error);

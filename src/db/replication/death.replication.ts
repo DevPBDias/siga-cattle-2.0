@@ -47,6 +47,7 @@ export const deathReplication = createReplication<Death>({
   // Mapeia documento RxDB → Supabase
   mapToSupabase: (doc) => ({
     id: doc.id,
+    animal_key: doc.animal_key ?? null,
     animal_rgn: doc.animal_rgn,
     date: doc.date,
     reason: doc.reason,

@@ -71,7 +71,7 @@ const ManageSocietyContent = ({
 
     try {
       const partnershipString = getPartnershipString(selectedNames);
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         partnership: partnershipString,
       });
       setSuccessModalOpen(true);
@@ -85,7 +85,7 @@ const ManageSocietyContent = ({
   const handleConfirmClear = async () => {
     if (!selectedAnimal) return;
     try {
-      await updateAnimal(selectedAnimal.rgn, {
+      await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         partnership: "",
       });
       setSelectedNames([]);
