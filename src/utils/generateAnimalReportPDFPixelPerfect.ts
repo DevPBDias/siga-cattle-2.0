@@ -6,6 +6,10 @@ import { fieldMap } from "@/constants/dynamicFields";
 import { Farm } from "@/types/farm.type";
 import { saveBlobAsFile } from "./saveBlobFile";
 import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
+import {
+  drawTenantReportLogo,
+  loadTenantReportLogo,
+} from "@/lib/branding/report-branding";
 import { formatDate, getTodayFormatted } from "@/utils/dates";
 
 const LAYOUT = {
@@ -43,38 +47,6 @@ const LAYOUT = {
   },
 };
 
-function drawTenantLogo(doc: jsPDF, x: number, y: number, branding: ReturnType<typeof getTenantBranding>): void {
-  try {
-    const initials = branding.farmName
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase();
-
-    doc.setFillColor(255, 255, 255, 0.2);
-    doc.roundedRect(x, y, 36, 12, 1.5, 1.5, "F");
-    doc.setDrawColor(...branding.secondaryRgb);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(x, y, 36, 12, 1.5, 1.5, "D");
-
-    doc.setTextColor(255, 255, 255);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text(initials, x + 3, y + 8);
-
-    doc.setFontSize(5.5);
-    doc.setTextColor(...branding.secondaryRgb);
-    doc.text(branding.tenant.badgeText ?? "SIGA", x + 12, y + 5.5);
-    doc.setFontSize(5);
-    doc.setTextColor(255, 255, 255);
-    doc.text("CATTLE", x + 12, y + 9.5);
-  } catch (error) {
-    console.error("Erro ao carregar logo no PDF:", error);
-  }
-}
-
 function formatValue(val: any): string {
   if (val === null || val === undefined) return "";
   return String(val);
@@ -91,6 +63,7 @@ export async function generateAnimalReportPDFPixelPerfect(
   if (!data || data.length === 0) return null;
 
   const branding = getTenantBranding();
+  const logoData = await loadTenantReportLogo(branding);
 
   // 1. Ordenação obrigatória por RGN decrescente
   const sortedData = [...data].sort((a, b) => {
@@ -120,7 +93,7 @@ export async function generateAnimalReportPDFPixelPerfect(
     doc.rect(0, 20.4, pageWidth, 0.6, "F");
 
     // Logo
-    drawTenantLogo(doc, margins.left, 4.5, branding);
+    drawTenantReportLogo(doc, branding, logoData, margins.left, 2.5, 36, 17);
 
     // Cabeçalho Centralizado
     doc.setTextColor(...LAYOUT.colors.textWhite);

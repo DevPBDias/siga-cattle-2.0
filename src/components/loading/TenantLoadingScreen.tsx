@@ -76,7 +76,7 @@ function Agro3milLoading({ message }: { message: string }) {
 
 /**
  * 2. Loading Haras Fazenda Luma
- * Fundo verde floresta #2C4A2E, texto tipográfico com o nome da fazenda e barra de carregamento
+ * Logo oficial em fundo verde #002B0D e barra de carregamento dourada
  * Usa `fixed inset-0 z-50` para sobrepor a tela sem ocupar espaço estático no fluxo.
  */
 function HarasLumaLoading({ message }: { message: string }) {
@@ -87,23 +87,23 @@ function HarasLumaLoading({ message }: { message: string }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       transition={{ duration: 0.3 }}
-      className="fixed inset-0 z-50 flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#2C4A2E] px-6 py-12 select-none"
+      className="fixed inset-0 z-50 flex h-dvh w-full flex-col items-center justify-between overflow-hidden bg-[#002B0D] px-6 py-8 select-none"
     >
-      <div className="flex-1 w-full flex items-center justify-center">
-        {/* Texto do Haras Fazenda Luma em fonte condensada e impactante */}
-        <div className="flex flex-col items-center text-center leading-tight">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-[0.18em] text-[#F5F3EE] drop-shadow-md">
-            HARAS
-          </h1>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-[0.18em] text-[#F5F3EE] drop-shadow-md mt-1">
-            FAZENDA LUMA
-          </h2>
-        </div>
+      <div className="flex w-full flex-1 items-center justify-center px-4">
+        <Image
+          src="/branding/haras-luma/logo_haras_luma.png"
+          alt="Fazenda Luma"
+          width={390}
+          height={307}
+          sizes="(max-width: 640px) 78vw, 416px"
+          priority
+          className="h-auto w-[min(78vw,26rem)] object-contain"
+        />
       </div>
 
       {/* Barra de carregamento e mensagem no rodapé */}
-      <div className="w-full flex flex-col items-center gap-2.5 pb-4">
-        <span className="text-[12px] md:text-[13px] font-extrabold tracking-[0.25em] text-[#F5F3EE] uppercase drop-shadow-sm">
+      <div className="flex w-full flex-col items-center gap-2.5 pb-4">
+        <span className="text-xs font-extrabold uppercase tracking-[0.25em] text-[#F5F3EE]">
           {message}
         </span>
         <ProgressBar color="#C9A84C" bgColor="rgba(255, 255, 255, 0.2)" />

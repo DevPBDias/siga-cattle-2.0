@@ -216,7 +216,7 @@ export function createReplication<T extends ReplicableEntity>(
       // ==================== PUSH (RxDB → Supabase) ====================
       //
       // The push handler sends updated_at (device timestamp) to the server.
-      // The server (/api/sync POST) injects org_id and device_id.
+      // The server injects org_id for animals; the database defaults device_id.
       // The lww_merge trigger on the server resolves conflicts using updated_at.
       push: {
         async handler(rows) {
@@ -373,4 +373,3 @@ export function createReplication<T extends ReplicableEntity>(
     return replication;
   };
 }
-

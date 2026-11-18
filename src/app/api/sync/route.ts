@@ -3,6 +3,7 @@ import {
   createClient as createSupabaseClient,
 } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { resolveAnimalOrganizationId } from "@/lib/sync/organization";
 
 // ---------------------------------------------------------------------------
 // Allowlist — apenas essas tabelas podem ser acessadas via API de sync.
@@ -146,14 +147,49 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    let animalOrgId: string | null = null;
+    if (table === "animals") {
+      const { data: profile, error: profileError } = await supabase
+        .from("user_profiles")
+        .select("id, role, owner_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (profileError) {
+        console.error("[SyncAPI] Failed to resolve animal organization:", profileError);
+        return NextResponse.json(
+          { error: "Could not load the authenticated user's organization profile." },
+          { status: 500 },
+        );
+      }
+
+      if (!profile) {
+        return NextResponse.json(
+          { error: "No user profile found to determine the animal organization." },
+          { status: 409 },
+        );
+      }
+
+      const organization = resolveAnimalOrganizationId(profile, user.id);
+      if (organization.error) {
+        return NextResponse.json({ error: organization.error }, { status: 409 });
+      }
+      animalOrgId = organization.orgId;
+    }
+
     const serverPk = SERVER_PK_OVERRIDE[table] ?? clientPrimaryKey;
 
     // Sanitiza documentos para o Supabase: remove colunas inexistentes no banco remoto
     const sanitizedDocuments = documents.map((doc: Record<string, unknown>) => {
       const clean = { ...doc };
-      delete (clean as any).server_updated_at;
-      delete (clean as any).device_id;
-      delete (clean as any).org_id;
+      delete clean.server_updated_at;
+      delete clean.device_id;
+
+      if (table === "animals") {
+        clean.org_id = animalOrgId;
+      } else {
+        delete clean.org_id;
+      }
       return clean;
     });
 

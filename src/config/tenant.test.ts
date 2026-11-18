@@ -4,7 +4,6 @@ import {
   resolveTenant,
   getTenantPageTitle,
   getTenantCssVariables,
-  TENANTS,
 } from "./tenant";
 import { getTenantBranding, hexToRgb } from "@/lib/branding/get-tenant-branding";
 import {
@@ -70,9 +69,9 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       expect(res.tenant).toBeDefined();
       expect(res.tenant?.id).toBe("haras-luma");
       expect(res.tenant?.name).toBe("Haras Fazenda Luma");
-      expect(res.tenant?.logo).toBe("/branding/haras-luma/logo.svg");
-      expect(res.tenant?.reportLogo).toBe("/branding/haras-luma/logo-report.png");
-      expect(res.tenant?.primaryColor).toBe("#2C4A2E");
+      expect(res.tenant?.logo).toBe("/branding/haras-luma/logo_haras_luma.png");
+      expect(res.tenant?.reportLogo).toBe("/branding/haras-luma/logo_haras_luma.png");
+      expect(res.tenant?.primaryColor).toBe("#002B0D");
       expect(res.tenant?.secondaryColor).toBe("#C9A84C");
       expect(res.tenant?.backgroundColor).toBe("#F5F3EE");
       expect(res.tenant?.textColor).toBe("#1C2D1E");
@@ -94,13 +93,13 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       const branding = getTenantBranding("haras-luma");
       expect(branding.farmName).toBe("Haras Fazenda Luma");
       expect(branding.farmName).not.toContain("Agro 3mil");
-      expect(branding.primaryRgb).toEqual([44, 74, 46]);
-      expect(branding.reportLogoUrl).toBe("/branding/haras-luma/logo-report.png");
+      expect(branding.primaryRgb).toEqual([0, 43, 13]);
+      expect(branding.reportLogoUrl).toBe("/branding/haras-luma/logo_haras_luma.png");
     });
 
     it("deve aplicar cores corretas em REPORT_COLORS proxy para Haras Fazenda Luma", () => {
       process.env.NEXT_PUBLIC_TENANT_ID = "haras-luma";
-      expect(REPORT_COLORS.PRIMARY).toEqual([44, 74, 46]);
+      expect(REPORT_COLORS.PRIMARY).toEqual([0, 43, 13]);
     });
   });
 
@@ -185,9 +184,9 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       expect(doc.getNumberOfPages()).toBe(5);
     });
 
-    it("deve gerar capa institucional sem erros", () => {
+    it("deve gerar capa institucional sem erros", async () => {
       const doc = new jsPDF({ orientation: "landscape", unit: "mm" });
-      addReportCoverPage(doc, {
+      await addReportCoverPage(doc, {
         reportName: "RELATÓRIO DE DESEMPENHO",
         tenantId: "haras-luma",
         totalItems: 42,

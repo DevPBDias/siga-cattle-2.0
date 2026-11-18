@@ -10,6 +10,10 @@ import { AnimalVaccine } from "@/types/vaccine.type";
 import { formatDate, formatDateTime } from "@/utils/dates";
 
 import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
+import {
+  drawTenantReportLogo,
+  loadTenantReportLogo,
+} from "@/lib/branding/report-branding";
 
 export async function generateAnimalReportPDF(
   data: Animal[],
@@ -24,6 +28,7 @@ export async function generateAnimalReportPDF(
   }
 
   const branding = getTenantBranding();
+  const logoData = await loadTenantReportLogo(branding);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm" });
 
   const primaryColor = branding.primaryRgb;
@@ -368,6 +373,8 @@ export async function generateAnimalReportPDF(
       return acc;
     }, {} as Record<number, any>),
     didDrawPage: (data) => {
+      drawTenantReportLogo(doc, branding, logoData, 10, 2.5, 36, 17);
+
       // Adicionar linha separadora após o header em cada página
       if (data.cursor) {
         doc.setDrawColor(...primaryColor);

@@ -6,6 +6,10 @@ import { SelectedDoseReportFields } from "@/types/dose_report_field.type";
 import { formatDateTime } from "@/utils/dates";
 
 import { getTenantBranding } from "@/lib/branding/get-tenant-branding";
+import {
+  drawTenantReportLogo,
+  loadTenantReportLogo,
+} from "@/lib/branding/report-branding";
 
 const doseFieldMap: Record<
   keyof SelectedDoseReportFields,
@@ -34,6 +38,7 @@ export async function generateDoseReportPDF(
   }
 
   const branding = getTenantBranding();
+  const logoData = await loadTenantReportLogo(branding);
   const doc = new jsPDF({ orientation: "landscape", unit: "mm" });
 
   const primaryColor = branding.primaryRgb;
@@ -203,6 +208,8 @@ export async function generateDoseReportPDF(
       return acc;
     }, {} as Record<number, any>),
     didDrawPage: (data) => {
+      drawTenantReportLogo(doc, branding, logoData, 10, 2.5, 36, 17);
+
       if (data.cursor) {
         doc.setDrawColor(...primaryColor);
         doc.setLineWidth(0.3);
@@ -257,4 +264,3 @@ export async function generateDoseReportPDF(
     shareText: `Relatório com ${data.length} animais e ${totalDoses} doses - Siga Cattle (${branding.farmName})`,
   });
 }
-

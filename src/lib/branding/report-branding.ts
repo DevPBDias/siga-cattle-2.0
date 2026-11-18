@@ -37,6 +37,7 @@ const LAYOUT_CONFIG = {
 
 // Cache de logos já carregados para não re-fetchear em cada página
 const logoCache = new Map<string, { base64: string; format: string } | null>();
+export type TenantReportLogoData = { base64: string; format: string } | null;
 
 /**
  * Carrega o logo de uma URL pública e retorna base64 com formato.
@@ -99,7 +100,20 @@ function drawLogoOrEmblem(
 ): void {
   if (logoData) {
     try {
-      doc.addImage(logoData.base64, logoData.format, x, y, width, height);
+      const { width: sourceWidth, height: sourceHeight } =
+        doc.getImageProperties(logoData.base64);
+      const scale = Math.min(width / sourceWidth, height / sourceHeight);
+      const imageWidth = sourceWidth * scale;
+      const imageHeight = sourceHeight * scale;
+
+      doc.addImage(
+        logoData.base64,
+        logoData.format,
+        x + (width - imageWidth) / 2,
+        y + (height - imageHeight) / 2,
+        imageWidth,
+        imageHeight,
+      );
       return;
     } catch (err) {
       console.warn("[PDF] Falha ao inserir logo, usando emblema de texto:", err);
@@ -108,6 +122,24 @@ function drawLogoOrEmblem(
 
   // Fallback: emblema de texto com iniciais
   drawEmblemFallback(doc, x, y, branding, width, height);
+}
+
+export async function loadTenantReportLogo(
+  branding: TenantBranding,
+): Promise<TenantReportLogoData> {
+  return fetchLogoBase64(branding.reportLogoUrl);
+}
+
+export function drawTenantReportLogo(
+  doc: jsPDF,
+  branding: TenantBranding,
+  logoData: TenantReportLogoData,
+  x: number,
+  y: number,
+  width = 36,
+  height = 17,
+): void {
+  drawLogoOrEmblem(doc, x, y, branding, logoData, width, height);
 }
 
 /**
@@ -166,7 +198,7 @@ export async function addReportHeader(doc: jsPDF, options: ReportHeaderOptions):
   const marginRight = 10;
 
   // Carrega o logo antes de iterar pelas páginas
-  const logoData = await fetchLogoBase64(branding.reportLogoUrl);
+  const logoData = await loadTenantReportLogo(branding);
 
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
@@ -180,7 +212,7 @@ export async function addReportHeader(doc: jsPDF, options: ReportHeaderOptions):
     doc.rect(0, 22.4, pageWidth, 0.6, "F");
 
     // 2. Logo / Emblema
-    drawLogoOrEmblem(doc, marginLeft, 5, branding, logoData, 38, 12);
+    drawTenantReportLogo(doc, branding, logoData, marginLeft, 2.5, 36, 18);
 
     // 3. Título centralizado
     doc.setTextColor(255, 255, 255);
@@ -283,6 +315,17 @@ export async function addReportCoverPage(doc: jsPDF, options: ReportHeaderOption
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const centerX = pageWidth / 2;
+  const logoData = await loadTenantReportLogo(branding);
+
+  drawTenantReportLogo(
+    doc,
+    branding,
+    logoData,
+    centerX - 30,
+    pageHeight / 10,
+    60,
+    38,
+  );
 
   doc.setFont(LAYOUT_CONFIG.fonts.base, LAYOUT_CONFIG.fonts.bold);
   doc.setFontSize(24);

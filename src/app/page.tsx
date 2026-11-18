@@ -72,7 +72,10 @@ export default function LoadingPage() {
   }, [isMounted, resolution.isValid, authLoading, initialSyncReady, triggerRedirect]);
 
   if (!isMounted) {
-    const initialBg = resolution.tenant?.backgroundColor || "#2B68B1";
+    const initialBg =
+      resolution.tenant?.id === "haras-luma"
+        ? resolution.tenant.primaryColor
+        : resolution.tenant?.backgroundColor || "#2B68B1";
     return (
       <main
         className="fixed inset-0 z-50 h-dvh w-full overflow-hidden"
