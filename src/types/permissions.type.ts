@@ -14,7 +14,7 @@ export const APP_PERMISSIONS = [
   { key: "gerenciar", label: "Gerenciamento", route: "/gerenciar" },
   { key: "relatorios", label: "Relatórios", route: "/geral" },
   { key: "evolucao", label: "Evolução", route: "/geral/evolucao" },
-  { key: "mover-rebanho", label: "Mover Rebanho", route: "/mover-rebanho" },
+  { key: "mover-rebanho", label: "Giro de pasto", route: "/mover-rebanho" },
 ] as const;
 
 export type PermissionKey = (typeof APP_PERMISSIONS)[number]["key"];
@@ -62,7 +62,7 @@ export function getEffectivePermissions(
   role: UserRole,
   permissions?: UserPermissions,
 ): UserPermissions {
-  return role === "owner" ? OWNER_PERMISSIONS : permissions ?? {};
+  return role === "owner" ? OWNER_PERMISSIONS : (permissions ?? {});
 }
 
 export function canAccessPermission(
