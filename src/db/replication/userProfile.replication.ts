@@ -5,7 +5,7 @@ import { createReplication } from "./base";
 export const userProfileReplication = createReplication<UserProfile>({
   collectionName: "user_profiles",
   tableName: "user_profiles",
-  replicationIdentifier: "user-profiles-replication-v14",
+  replicationIdentifier: "user-profiles-replication-v15",
 
   mapToSupabase: (profile) => ({
     id: profile.id,
@@ -25,7 +25,7 @@ export const userProfileReplication = createReplication<UserProfile>({
     created_at: profile.created_at,
     updated_at: profile.updated_at,
     _deleted: profile._deleted,
-    role: profile.role ?? "owner",
+    role: profile.role ?? "member",
     permissions: profile.permissions ?? {},
     owner_id: profile.owner_id ?? null,
     org_id: profile.org_id ?? null,

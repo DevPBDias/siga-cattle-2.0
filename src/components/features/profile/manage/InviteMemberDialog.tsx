@@ -21,8 +21,6 @@ import { UserProfile } from "@/types/user_profile.type";
 interface InviteMemberDialogProps {
   open: boolean;
   ownerId?: string;
-  orgId?: string;
-  farmName?: string;
   onCreate: (data: Partial<UserProfile>) => Promise<UserProfile>;
   onOpenChange: (open: boolean) => void;
 }
@@ -30,8 +28,6 @@ interface InviteMemberDialogProps {
 export function InviteMemberDialog({
   open,
   ownerId,
-  orgId,
-  farmName,
   onCreate,
   onOpenChange,
 }: InviteMemberDialogProps) {
@@ -144,8 +140,6 @@ export function InviteMemberDialog({
                     fullName,
                     email,
                     ownerId,
-                    orgId,
-                    farmName,
                     createLocal: onCreate,
                   })
                 }

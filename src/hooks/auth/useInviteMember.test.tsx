@@ -8,15 +8,15 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
   fetch: vi.fn(),
+  generateUserPassword: vi.fn(),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
-  createIsolatedAuthClient: vi.fn(),
   getSupabase: mocks.getSupabase,
 }));
 
 vi.mock("@/lib/auth/passwordHelper", () => ({
-  generateUserPassword: vi.fn(),
+  generateUserPassword: mocks.generateUserPassword,
 }));
 
 vi.mock("sonner", () => ({
@@ -100,6 +100,48 @@ describe("useInviteMember", () => {
       }),
     );
     expect(removeLocal).toHaveBeenCalledWith(member.id);
+  });
+
+  it("creates a member through the authenticated server route and stores the returned profile locally", async () => {
+    mocks.generateUserPassword.mockReturnValue("new123");
+    mocks.fetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: member }),
+    });
+    const createLocal = vi.fn().mockResolvedValue(member);
+    const { result } = renderHook(() => useInviteMember());
+    let created = false;
+
+    await act(async () => {
+      created = await result.current.actions.invite({
+        fullName: " Novo membro ",
+        email: "NEW@EXAMPLE.COM ",
+        ownerId: member.owner_id,
+        createLocal,
+      });
+    });
+
+    expect(created).toBe(true);
+    expect(mocks.fetch).toHaveBeenCalledWith(
+      "/api/profile/members/create",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer owner-token",
+        }),
+        body: JSON.stringify({
+          fullName: "Novo membro",
+          email: "new@example.com",
+          password: "new123",
+        }),
+      }),
+    );
+    expect(createLocal).toHaveBeenCalledWith(member);
+    expect(result.current.data.credentials).toEqual({
+      email: "new@example.com",
+      password: "new123",
+      role: "member",
+    });
   });
 
   it("preserves the local profile when the server rejects deletion", async () => {

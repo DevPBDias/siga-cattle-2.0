@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { toast } from "sonner";
 import { generateUserPassword } from "@/lib/auth/passwordHelper";
-import { createIsolatedAuthClient, getSupabase } from "@/lib/supabase/client";
+import { getSupabase } from "@/lib/supabase/client";
 import {
   DEFAULT_MEMBER_PERMISSIONS,
   OWNER_PERMISSIONS,
@@ -17,8 +17,6 @@ type InviteInput = {
   fullName: string;
   email: string;
   ownerId?: string;
-  orgId?: string;
-  farmName?: string;
   createLocal: (data: Partial<UserProfile>) => Promise<UserProfile>;
 };
 
@@ -35,7 +33,7 @@ export type CreatedCredentials = {
 };
 
 function nextMemberAccess(profile: UserProfile, changes: MemberAccessChanges) {
-  const nextRole = changes.role ?? (profile.role === "member" ? "member" : "owner");
+  const nextRole = changes.role ?? (profile.role === "owner" ? "owner" : "member");
   const currentPermissions = profile.permissions ?? {};
   const nextPermissions: UserPermissions = changes.role
     ? changes.role === "owner"
@@ -69,8 +67,6 @@ export function useInviteMember() {
     fullName,
     email,
     ownerId,
-    orgId,
-    farmName,
     createLocal,
   }: InviteInput) => {
     const cleanName = fullName.trim();
@@ -105,84 +101,45 @@ export function useInviteMember() {
     setLoading(true);
     setError(null);
     try {
-      const roleToSave: UserRole = "member";
-      const permissionsToSave: UserPermissions = DEFAULT_MEMBER_PERMISSIONS;
-
-      const isolatedClient = createIsolatedAuthClient();
-      const { data: authData, error: authError } = await isolatedClient.auth.signUp({
-        email: cleanEmail,
-        password: passwordToUse,
-        options: { data: { full_name: cleanName } },
-      });
-
-      if (authError) {
-        if (
-          authError.message.toLowerCase().includes("already registered") ||
-          authError.message.toLowerCase().includes("already been registered")
-        ) {
-          throw new Error("Este e-mail já está cadastrado no sistema.");
-        }
-        throw new Error(`Falha no Supabase Auth: ${authError.message}`);
+      if (!ownerId) {
+        throw new Error("Não foi possível identificar o administrador da fazenda.");
       }
 
-      if (authData.user?.identities && authData.user.identities.length === 0) {
-        throw new Error("Este e-mail já está cadastrado no Supabase.");
+      const {
+        data: { session },
+        error: sessionError,
+      } = await getSupabase().auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!session || session.user.id !== ownerId) {
+        throw new Error("Somente o administrador autenticado pode criar usuários.");
       }
 
-      const authUserId = authData.user?.id;
-      if (!authUserId) {
-        throw new Error(
-          "Não foi possível obter o identificador do usuário gerado pelo Supabase.",
-        );
-      }
-
-      const now = Date.now();
-      const { error: profileError } = await getSupabase()
-        .from("user_profiles")
-        .upsert({
-          id: authUserId,
-          full_name: cleanName,
+      const response = await fetch("/api/profile/members/create", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullName: cleanName,
           email: cleanEmail,
-          role: roleToSave,
-          permissions: permissionsToSave,
-          owner_id: ownerId,
-          org_id: orgId || ownerId,
-          farm_name: farmName || "",
-          created_at: now,
-          updated_at: now,
-          _deleted: false,
-        });
-
-      if (profileError) throw profileError;
-
-      await createLocal({
-        id: authUserId,
-        full_name: cleanName,
-        email: cleanEmail,
-        role: roleToSave,
-        permissions: permissionsToSave,
-        owner_id: ownerId,
-        org_id: orgId || ownerId,
-        farm_name: farmName || "",
-        created_at: now,
-        updated_at: now,
-        _deleted: false,
-        residential_address: "",
-        cpf: "",
-        phone: "",
-        farm_state_registration: "",
-        farm_address: "",
-        farm_city: "",
-        farm_car_number: "",
-        farm_sigcar: "",
-        farm_nirb: "",
-        farm_ccir: "",
+          password: passwordToUse,
+        }),
       });
+      const result = (await response.json()) as {
+        error?: string;
+        profile?: Partial<UserProfile>;
+      };
+      if (!response.ok || !result.profile) {
+        throw new Error(result.error || "Não foi possível criar o usuário.");
+      }
+
+      await createLocal(result.profile);
 
       setCredentials({
         email: cleanEmail,
         password: passwordToUse,
-        role: roleToSave,
+        role: "member",
       });
       toast.success("Usuário cadastrado com sucesso.");
       return true;

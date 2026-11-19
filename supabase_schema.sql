@@ -421,6 +421,12 @@ FROM single_animal_org
 WHERE profile.role = 'owner'
   AND profile.org_id IS NULL;
 
+UPDATE user_profiles AS owner
+SET org_id = owner.id::UUID,
+    updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+WHERE owner.role = 'owner'
+  AND owner.org_id IS NULL;
+
 UPDATE user_profiles AS member
 SET org_id = owner.org_id,
     updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
@@ -748,7 +754,10 @@ STABLE
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
-  SELECT profile.org_id
+  SELECT COALESCE(
+    profile.org_id,
+    CASE WHEN profile.role = 'owner' THEN profile.id::UUID END
+  )
   FROM public.user_profiles AS profile
   WHERE profile.id::text = auth.uid()::text
   LIMIT 1;

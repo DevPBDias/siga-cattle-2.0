@@ -34,6 +34,7 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   const [inviteOpen, setInviteOpen] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<UserProfile | null>(null);
   const ownerId = user?.id;
+  const canManageTeam = userProfile?.role === "owner";
   const organizationId =
     userProfile?.org_id ??
     (userProfile?.role === "member" ? userProfile.owner_id : user?.id);
@@ -93,10 +94,12 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
             Defina o perfil de acesso dos integrantes da fazenda.
           </p>
         </div>
-        <Button type="button" onClick={() => setInviteOpen(true)}>
-          <UserPlus />
-          Novo usuário
-        </Button>
+        {canManageTeam && (
+          <Button type="button" onClick={() => setInviteOpen(true)}>
+            <UserPlus />
+            Novo usuário
+          </Button>
+        )}
       </div>
 
       <div className="flex items-center gap-2 rounded-2xl bg-muted/60 p-2.5 text-xs text-muted-foreground">
@@ -119,7 +122,7 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
         savingId={inviteData.savingId}
         ownerId={user?.id}
         organizationId={organizationId}
-        canDeleteMembers={userProfile?.role === "owner"}
+        canDeleteMembers={canManageTeam}
         onChangeRole={handleRole}
         onChangePermission={handlePermission}
         onDeleteMember={setMemberToDelete}
@@ -172,8 +175,6 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
       <InviteMemberDialog
         open={inviteOpen}
         ownerId={user?.id}
-        orgId={organizationId}
-        farmName={userProfile?.farm_name}
         onCreate={upsert}
         onOpenChange={setInviteOpen}
       />

@@ -49,6 +49,7 @@ vi.mock("@/hooks/db/user_profiles/useUserProfile", () => ({
       farm_sigcar: "",
       farm_nirb: "",
       farm_ccir: "",
+      role: "owner",
     },
     user: { id: "user-1", email: "joao@example.com", user_metadata: {} },
     loading: false,

@@ -68,7 +68,7 @@ export function ProfileMemberList({
   return (
     <div className="space-y-2">
       {profiles.map((profile) => {
-        const profileRole = profile.role === "member" ? "member" : "owner";
+        const profileRole = profile.role === "owner" ? "owner" : "member";
         const isSaving = savingId === profile.id;
         const isOwner = profileRole === "owner";
         const title = profile.full_name || profile.email || profile.id;

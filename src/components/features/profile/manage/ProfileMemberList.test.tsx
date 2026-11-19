@@ -116,4 +116,26 @@ describe("ProfileMemberList", () => {
       screen.queryByRole("button", { name: "Excluir member-1 permanentemente" }),
     ).not.toBeInTheDocument();
   });
+
+  it("treats a profile without a role as a member, never as an owner", () => {
+    const profile = { ...createProfile("unknown-role", "member"), role: undefined };
+
+    render(
+      <ProfileMemberList
+        profiles={[profile]}
+        loading={false}
+        editing
+        savingId={null}
+        canDeleteMembers={false}
+        onChangeRole={vi.fn()}
+        onChangePermission={vi.fn()}
+        onDeleteMember={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("combobox", { name: "Função de unknown-role" }),
+    ).toHaveTextContent("Membro");
+    expect(screen.getByText("Início")).toBeInTheDocument();
+  });
 });
