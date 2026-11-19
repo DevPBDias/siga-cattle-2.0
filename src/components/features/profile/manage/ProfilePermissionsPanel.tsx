@@ -34,22 +34,29 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   const [inviteOpen, setInviteOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<UserProfile | null>(null);
   const ownerId = user?.id;
+  const organizationId =
+    userProfile?.org_id ??
+    (userProfile?.role === "member" ? userProfile.owner_id : user?.id);
 
   const members = useMemo(() => {
     return allProfiles
       .filter(
         (profile) =>
           !!ownerId &&
-          (profile.id === ownerId || profile.owner_id === ownerId),
+          (profile.id === ownerId ||
+            (!!organizationId && profile.org_id === organizationId) ||
+            (!profile.org_id && profile.owner_id === ownerId)),
       )
       .sort((a, b) => {
         if (a.id === ownerId) return -1;
         if (b.id === ownerId) return 1;
+        if (a.role === "owner" && b.role !== "owner") return -1;
+        if (b.role === "owner" && a.role !== "owner") return 1;
         const nameA = a.full_name?.trim() || a.email?.trim() || "";
         const nameB = b.full_name?.trim() || b.email?.trim() || "";
         return nameA.localeCompare(nameB, "pt-BR");
       });
-  }, [allProfiles, ownerId]);
+  }, [allProfiles, ownerId, organizationId]);
 
   const handleRole = (profile: UserProfile, role: UserRole) => {
     if (!editing) return;
@@ -163,6 +170,7 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
       <InviteMemberDialog
         open={inviteOpen}
         ownerId={user?.id}
+        orgId={organizationId}
         farmName={userProfile?.farm_name}
         onCreate={create}
         onOpenChange={setInviteOpen}

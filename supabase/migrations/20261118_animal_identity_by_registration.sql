@@ -4,15 +4,30 @@
 BEGIN;
 
 ALTER TABLE public.animals
-  ADD COLUMN IF NOT EXISTS animal_key text;
+  ADD COLUMN IF NOT EXISTS animal_key text,
+  ADD COLUMN IF NOT EXISTS id uuid DEFAULT gen_random_uuid();
 
 UPDATE public.animals
-SET animal_key = upper(btrim(serie_rgd)) || '::' || upper(btrim(rgn));
+SET id = gen_random_uuid()
+WHERE id IS NULL;
+
+ALTER TABLE public.animals
+  ALTER COLUMN id SET DEFAULT gen_random_uuid(),
+  ALTER COLUMN id SET NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS animals_id_key
+  ON public.animals (id);
+
+UPDATE public.animals
+SET animal_key = upper(btrim(serie_rgd)) || '::' || upper(btrim(rgn))
+WHERE animal_key IS DISTINCT FROM
+  upper(btrim(serie_rgd)) || '::' || upper(btrim(rgn));
 
 DO $$
 DECLARE
   duplicate_registration record;
   primary_key_name text;
+  dependent_foreign_key record;
 BEGIN
   SELECT upper(btrim(serie_rgd)) AS serie_rgd, upper(btrim(rgn)) AS rgn, count(*) AS total
   INTO duplicate_registration
@@ -28,6 +43,27 @@ BEGIN
       duplicate_registration.rgn,
       duplicate_registration.total;
   END IF;
+
+  FOR dependent_foreign_key IN
+    SELECT
+      constraint_row.conname,
+      constraint_row.conrelid::regclass AS table_name
+    FROM pg_constraint AS constraint_row
+    WHERE constraint_row.contype = 'f'
+      AND constraint_row.confrelid = 'public.animals'::regclass
+      AND constraint_row.conrelid IN (
+        'public.sales'::regclass,
+        'public.movements'::regclass,
+        'public.deaths'::regclass,
+        'public.exchanges'::regclass
+      )
+  LOOP
+    EXECUTE format(
+      'ALTER TABLE %s DROP CONSTRAINT %I',
+      dependent_foreign_key.table_name,
+      dependent_foreign_key.conname
+    );
+  END LOOP;
 
   SELECT conname
   INTO primary_key_name
@@ -126,87 +162,78 @@ SET animal_key = animal.animal_key
 FROM unique_rgn AS animal
 WHERE related.animal_key IS NULL AND related.rgn = animal.rgn;
 
-WITH unique_rgn AS (
-  SELECT rgn, min(animal_key) AS animal_key
-  FROM public.animals
-  GROUP BY rgn
-  HAVING count(*) = 1
-    AND (
-      SELECT count(*)
-      FROM public.animals AS same_rgn
-      WHERE upper(btrim(same_rgn.rgn)) = upper(btrim(animals.rgn))
-    ) = 1
-)
-UPDATE public.deaths AS related
-SET animal_key = animal.animal_key
-FROM unique_rgn AS animal
-WHERE related.animal_key IS NULL AND related.animal_rgn = animal.rgn;
+DO $$
+DECLARE
+  animal_reference record;
+  source_expression text;
+  has_current_column boolean;
+  has_legacy_column boolean;
+BEGIN
+  FOR animal_reference IN
+    SELECT *
+    FROM (VALUES
+      ('deaths', 'animal_key', 'animal_rgn', 'animal_id'),
+      ('sales', 'animal_key', 'animal_rgn', 'animal_id'),
+      ('exchanges', 'animal_key', 'animal_rgn', 'animal_id'),
+      ('exchanges', 'traded_animal_key', 'traded_animal_rgn', 'traded_animal_id'),
+      ('exchanges', 'substitute_animal_key', 'substitute_animal_rgn', 'substitute_animal_id')
+    ) AS animal_references(table_name, key_column, current_rgn_column, legacy_id_column)
+  LOOP
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = animal_reference.table_name
+        AND column_name = animal_reference.current_rgn_column
+    ) INTO has_current_column;
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = animal_reference.table_name
+        AND column_name = animal_reference.legacy_id_column
+    ) INTO has_legacy_column;
 
-WITH unique_rgn AS (
-  SELECT rgn, min(animal_key) AS animal_key
-  FROM public.animals
-  GROUP BY rgn
-  HAVING count(*) = 1
-    AND (
-      SELECT count(*)
-      FROM public.animals AS same_rgn
-      WHERE upper(btrim(same_rgn.rgn)) = upper(btrim(animals.rgn))
-    ) = 1
-)
-UPDATE public.sales AS related
-SET animal_key = animal.animal_key
-FROM unique_rgn AS animal
-WHERE related.animal_key IS NULL AND related.animal_rgn = animal.rgn;
+    IF has_current_column AND has_legacy_column THEN
+      source_expression := format(
+        'COALESCE(NULLIF(related.%I::text, %L), related.%I::text)',
+        animal_reference.current_rgn_column,
+        '',
+        animal_reference.legacy_id_column
+      );
+    ELSIF has_current_column THEN
+      source_expression := format(
+        'related.%I::text',
+        animal_reference.current_rgn_column
+      );
+    ELSIF has_legacy_column THEN
+      source_expression := format(
+        'related.%I::text',
+        animal_reference.legacy_id_column
+      );
+    ELSE
+      CONTINUE;
+    END IF;
 
-WITH unique_rgn AS (
-  SELECT rgn, min(animal_key) AS animal_key
-  FROM public.animals
-  GROUP BY rgn
-  HAVING count(*) = 1
-    AND (
-      SELECT count(*)
-      FROM public.animals AS same_rgn
-      WHERE upper(btrim(same_rgn.rgn)) = upper(btrim(animals.rgn))
-    ) = 1
-)
-UPDATE public.exchanges AS related
-SET animal_key = animal.animal_key
-FROM unique_rgn AS animal
-WHERE related.animal_key IS NULL AND related.animal_rgn = animal.rgn;
-
-WITH unique_rgn AS (
-  SELECT rgn, min(animal_key) AS animal_key
-  FROM public.animals
-  GROUP BY rgn
-  HAVING count(*) = 1
-    AND (
-      SELECT count(*)
-      FROM public.animals AS same_rgn
-      WHERE upper(btrim(same_rgn.rgn)) = upper(btrim(animals.rgn))
-    ) = 1
-)
-UPDATE public.exchanges AS related
-SET traded_animal_key = animal.animal_key
-FROM unique_rgn AS animal
-WHERE related.traded_animal_key IS NULL
-  AND related.traded_animal_rgn = animal.rgn;
-
-WITH unique_rgn AS (
-  SELECT rgn, min(animal_key) AS animal_key
-  FROM public.animals
-  GROUP BY rgn
-  HAVING count(*) = 1
-    AND (
-      SELECT count(*)
-      FROM public.animals AS same_rgn
-      WHERE upper(btrim(same_rgn.rgn)) = upper(btrim(animals.rgn))
-    ) = 1
-)
-UPDATE public.exchanges AS related
-SET substitute_animal_key = animal.animal_key
-FROM unique_rgn AS animal
-WHERE related.substitute_animal_key IS NULL
-  AND related.substitute_animal_rgn = animal.rgn;
+    EXECUTE format(
+      'WITH unique_rgn AS (
+         SELECT upper(btrim(rgn)) AS normalized_rgn, min(animal_key) AS animal_key
+         FROM public.animals
+         GROUP BY upper(btrim(rgn))
+         HAVING count(*) = 1
+       )
+       UPDATE public.%I AS related
+       SET %I = animal.animal_key
+       FROM unique_rgn AS animal
+       WHERE related.%I IS NULL
+         AND upper(btrim(%s)) = animal.normalized_rgn',
+      animal_reference.table_name,
+      animal_reference.key_column,
+      animal_reference.key_column,
+      source_expression
+    );
+  END LOOP;
+END $$;
 
 UPDATE public.movements AS related
 SET animal_key = animal.animal_key
@@ -273,5 +300,30 @@ CREATE INDEX IF NOT EXISTS movements_animal_key_idx ON public.movements (animal_
 CREATE INDEX IF NOT EXISTS agenda_reminders_animal_key_idx
   ON public.agenda_reminders (animal_key);
 CREATE INDEX IF NOT EXISTS retreats_animal_key_idx ON public.retreats (animal_key);
+
+ALTER TABLE public.sales
+  ADD CONSTRAINT sales_animal_key_fkey
+  FOREIGN KEY (animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
+ALTER TABLE public.movements
+  ADD CONSTRAINT movements_animal_key_fkey
+  FOREIGN KEY (animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
+ALTER TABLE public.deaths
+  ADD CONSTRAINT deaths_animal_key_fkey
+  FOREIGN KEY (animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
+ALTER TABLE public.exchanges
+  ADD CONSTRAINT exchanges_animal_key_fkey
+  FOREIGN KEY (animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
+ALTER TABLE public.exchanges
+  ADD CONSTRAINT exchanges_traded_animal_key_fkey
+  FOREIGN KEY (traded_animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
+ALTER TABLE public.exchanges
+  ADD CONSTRAINT exchanges_substitute_animal_key_fkey
+  FOREIGN KEY (substitute_animal_key) REFERENCES public.animals (animal_key)
+  NOT VALID;
 
 COMMIT;

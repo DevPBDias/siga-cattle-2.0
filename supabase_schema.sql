@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   role                    TEXT,
   permissions             JSONB,
   owner_id                TEXT,
+  org_id                  UUID,
   created_at              BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
   updated_at              BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
   _deleted                BOOLEAN NOT NULL DEFAULT FALSE
@@ -351,6 +352,7 @@ ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS farm_ccir               TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS role                    TEXT;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS permissions             JSONB;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS owner_id                TEXT;
+ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS org_id                  UUID;
 
 -- animals
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS animal_key TEXT;
@@ -382,6 +384,46 @@ ALTER TABLE animals ADD COLUMN IF NOT EXISTS is_natural_bull           BOOLEAN;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS born_color                TEXT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS farm_id                   TEXT;
 ALTER TABLE animals ADD COLUMN IF NOT EXISTS type                      TEXT;
+
+UPDATE user_profiles AS profile
+SET org_id = animal_org.org_id,
+    updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+FROM (
+  SELECT DISTINCT org_id
+  FROM animals
+  WHERE NULLIF(BTRIM(org_id::TEXT), '') IS NOT NULL
+) AS animal_org
+WHERE profile.role = 'owner'
+  AND profile.org_id IS NULL
+  AND profile.id::TEXT = animal_org.org_id::TEXT
+  AND (
+    SELECT count(DISTINCT NULLIF(BTRIM(org_id::TEXT), ''))
+    FROM animals
+  ) > 1;
+
+WITH single_animal_org AS (
+  SELECT min(NULLIF(BTRIM(org_id::TEXT), ''))::UUID AS org_id
+  FROM animals
+  WHERE NULLIF(BTRIM(org_id::TEXT), '') IS NOT NULL
+  HAVING count(DISTINCT NULLIF(BTRIM(org_id::TEXT), '')) = 1
+)
+UPDATE user_profiles AS profile
+SET org_id = single_animal_org.org_id,
+    updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+FROM single_animal_org
+WHERE profile.role = 'owner'
+  AND profile.org_id IS NULL;
+
+UPDATE user_profiles AS member
+SET org_id = owner.org_id,
+    updated_at = (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+FROM user_profiles AS owner
+WHERE member.role = 'member'
+  AND member.org_id IS NULL
+  AND member.owner_id::TEXT = owner.id::TEXT
+  AND owner.role = 'owner'
+  AND owner.org_id IS NOT NULL;
+
 CREATE UNIQUE INDEX IF NOT EXISTS animals_registration_unique_idx
   ON animals (upper(btrim(serie_rgd)), upper(btrim(rgn)));
 CREATE INDEX IF NOT EXISTS animals_org_id_idx ON animals (org_id);
@@ -565,6 +607,7 @@ ALTER TABLE retreats ADD COLUMN IF NOT EXISTS animal_rgn TEXT;
 CREATE INDEX IF NOT EXISTS idx_farms_updated_at             ON farms (updated_at);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_updated_at     ON user_profiles (updated_at);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_owner_id       ON user_profiles (owner_id);
+CREATE INDEX IF NOT EXISTS user_profiles_org_id_idx         ON user_profiles (org_id);
 CREATE INDEX IF NOT EXISTS idx_animals_updated_at           ON animals (updated_at);
 CREATE INDEX IF NOT EXISTS idx_animals_farm_id              ON animals (farm_id);
 CREATE INDEX IF NOT EXISTS idx_animals_animal_state         ON animals (animal_state);
@@ -648,6 +691,27 @@ DROP POLICY IF EXISTS "user_profiles_select"  ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_insert"  ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_update"  ON user_profiles;
 DROP POLICY IF EXISTS "user_profiles_delete"  ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_select_org" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_insert_org" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_update_org" ON user_profiles;
+DROP POLICY IF EXISTS "user_profiles_delete_org" ON user_profiles;
+DO $$
+DECLARE
+  existing_policy record;
+BEGIN
+  FOR existing_policy IN
+    SELECT policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'user_profiles'
+  LOOP
+    EXECUTE format(
+      'DROP POLICY IF EXISTS %I ON public.user_profiles',
+      existing_policy.policyname
+    );
+  END LOOP;
+END
+$$;
 
 CREATE POLICY "farms_all"             ON farms               FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "animals_all"           ON animals             FOR ALL TO authenticated USING (true) WITH CHECK (true);
@@ -668,34 +732,117 @@ CREATE POLICY "agenda_reminders_all"  ON agenda_reminders    FOR ALL TO authenti
 CREATE POLICY "retreats_all"          ON retreats            FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 -- user_profiles: leitura para todos os usuarios autenticados da fazenda; gravacao para o proprio usuario ou donos
-CREATE POLICY "user_profiles_select" ON user_profiles FOR SELECT TO authenticated
-  USING (true);
-CREATE POLICY "user_profiles_insert" ON user_profiles FOR INSERT TO authenticated
-  WITH CHECK (true);
-CREATE POLICY "user_profiles_update" ON user_profiles FOR UPDATE TO authenticated
+CREATE OR REPLACE FUNCTION public.get_current_user_org_id()
+RETURNS UUID
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT profile.org_id
+  FROM public.user_profiles AS profile
+  WHERE profile.id::text = auth.uid()::text
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_current_user_org_owner()
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.user_profiles AS profile
+    WHERE profile.id::text = auth.uid()::text
+      AND profile.role = 'owner'
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.get_current_user_org_id() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.is_current_user_org_owner() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_current_user_org_id() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.is_current_user_org_owner() TO authenticated;
+
+CREATE POLICY "user_profiles_select_org" ON user_profiles
+  FOR SELECT TO authenticated
   USING (
-    id::text = auth.uid()::text 
-    OR owner_id::text = auth.uid()::text
-    OR EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
+    id::text = auth.uid()::text
+    OR (
+      org_id IS NOT NULL
+      AND org_id = public.get_current_user_org_id()
+    )
+  );
+CREATE POLICY "user_profiles_insert_org" ON user_profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    (id::text = auth.uid()::text AND role = 'member' AND org_id IS NULL)
+    OR (
+      id::text = auth.uid()::text
+      AND role = 'owner'
+      AND owner_id IS NULL
+      AND org_id = auth.uid()
+    )
+    OR (
+      public.is_current_user_org_owner()
+      AND org_id = public.get_current_user_org_id()
+    )
+  );
+CREATE POLICY "user_profiles_update_org" ON user_profiles
+  FOR UPDATE TO authenticated
+  USING (
+    id::text = auth.uid()::text
+    OR (
+      public.is_current_user_org_owner()
+      AND role = 'member'
+      AND (
+        org_id = public.get_current_user_org_id()
+        OR org_id IS NULL
+      )
     )
   )
   WITH CHECK (
-    id::text = auth.uid()::text 
-    OR owner_id::text = auth.uid()::text
-    OR EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
+    (
+      id::text = auth.uid()::text
+      AND role = 'member'
+      AND NOT public.is_current_user_org_owner()
+      AND org_id IS NOT DISTINCT FROM public.get_current_user_org_id()
+    )
+    OR (
+      id::text = auth.uid()::text
+      AND role = 'owner'
+      AND (
+        (
+          public.is_current_user_org_owner()
+          AND org_id IS NOT DISTINCT FROM public.get_current_user_org_id()
+        )
+        OR (
+          NOT public.is_current_user_org_owner()
+          AND public.get_current_user_org_id() IS NULL
+          AND owner_id IS NULL
+          AND org_id = auth.uid()
+        )
+      )
+    )
+    OR (
+      public.is_current_user_org_owner()
+      AND (
+        org_id = public.get_current_user_org_id()
+        OR (
+          org_id IS NULL
+          AND role = 'member'
+          AND owner_id::TEXT = ''
+        )
+      )
     )
   );
-CREATE POLICY "user_profiles_delete" ON user_profiles FOR DELETE TO authenticated
+CREATE POLICY "user_profiles_delete_org" ON user_profiles
+  FOR DELETE TO authenticated
   USING (
-    id::text = auth.uid()::text
-    OR EXISTS (
-      SELECT 1 FROM user_profiles up
-      WHERE up.id::text = auth.uid()::text AND up.role = 'owner'
-    )
+    public.is_current_user_org_owner()
+    AND role = 'member'
+    AND org_id = public.get_current_user_org_id()
   );
 
 -- =============================================================================

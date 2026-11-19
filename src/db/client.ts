@@ -152,7 +152,7 @@ async function loadLegacyAnimalDocuments(): Promise<
       vaccines: { schema: vaccineSchema },
       farms: { schema: farmSchema },
       user_profiles: {
-        schema: userProfileSchema,
+        schema: legacySchema(userProfileSchema, 1, ["org_id"]),
         migrationStrategies: {
           1: (oldDocument: Record<string, unknown>) => ({
             ...oldDocument,

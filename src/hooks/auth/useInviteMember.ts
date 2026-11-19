@@ -17,6 +17,7 @@ type InviteInput = {
   fullName: string;
   email: string;
   ownerId?: string;
+  orgId?: string;
   farmName?: string;
   createLocal: (data: Partial<UserProfile>) => Promise<UserProfile>;
 };
@@ -68,6 +69,7 @@ export function useInviteMember() {
     fullName,
     email,
     ownerId,
+    orgId,
     farmName,
     createLocal,
   }: InviteInput) => {
@@ -144,15 +146,14 @@ export function useInviteMember() {
           role: roleToSave,
           permissions: permissionsToSave,
           owner_id: ownerId,
+          org_id: orgId || ownerId,
           farm_name: farmName || "",
           created_at: now,
           updated_at: now,
           _deleted: false,
         });
 
-      if (profileError) {
-        console.warn("[Perfil] Aviso ao gravar user_profiles no Supabase:", profileError);
-      }
+      if (profileError) throw profileError;
 
       await createLocal({
         id: authUserId,
@@ -161,6 +162,7 @@ export function useInviteMember() {
         role: roleToSave,
         permissions: permissionsToSave,
         owner_id: ownerId,
+        org_id: orgId || ownerId,
         farm_name: farmName || "",
         created_at: now,
         updated_at: now,
@@ -273,6 +275,7 @@ export function useInviteMember() {
         .from("user_profiles")
         .update({
           owner_id: "",
+          org_id: null,
           permissions,
           updated_at: Date.now(),
         })
@@ -289,6 +292,7 @@ export function useInviteMember() {
 
       await onUpdate(profile.id, {
         owner_id: "",
+        org_id: undefined,
         permissions,
       });
 

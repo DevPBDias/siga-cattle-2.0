@@ -3,7 +3,7 @@ import { RxJsonSchema } from "rxdb";
 
 export const userProfileSchema: RxJsonSchema<UserProfile> = {
   title: "user_profiles",
-  version: 1,
+  version: 2,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -27,6 +27,7 @@ export const userProfileSchema: RxJsonSchema<UserProfile> = {
     role: { type: "string", enum: ["owner", "member"] },
     permissions: { type: "object", additionalProperties: { type: "boolean" } },
     owner_id: { type: "string", maxLength: 36 },
+    org_id: { type: "string", maxLength: 36 },
   },
   required: ["id", "created_at", "updated_at", "_deleted"],
 };

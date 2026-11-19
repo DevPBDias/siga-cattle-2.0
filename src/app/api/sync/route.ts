@@ -151,7 +151,7 @@ export async function POST(req: NextRequest) {
     if (table === "animals") {
       const { data: profile, error: profileError } = await supabase
         .from("user_profiles")
-        .select("id, role, owner_id")
+        .select("id, role, owner_id, org_id")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
 
       if (table === "animals") {
         clean.org_id = animalOrgId;
-      } else {
+      } else if (table !== "user_profiles") {
         delete clean.org_id;
       }
       return clean;

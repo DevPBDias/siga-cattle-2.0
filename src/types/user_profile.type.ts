@@ -59,6 +59,7 @@ export interface UserProfile {
   role?: UserRole;
   permissions?: UserPermissions;
   owner_id?: string;
+  org_id?: string;
 }
 
 export function userValuesFromProfile(

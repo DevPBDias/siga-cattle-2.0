@@ -8,7 +8,7 @@ describe("resolveAnimalOrganizationId", () => {
   it("uses the owner's profile ID as the organization ID", () => {
     expect(
       resolveAnimalOrganizationId(
-        { id: ownerId, role: "owner", owner_id: null },
+        { id: ownerId, role: "owner", owner_id: null, org_id: null },
         ownerId,
       ),
     ).toEqual({ orgId: ownerId, error: null });
@@ -17,16 +17,32 @@ describe("resolveAnimalOrganizationId", () => {
   it("uses the owner's ID for a member's organization", () => {
     expect(
       resolveAnimalOrganizationId(
-        { id: memberId, role: "member", owner_id: ownerId },
+        { id: memberId, role: "member", owner_id: ownerId, org_id: null },
         memberId,
       ),
     ).toEqual({ orgId: ownerId, error: null });
   });
 
+  it("uses the shared organization ID for co-owners", () => {
+    const sharedOrgId = "22222222-2222-4222-8222-222222222222";
+
+    expect(
+      resolveAnimalOrganizationId(
+        {
+          id: ownerId,
+          role: "owner",
+          owner_id: null,
+          org_id: sharedOrgId,
+        },
+        ownerId,
+      ),
+    ).toEqual({ orgId: sharedOrgId, error: null });
+  });
+
   it("rejects profiles without a valid owner organization", () => {
     expect(
       resolveAnimalOrganizationId(
-        { id: memberId, role: "member", owner_id: null },
+        { id: memberId, role: "member", owner_id: null, org_id: null },
         memberId,
       ).orgId,
     ).toBeNull();
@@ -35,7 +51,7 @@ describe("resolveAnimalOrganizationId", () => {
   it("rejects a profile that does not belong to the authenticated user", () => {
     expect(
       resolveAnimalOrganizationId(
-        { id: ownerId, role: "owner", owner_id: null },
+        { id: ownerId, role: "owner", owner_id: null, org_id: null },
         memberId,
       ).orgId,
     ).toBeNull();

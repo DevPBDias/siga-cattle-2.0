@@ -5,6 +5,7 @@ interface SyncUserProfile {
   id: string;
   role: string | null;
   owner_id: string | null;
+  org_id: string | null;
 }
 
 type OrganizationResolution =
@@ -20,11 +21,12 @@ export function resolveAnimalOrganizationId(
   }
 
   const orgId =
-    profile.role === "owner"
+    profile.org_id ??
+    (profile.role === "owner"
       ? profile.id
       : profile.role === "member"
         ? profile.owner_id
-        : null;
+        : null);
 
   if (!orgId || !UUID_PATTERN.test(orgId)) {
     return {

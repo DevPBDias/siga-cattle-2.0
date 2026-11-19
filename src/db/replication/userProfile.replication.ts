@@ -5,7 +5,7 @@ import { createReplication } from "./base";
 export const userProfileReplication = createReplication<UserProfile>({
   collectionName: "user_profiles",
   tableName: "user_profiles",
-  replicationIdentifier: "user-profiles-replication-v13",
+  replicationIdentifier: "user-profiles-replication-v14",
 
   mapToSupabase: (profile) => ({
     id: profile.id,
@@ -28,10 +28,13 @@ export const userProfileReplication = createReplication<UserProfile>({
     role: profile.role ?? "owner",
     permissions: profile.permissions ?? {},
     owner_id: profile.owner_id ?? null,
+    org_id: profile.org_id ?? null,
   }),
 
-  mapFromSupabase: (doc) =>
-    cleanSupabaseDocument(doc) as unknown as UserProfile,
+  mapFromSupabase: (doc) => ({
+    ...cleanSupabaseDocument(doc),
+    ...(typeof doc.org_id === "string" ? { org_id: doc.org_id } : {}),
+  }) as unknown as UserProfile,
 });
 
 export async function replicateUserProfilesNew(

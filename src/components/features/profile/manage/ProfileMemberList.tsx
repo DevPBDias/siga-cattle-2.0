@@ -66,7 +66,7 @@ export function ProfileMemberList({
       {profiles.map((profile) => {
         const profileRole = profile.role === "member" ? "member" : "owner";
         const isSaving = savingId === profile.id;
-        const isCurrentOwner = profile.id === ownerId;
+        const isOwner = profileRole === "owner";
         const title = profile.full_name || profile.email || profile.id;
 
         return (
@@ -83,7 +83,7 @@ export function ProfileMemberList({
               </div>
               <Select
                 value={profileRole}
-                disabled={!editing || isSaving || isCurrentOwner}
+                disabled={!editing || isSaving || isOwner}
                 onValueChange={(value) => onChangeRole(profile, value as UserRole)}
               >
                 <SelectTrigger

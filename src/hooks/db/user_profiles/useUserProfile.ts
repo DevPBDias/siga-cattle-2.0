@@ -34,7 +34,7 @@ export function useUserProfile() {
   const { role: accessRole, loading: accessLoading } = useUserAccess();
   const query = useMemo<MangoQuery<UserProfile> | null>(
     () =>
-      user
+      user?.id
         ? {
             selector: {
               id: { $eq: user.id },
@@ -81,6 +81,15 @@ export function useUserProfile() {
       role: profileRole,
       permissions: currentProfile?.permissions ?? cachedPermissions?.permissions ?? {},
       owner_id: currentProfile?.owner_id,
+      org_id:
+        currentProfile?.org_id ??
+        (currentProfile
+          ? profileRole === "member"
+            ? currentProfile.owner_id || undefined
+            : undefined
+          : profileRole === "owner"
+            ? user.id
+            : undefined),
       _deleted: false,
     });
 

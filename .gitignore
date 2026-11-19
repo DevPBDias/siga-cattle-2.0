@@ -33,6 +33,7 @@
 !/supabase/
 !/supabase/migrations/
 !/supabase/migrations/20261118_animal_identity_by_registration.sql
+!/supabase/migrations/20261118_shared_profile_organization.sql
 /documentation
 
 # debug
