@@ -2,6 +2,7 @@ export const ANIMAL_BREEDS = [
   "Nelore",
   "Nelore Mocha",
   "Gir",
+  "Gir Mocha",
   "Guzerá",
   "Brahman",
   "Tabapuã",
