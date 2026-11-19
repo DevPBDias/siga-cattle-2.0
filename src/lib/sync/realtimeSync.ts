@@ -7,6 +7,7 @@ const TABLES = [
   "vaccines",
   "farms",
   "user_profiles",
+  "user_profile_deletions",
   "animal_metrics_weight",
   "animal_metrics_ce",
   "animal_vaccines",
@@ -40,7 +41,9 @@ export function setupRealtimeSync(
   }
 
   const requestPull = (tableName: string) => {
-    const replication = replications[tableName];
+    const replicationName =
+      tableName === "user_profile_deletions" ? "user_profiles" : tableName;
+    const replication = replications[replicationName];
     if (!replication || typeof replication.reSync !== "function") {
       SyncLogger.warn("realtime", `Replication missing for ${tableName}`);
       return;

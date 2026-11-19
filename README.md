@@ -378,6 +378,7 @@ npm install
 
 # Configure environment variables
 # Create a .env.local file with Supabase credentials
+# Set SUPABASE_SERVICE_ROLE_KEY server-side only for permanent member deletion.
 
 # Run in development mode
 npm run dev

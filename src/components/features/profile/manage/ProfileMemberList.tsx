@@ -20,9 +20,11 @@ interface ProfileMemberListProps {
   editing: boolean;
   savingId: string | null;
   ownerId?: string;
+  organizationId?: string;
+  canDeleteMembers: boolean;
   onChangeRole: (profile: UserProfile, role: UserRole) => void;
   onChangePermission: (profile: UserProfile, key: PermissionKey, value: boolean) => void;
-  onRemoveMember: (profile: UserProfile) => void;
+  onDeleteMember: (profile: UserProfile) => void;
 }
 
 export function ProfileMemberList({
@@ -31,9 +33,11 @@ export function ProfileMemberList({
   editing,
   savingId,
   ownerId,
+  organizationId,
+  canDeleteMembers,
   onChangeRole,
   onChangePermission,
-  onRemoveMember,
+  onDeleteMember,
 }: ProfileMemberListProps) {
   if (loading) {
     return (
@@ -100,19 +104,21 @@ export function ProfileMemberList({
             </div>
 
             {profile.role === "member" &&
+              canDeleteMembers &&
               ownerId &&
-              profile.owner_id === ownerId && (
+              (profile.owner_id === ownerId ||
+                (!!organizationId && profile.org_id === organizationId)) && (
                 <Button
                   type="button"
                   variant="destructive"
                   size="xs"
                   className="w-full"
                   disabled={isSaving}
-                  aria-label={`Remover ${title} da fazenda`}
-                  onClick={() => onRemoveMember(profile)}
+                  aria-label={`Excluir ${title} permanentemente`}
+                  onClick={() => onDeleteMember(profile)}
                 >
                   <Trash2 />
-                  Remover da fazenda
+                  Excluir membro
                 </Button>
               )}
 

@@ -228,22 +228,21 @@ export function useInviteMember() {
     }
   };
 
-  const removeFromFarm = async (
+  const deleteMemberAccount = async (
     profile: UserProfile,
     ownerId: string,
-    onUpdate: (id: string, data: Partial<UserProfile>) => Promise<void>,
+    onRemove: (id: string) => Promise<void>,
   ): Promise<boolean> => {
     if (
       profile.role !== "member" ||
-      !ownerId ||
-      profile.owner_id !== ownerId
+      !ownerId
     ) {
       toast.error("Este membro não pertence à sua equipe.");
       return false;
     }
 
     if (typeof navigator !== "undefined" && !navigator.onLine) {
-      toast.error("Conecte-se à internet para remover o membro da fazenda.");
+      toast.error("Conecte-se à internet para excluir a conta do membro.");
       return false;
     }
 
@@ -251,58 +250,37 @@ export function useInviteMember() {
     try {
       const supabase = getSupabase();
       const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
-      if (authError || user?.id !== ownerId) {
-        throw new Error("Somente o administrador autenticado pode remover membros.");
+      if (sessionError) throw sessionError;
+      if (!session || session.user.id !== ownerId) {
+        throw new Error("Somente o administrador autenticado pode excluir membros.");
       }
 
-      const { data: ownerProfile, error: ownerError } = await supabase
-        .from("user_profiles")
-        .select("role")
-        .eq("id", ownerId)
-        .maybeSingle();
-
-      if (ownerError) throw ownerError;
-      if (ownerProfile?.role !== "owner") {
-        throw new Error("Apenas o administrador da fazenda pode remover membros.");
-      }
-
-      const permissions: UserPermissions = {};
-      const { data: removedProfile, error: removeError } = await supabase
-        .from("user_profiles")
-        .update({
-          owner_id: "",
-          org_id: null,
-          permissions,
-          updated_at: Date.now(),
-        })
-        .eq("id", profile.id)
-        .eq("owner_id", ownerId)
-        .eq("role", "member")
-        .select("id")
-        .maybeSingle();
-
-      if (removeError) throw removeError;
-      if (!removedProfile) {
-        throw new Error("O membro não foi encontrado na equipe desta fazenda.");
-      }
-
-      await onUpdate(profile.id, {
-        owner_id: "",
-        org_id: undefined,
-        permissions,
+      const response = await fetch("/api/profile/members/delete", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ memberId: profile.id }),
       });
+      const result = (await response.json()) as { error?: string };
+      if (!response.ok) {
+        throw new Error(result.error || "Não foi possível excluir a conta do membro.");
+      }
 
-      toast.success(`${profile.full_name || profile.email || "Membro"} removido da fazenda.`);
+      await onRemove(profile.id);
+
+      toast.success(`${profile.full_name || profile.email || "Membro"} excluído da fazenda.`);
       return true;
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : "Não foi possível remover o membro da fazenda.";
+          : "Não foi possível excluir a conta do membro.";
       toast.error(message);
       return false;
     } finally {
@@ -314,6 +292,6 @@ export function useInviteMember() {
     data: { credentials, savingId },
     loading,
     error,
-    actions: { invite, reset, previewPassword, updateAccess, removeFromFarm },
+    actions: { invite, reset, previewPassword, updateAccess, deleteMemberAccount },
   };
 }

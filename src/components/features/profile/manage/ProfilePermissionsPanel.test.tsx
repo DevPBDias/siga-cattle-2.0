@@ -20,7 +20,7 @@ vi.mock("@/hooks/db/user_profiles/useUserProfiles", () => ({
   useUserProfiles: () => ({
     data: profileMocks.profiles,
     loading: false,
-    actions: { update: vi.fn(), create: vi.fn() },
+    actions: { update: vi.fn(), upsert: vi.fn(), remove: vi.fn() },
   }),
 }));
 
@@ -29,7 +29,7 @@ vi.mock("@/hooks/auth/useInviteMember", () => ({
     data: { savingId: null },
     actions: {
       updateAccess: vi.fn(),
-      removeFromFarm: vi.fn(),
+      deleteMemberAccount: vi.fn(),
     },
   }),
 }));

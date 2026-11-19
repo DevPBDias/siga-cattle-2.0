@@ -121,6 +121,52 @@ export async function GET(req: NextRequest) {
     });
   }
 
+  if (table === "user_profiles") {
+    let deletionQuery = supabase
+      .from("user_profile_deletions")
+      .select("id, deleted_at")
+      .order("deleted_at", { ascending: true })
+      .order("id", { ascending: true })
+      .limit(parseInt(limit));
+
+    if (lastModified !== null && lastModified !== undefined) {
+      const lastModNum = Number(lastModified);
+      if (lastModNum > 0) {
+        const validLastId = lastId && lastId !== "undefined" && lastId !== "null";
+        if (validLastId) {
+          deletionQuery = deletionQuery.or(
+            `deleted_at.gt.${lastModNum},and(deleted_at.eq.${lastModNum},id.gt."${lastId}")`,
+          );
+        } else {
+          deletionQuery = deletionQuery.gte("deleted_at", lastModNum);
+        }
+      }
+    }
+
+    const { data: deletions, error: deletionError } = await deletionQuery;
+    if (deletionError) {
+      console.error("[SyncAPI] Profile deletion pull error:", deletionError);
+      return NextResponse.json({ error: deletionError.message }, { status: 500 });
+    }
+
+    const deletionDocuments = (deletions || []).map((deletion) => ({
+      id: deletion.id,
+      role: "member",
+      created_at: deletion.deleted_at,
+      updated_at: deletion.deleted_at,
+      server_updated_at: deletion.deleted_at,
+      _deleted: true,
+    }));
+
+    processedData = [...processedData, ...deletionDocuments]
+      .sort((a, b) => {
+        const updatedAtA = Number(a.server_updated_at ?? a.updated_at ?? 0);
+        const updatedAtB = Number(b.server_updated_at ?? b.updated_at ?? 0);
+        return updatedAtA - updatedAtB || String(a.id).localeCompare(String(b.id));
+      })
+      .slice(0, parseInt(limit));
+  }
+
   console.log(`[SyncAPI] Pull success for ${table}: ${processedData.length} rows`);
   return NextResponse.json(processedData);
 }
@@ -193,10 +239,19 @@ export async function POST(req: NextRequest) {
       return clean;
     });
 
-    const { data, error } = await supabase
-      .from(table)
-      .upsert(sanitizedDocuments, { onConflict: serverPk, ignoreDuplicates: false })
-      .select();
+    // Account deletion is handled by the admin endpoint; upserting its local
+    // tombstone would recreate the profile row that was just deleted.
+    const documentsToUpsert =
+      table === "user_profiles"
+        ? sanitizedDocuments.filter((document) => document._deleted !== true)
+        : sanitizedDocuments;
+
+    const { data, error } = documentsToUpsert.length
+      ? await supabase
+          .from(table)
+          .upsert(documentsToUpsert, { onConflict: serverPk, ignoreDuplicates: false })
+          .select()
+      : { data: [], error: null };
 
     if (error) {
       console.error(`[SyncAPI] Push error for ${table}:`, error);

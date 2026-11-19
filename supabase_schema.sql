@@ -50,6 +50,13 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   _deleted                BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+CREATE TABLE IF NOT EXISTS user_profile_deletions (
+  id         TEXT PRIMARY KEY,
+  owner_id   UUID NOT NULL,
+  org_id     UUID NOT NULL,
+  deleted_at BIGINT NOT NULL
+);
+
 -- ANIMALS
 CREATE TABLE IF NOT EXISTS animals (
   animal_key                TEXT    NOT NULL PRIMARY KEY,
@@ -608,6 +615,8 @@ CREATE INDEX IF NOT EXISTS idx_farms_updated_at             ON farms (updated_at
 CREATE INDEX IF NOT EXISTS idx_user_profiles_updated_at     ON user_profiles (updated_at);
 CREATE INDEX IF NOT EXISTS idx_user_profiles_owner_id       ON user_profiles (owner_id);
 CREATE INDEX IF NOT EXISTS user_profiles_org_id_idx         ON user_profiles (org_id);
+CREATE INDEX IF NOT EXISTS user_profile_deletions_org_deleted_at_idx
+  ON user_profile_deletions (org_id, deleted_at, id);
 CREATE INDEX IF NOT EXISTS idx_animals_updated_at           ON animals (updated_at);
 CREATE INDEX IF NOT EXISTS idx_animals_farm_id              ON animals (farm_id);
 CREATE INDEX IF NOT EXISTS idx_animals_animal_state         ON animals (animal_state);
@@ -764,6 +773,125 @@ REVOKE ALL ON FUNCTION public.get_current_user_org_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.is_current_user_org_owner() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_current_user_org_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_current_user_org_owner() TO authenticated;
+
+ALTER TABLE public.user_profile_deletions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS user_profile_deletions_select_org
+  ON public.user_profile_deletions;
+CREATE POLICY user_profile_deletions_select_org
+  ON public.user_profile_deletions
+  FOR SELECT TO authenticated
+  USING (
+    org_id = public.get_current_user_org_id()
+    OR (
+      public.get_current_user_org_id() IS NULL
+      AND owner_id = auth.uid()
+    )
+  );
+
+REVOKE ALL ON public.user_profile_deletions FROM anon, authenticated;
+GRANT SELECT ON public.user_profile_deletions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON public.user_profile_deletions TO service_role;
+
+CREATE OR REPLACE FUNCTION public.delete_member_profile(
+  p_member_id TEXT,
+  p_owner_id UUID,
+  p_org_id UUID
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+DECLARE
+  member_org_id UUID;
+BEGIN
+  SELECT profile.org_id
+  INTO member_org_id
+  FROM public.user_profiles AS profile
+  WHERE profile.id::TEXT = p_member_id
+    AND profile.role = 'member'
+    AND COALESCE(profile._deleted, FALSE) = FALSE
+    AND (
+      profile.owner_id::TEXT = p_owner_id::TEXT
+      OR profile.org_id = p_org_id
+    )
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    INSERT INTO public.user_profile_deletions (
+      id,
+      owner_id,
+      org_id,
+      deleted_at
+    )
+    VALUES (
+      p_member_id,
+      p_owner_id,
+      p_org_id,
+      (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+    )
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN EXISTS (
+      SELECT 1
+      FROM public.user_profile_deletions AS deletion
+      WHERE deletion.id = p_member_id
+        AND deletion.org_id = p_org_id
+    );
+  END IF;
+
+  INSERT INTO public.user_profile_deletions (
+    id,
+    owner_id,
+    org_id,
+    deleted_at
+  )
+  VALUES (
+    p_member_id,
+    p_owner_id,
+    COALESCE(member_org_id, p_org_id),
+    (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT
+  )
+  ON CONFLICT (id) DO UPDATE
+  SET owner_id = EXCLUDED.owner_id,
+      org_id = EXCLUDED.org_id,
+      deleted_at = EXCLUDED.deleted_at;
+
+  DELETE FROM public.user_profiles AS profile
+  WHERE profile.id::TEXT = p_member_id
+    AND profile.role = 'member'
+    AND COALESCE(profile._deleted, FALSE) = FALSE
+    AND (
+      profile.owner_id::TEXT = p_owner_id::TEXT
+      OR profile.org_id = p_org_id
+    );
+
+  RETURN TRUE;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.delete_member_profile(TEXT, UUID, UUID)
+  FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_member_profile(TEXT, UUID, UUID)
+  TO service_role;
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime'
+      AND schemaname = 'public'
+      AND tablename = 'user_profile_deletions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime
+      ADD TABLE public.user_profile_deletions;
+  END IF;
+END
+$$;
 
 CREATE POLICY "user_profiles_select_org" ON user_profiles
   FOR SELECT TO authenticated

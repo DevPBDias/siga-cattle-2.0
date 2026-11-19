@@ -127,7 +127,10 @@ export function useLocalMutation<
    * A replicação automática irá sincronizar com Supabase
    */
   const remove = useCallback(
-    async (id: string): Promise<void> => {
+    async (
+      id: string,
+      options: { ignoreMissing?: boolean } = {},
+    ): Promise<void> => {
       if (!db) throw new Error("Database not initialized");
 
       setLoading(true);
@@ -141,6 +144,10 @@ export function useLocalMutation<
 
         const doc = await collection.findOne(id).exec();
         if (!doc) {
+          if (options.ignoreMissing) {
+            setLoading(false);
+            return;
+          }
           throw new Error(`Document ${id} not found in ${collectionName}`);
         }
 

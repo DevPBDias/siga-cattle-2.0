@@ -20,7 +20,7 @@ export function useUserProfiles() {
       update: actions.update,
       create: actions.create,
       upsert: actions.upsert,
-      remove: actions.remove,
+      remove: (id: string) => actions.remove(id, { ignoreMissing: true }),
     },
   };
 }

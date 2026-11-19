@@ -6,6 +6,7 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key";
 
 let instance: SupabaseClient | null = null;
+let isolatedAuthInstance: SupabaseClient | null = null;
 
 export function getSupabase(): SupabaseClient {
   if (typeof window === "undefined") {
@@ -33,14 +34,16 @@ export const supabase = getSupabase();
  * overriding or persisting over the current admin session.
  */
 export function createIsolatedAuthClient(): SupabaseClient {
-  const url = supabaseUrl || "https://placeholder.supabase.co";
-  const key = supabaseAnonKey || "placeholder-key";
+  if (!isolatedAuthInstance) {
+    isolatedAuthInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storageKey: "indi-ouro-isolated-auth",
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    });
+  }
 
-  return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
+  return isolatedAuthInstance;
 }

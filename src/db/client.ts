@@ -26,6 +26,10 @@ import { movementSchema } from "./schemas/movement.schema";
 import { saleSchema } from "./schemas/sale.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
+import {
+  legacyUserProfileMigrationStrategies,
+  userProfileMigrationStrategies,
+} from "./migrations/userProfile";
 import { setupReplication } from "./replication";
 import { getAnimalKey, normalizeAnimalRegistration } from "@/utils/animalIdentity";
 import { v4 as uuidv4 } from "uuid";
@@ -153,13 +157,7 @@ async function loadLegacyAnimalDocuments(): Promise<
       farms: { schema: farmSchema },
       user_profiles: {
         schema: legacySchema(userProfileSchema, 1, ["org_id"]),
-        migrationStrategies: {
-          1: (oldDocument: Record<string, unknown>) => ({
-            ...oldDocument,
-            role: oldDocument.role ?? "owner",
-            permissions: oldDocument.permissions ?? {},
-          }),
-        },
+        migrationStrategies: legacyUserProfileMigrationStrategies,
       },
       animal_metrics_ce: {
         schema: legacySchema(animalMetricCESchema, 0, ["animal_key"]),
@@ -347,15 +345,11 @@ async function createDatabase(): Promise<MyDatabase> {
                 lastWriteWins(i.newDocumentState, i.realMasterState),
             },
             migrationStrategies: {
-              1: (oldDocument: Record<string, unknown>) => ({
-                ...oldDocument,
-                role: oldDocument.role ?? "owner",
-                permissions: oldDocument.permissions ?? {},
-              }),
+              ...userProfileMigrationStrategies,
             },
           },
         });
-        console.log("[RxDB] user_profiles migrated to v1 in existing database");
+        console.log("[RxDB] user_profiles migrated to v2 in existing database");
       }
       await migrateLegacyAnimalDatabase(db, legacyDocuments);
       console.log(
@@ -393,13 +387,7 @@ async function createDatabase(): Promise<MyDatabase> {
         user_profiles: {
           schema: userProfileSchema,
           conflictHandler: customConflictHandler,
-          migrationStrategies: {
-            1: (oldDocument: Record<string, unknown>) => ({
-              ...oldDocument,
-              role: oldDocument.role ?? "owner",
-              permissions: oldDocument.permissions ?? {},
-            }),
-          },
+          migrationStrategies: userProfileMigrationStrategies,
         },
         animal_metrics_ce: {
           schema: animalMetricCESchema,

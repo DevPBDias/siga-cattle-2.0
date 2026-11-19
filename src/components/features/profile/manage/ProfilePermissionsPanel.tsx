@@ -28,11 +28,11 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
   const {
     data: allProfiles,
     loading,
-    actions: { update, create },
+    actions: { update, upsert, remove },
   } = useUserProfiles();
   const { data: inviteData, actions } = useInviteMember();
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<UserProfile | null>(null);
+  const [memberToDelete, setMemberToDelete] = useState<UserProfile | null>(null);
   const ownerId = user?.id;
   const organizationId =
     userProfile?.org_id ??
@@ -72,14 +72,14 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
     void actions.updateAccess(profile, { permission, value }, update);
   };
 
-  const handleRemoveMember = async () => {
-    if (!memberToRemove || !ownerId) return;
-    const removed = await actions.removeFromFarm(
-      memberToRemove,
+  const handleDeleteMember = async () => {
+    if (!memberToDelete || !ownerId) return;
+    const deleted = await actions.deleteMemberAccount(
+      memberToDelete,
       ownerId,
-      update,
+      remove,
     );
-    if (removed) setMemberToRemove(null);
+    if (deleted) setMemberToDelete(null);
   };
 
   return (
@@ -118,28 +118,30 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
         editing={editing}
         savingId={inviteData.savingId}
         ownerId={user?.id}
+        organizationId={organizationId}
+        canDeleteMembers={userProfile?.role === "owner"}
         onChangeRole={handleRole}
         onChangePermission={handlePermission}
-        onRemoveMember={setMemberToRemove}
+        onDeleteMember={setMemberToDelete}
       />
 
       <Dialog
-        open={memberToRemove !== null}
+        open={memberToDelete !== null}
         onOpenChange={(open) => {
-          if (!open && inviteData.savingId !== memberToRemove?.id) {
-            setMemberToRemove(null);
+          if (!open && inviteData.savingId !== memberToDelete?.id) {
+            setMemberToDelete(null);
           }
         }}
       >
         <DialogContent className="max-w-md rounded-2xl border border-border/60 bg-card p-6">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-primary">
-              Remover membro da fazenda?
+              Excluir membro permanentemente?
             </DialogTitle>
             <DialogDescription>
-              {memberToRemove?.full_name || memberToRemove?.email || "Este membro"}{" "}
-              perderá o vínculo e as permissões desta fazenda. A conta continuará
-              existindo, mas sem acesso à equipe.
+              {memberToDelete?.full_name || memberToDelete?.email || "Este membro"}{" "}
+              terá a conta de autenticação e o perfil excluídos. Essa ação não
+              pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-row gap-2 pt-2">
@@ -147,8 +149,8 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
               type="button"
               variant="outline"
               className="flex-1"
-              disabled={inviteData.savingId === memberToRemove?.id}
-              onClick={() => setMemberToRemove(null)}
+              disabled={inviteData.savingId === memberToDelete?.id}
+              onClick={() => setMemberToDelete(null)}
             >
               Cancelar
             </Button>
@@ -156,12 +158,12 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
               type="button"
               variant="destructive"
               className="flex-1"
-              disabled={inviteData.savingId === memberToRemove?.id}
-              onClick={() => void handleRemoveMember()}
+              disabled={inviteData.savingId === memberToDelete?.id}
+              onClick={() => void handleDeleteMember()}
             >
-              {inviteData.savingId === memberToRemove?.id
-                ? "Removendo..."
-                : "Remover membro"}
+              {inviteData.savingId === memberToDelete?.id
+                ? "Excluindo..."
+                : "Excluir permanentemente"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -172,7 +174,7 @@ export function ProfilePermissionsPanel({ editing }: ProfilePermissionsPanelProp
         ownerId={user?.id}
         orgId={organizationId}
         farmName={userProfile?.farm_name}
-        onCreate={create}
+        onCreate={upsert}
         onOpenChange={setInviteOpen}
       />
     </section>
