@@ -144,10 +144,19 @@ CREATE POLICY user_profiles_update_org
     id::text = auth.uid()::text
     OR (
       public.is_current_user_org_owner()
-      AND role = 'member'
       AND (
-        org_id = public.get_current_user_org_id()
-        OR org_id IS NULL
+        (
+          role = 'member'
+          AND (
+            org_id = public.get_current_user_org_id()
+            OR org_id IS NULL
+          )
+        )
+        OR (
+          role = 'owner'
+          AND owner_id::text = auth.uid()::text
+          AND org_id = public.get_current_user_org_id()
+        )
       )
     )
   )
@@ -177,11 +186,20 @@ CREATE POLICY user_profiles_update_org
     OR (
       public.is_current_user_org_owner()
       AND (
-        org_id = public.get_current_user_org_id()
+        (
+          role = 'member'
+          AND (
+            org_id = public.get_current_user_org_id()
+            OR (
+              org_id IS NULL
+              AND owner_id::text = ''
+            )
+          )
+        )
         OR (
-          org_id IS NULL
-          AND role = 'member'
-          AND owner_id::text = ''
+          role = 'owner'
+          AND owner_id::text = auth.uid()::text
+          AND org_id = public.get_current_user_org_id()
         )
       )
     )

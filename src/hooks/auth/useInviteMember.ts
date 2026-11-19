@@ -208,17 +208,6 @@ export function useInviteMember() {
         role: nextRole,
         permissions: nextPermissions,
       });
-
-      if (typeof navigator === "undefined" || navigator.onLine) {
-        void getSupabase()
-          .from("user_profiles")
-          .update({
-            role: nextRole,
-            permissions: nextPermissions,
-            updated_at: Date.now(),
-          })
-          .eq("id", profile.id);
-      }
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Não foi possível atualizar as permissões.";

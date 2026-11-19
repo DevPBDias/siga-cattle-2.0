@@ -48,7 +48,7 @@ const member: UserProfile = {
   owner_id: "00000000-0000-4000-8000-000000000002",
 };
 
-describe("useInviteMember deleteMemberAccount", () => {
+describe("useInviteMember", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.defineProperty(navigator, "onLine", {
@@ -122,5 +122,24 @@ describe("useInviteMember deleteMemberAccount", () => {
     expect(removed).toBe(false);
     expect(removeLocal).not.toHaveBeenCalled();
     expect(mocks.toastError).toHaveBeenCalledWith("Exclusão negada.");
+  });
+
+  it("writes role changes locally and leaves remote sync to RxDB", async () => {
+    const updateLocal = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useInviteMember());
+
+    await act(async () => {
+      await result.current.actions.updateAccess(
+        member,
+        { role: "owner" },
+        updateLocal,
+      );
+    });
+
+    expect(updateLocal).toHaveBeenCalledWith(
+      member.id,
+      expect.objectContaining({ role: "owner" }),
+    );
+    expect(mocks.getSupabase).not.toHaveBeenCalled();
   });
 });
