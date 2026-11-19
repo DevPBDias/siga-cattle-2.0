@@ -117,6 +117,9 @@ export async function GET(req: NextRequest) {
       if (row.server_updated_at === undefined && row.updated_at !== undefined) {
         row.server_updated_at = row.updated_at;
       }
+      if (table === "animals" && row.farm_id === null) {
+        delete row.farm_id;
+      }
       return row;
     });
   }
@@ -233,6 +236,9 @@ export async function POST(req: NextRequest) {
 
       if (table === "animals") {
         clean.org_id = animalOrgId;
+        if (typeof clean.farm_id === "string" && clean.farm_id.trim() === "") {
+          clean.farm_id = null;
+        }
       } else if (table !== "user_profiles") {
         delete clean.org_id;
       }
