@@ -31,7 +31,7 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group";
-import { useHerdEvolution, type HerdEvolutionPeriod } from "@/hooks/reports/useHerdEvolution";
+import { useHerdEvolution } from "@/hooks/reports/useHerdEvolution";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const chartConfig = {
@@ -60,7 +60,7 @@ const chartConfig = {
 type PeriodOption = "month" | "year";
 type CategoryOption = "all" | "0 - 12 m" | "13 - 24 m" | "25 - 36 m" | "+36 m";
 
-export function ChartAreaInteractive() {
+export function ChartAreaInteractive({ farmId }: { farmId?: string }) {
   const isMobile = useIsMobile();
   const [period, setPeriod] = React.useState<PeriodOption>("month");
   const [category, setCategory] = React.useState<CategoryOption>("all");
@@ -69,10 +69,7 @@ export function ChartAreaInteractive() {
     if (isMobile) setPeriod("month");
   }, [isMobile]);
 
-  const { data, loading } = useHerdEvolution(
-    period as HerdEvolutionPeriod,
-    category,
-  );
+  const { data, loading, error } = useHerdEvolution(period, category, farmId);
 
   const activeKeys: string[] = category === "all"
     ? ["total"]
@@ -139,6 +136,10 @@ export function ChartAreaInteractive() {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         {loading ? (
           <Skeleton className="h-[250px] w-full rounded-2xl" />
+        ) : error ? (
+          <p role="alert" className="py-12 text-center text-sm text-destructive">
+            Não foi possível carregar a evolução do rebanho: {String(error)}
+          </p>
         ) : (
           <ChartContainer
             config={chartConfig}

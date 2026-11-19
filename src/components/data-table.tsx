@@ -1,11 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Search,
-  SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -23,10 +22,17 @@ import {
 
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useAnimalWeights } from "@/hooks/db/animal_weights/useAnimalWeights";
-import { useLocalQuery } from "@/hooks/core";
+import { useAllAnimalVaccines } from "@/hooks/db/animal_vaccines/useAllAnimalVaccines";
 import { Animal } from "@/types/animal.type";
-import { AnimalVaccine } from "@/types/vaccine.type";
-import { formatDate, formatAge, todayISO } from "@/utils/dates";
+import {
+  calculateAgeInMonths,
+  compareDates,
+  formatDate,
+  formatAge,
+  todayISO,
+} from "@/utils/dates";
+import { useMovements } from "@/hooks/db/movements/useMovements";
+import type { Movement } from "@/types/movement.type";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,23 +66,47 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 interface DataTableProps {
-  data?: any[];
+  farmId?: string;
 }
 
-export function DataTable({ data: initialData }: DataTableProps) {
-  // Hooks RxDB reativos
-  const { data: dbAnimals, loading: animalsLoading } = useAnimals();
-  const { data: dbWeights, loading: weightsLoading } = useAnimalWeights(undefined);
+function findScopedAnimal(
+  animalKey: string | undefined,
+  rgn: string | undefined,
+  animalsByKey: Map<string, Animal>,
+  animalsByRgn: Map<string, Animal[]>,
+) {
+  if (animalKey) return animalsByKey.get(animalKey);
+  const matches = rgn ? animalsByRgn.get(rgn) : undefined;
+  return matches?.length === 1 ? matches[0] : undefined;
+}
 
-  // Consulta de vacinas
-  const vaccineQuery = useMemo(
-    () => ({
-      selector: { _deleted: { $eq: false } },
-      sort: [{ date: "desc" } as any],
-    }),
-    []
-  );
-  const { data: dbVaccines } = useLocalQuery<AnimalVaccine>("animal_vaccines", vaccineQuery);
+function getAnimalSelectionKey(animal: Animal) {
+  return animal.animal_key || animal.rgn;
+}
+
+export function DataTable({ farmId }: DataTableProps) {
+  // Hooks RxDB reativos
+  const {
+    data: dbAnimals,
+    loading: animalsLoading,
+    error: animalsError,
+  } = useAnimals();
+  const {
+    data: dbWeights,
+    loading: weightsLoading,
+    error: weightsError,
+  } = useAnimalWeights();
+  const {
+    data: dbMovements,
+    loading: movementsLoading,
+    error: movementsError,
+  } = useMovements();
+
+  const {
+    data: dbVaccines,
+    loading: vaccinesLoading,
+    error: vaccinesError,
+  } = useAllAnimalVaccines();
 
   // Estados locais
   const [selectedTab, setSelectedTab] = useState<string>("todos");
@@ -92,38 +122,92 @@ export function DataTable({ data: initialData }: DataTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  // Mapa de último peso por RGN
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedRows({});
+  }, [farmId]);
+
+  const scopedAnimals = useMemo(
+    () =>
+      (dbAnimals ?? []).filter(
+        (animal) => farmId === undefined || animal.farm_id === farmId,
+      ),
+    [dbAnimals, farmId],
+  );
+  const animalsByKey = useMemo(() => {
+    const map = new Map<string, Animal>();
+    for (const animal of scopedAnimals) {
+      if (animal.animal_key) map.set(animal.animal_key, animal);
+    }
+    return map;
+  }, [scopedAnimals]);
+  const animalsByRgn = useMemo(() => {
+    const map = new Map<string, Animal[]>();
+    for (const animal of scopedAnimals) {
+      const animals = map.get(animal.rgn) ?? [];
+      animals.push(animal);
+      map.set(animal.rgn, animals);
+    }
+    return map;
+  }, [scopedAnimals]);
+
+  // Mapas de último peso e evento por animal
   const latestWeightMap = useMemo(() => {
     const map = new Map<string, { value: number; date?: string }>();
     if (!dbWeights) return map;
-    for (const w of dbWeights) {
-      if (!w.rgn) continue;
-      const existing = map.get(w.rgn);
-      if (!existing || (w.date && (!existing.date || w.date > existing.date))) {
-        map.set(w.rgn, { value: w.value, date: w.date });
+    for (const weight of dbWeights) {
+      const animal = findScopedAnimal(weight.animal_key, weight.rgn, animalsByKey, animalsByRgn);
+      if (!animal) continue;
+      const key = animal.animal_key ?? `rgn:${animal.rgn}`;
+      const existing = map.get(key);
+      if (!existing || (weight.date && (!existing.date || weight.date > existing.date))) {
+        map.set(key, { value: weight.value, date: weight.date });
       }
     }
     return map;
-  }, [dbWeights]);
+  }, [animalsByKey, animalsByRgn, dbWeights]);
 
-  // Mapa de última vacina por RGN
-  const latestVaccineMap = useMemo(() => {
-    const map = new Map<string, { date?: string; vaccine_id?: string }>();
-    if (!dbVaccines) return map;
-    for (const v of dbVaccines) {
-      if (!v.rgn) continue;
-      const existing = map.get(v.rgn);
-      if (!existing || (v.date && (!existing.date || v.date > existing.date))) {
-        map.set(v.rgn, { date: v.date, vaccine_id: v.vaccine_id });
+  const latestEventMap = useMemo(() => {
+    const map = new Map<string, { label: string; date: string }>();
+    const addEvent = (animalKey: string | undefined, rgn: string, label: string, date?: string) => {
+      if (!date) return;
+      const animal = findScopedAnimal(animalKey, rgn, animalsByKey, animalsByRgn);
+      if (!animal) return;
+      const key = animal.animal_key ?? `rgn:${animal.rgn}`;
+      const existing = map.get(key);
+      if (!existing || compareDates(existing.date, date) < 0) {
+        map.set(key, { label, date });
       }
+    };
+
+    for (const weight of dbWeights ?? []) {
+      addEvent(weight.animal_key, weight.rgn, "Pesagem", weight.date);
+    }
+    for (const vaccine of dbVaccines ?? []) {
+      addEvent(vaccine.animal_key, vaccine.rgn, "Vacinação", vaccine.date);
+    }
+    const movementLabels: Record<Movement["type"], string> = {
+      nascimento: "Nascimento",
+      morte: "Morte",
+      venda: "Venda",
+      troca: "Troca",
+    };
+    for (const movement of dbMovements ?? []) {
+      addEvent(
+        movement.animal_key,
+        movement.animal_id,
+        movementLabels[movement.type],
+        movement.event_date || movement.date,
+      );
     }
     return map;
-  }, [dbVaccines]);
+  }, [animalsByKey, animalsByRgn, dbMovements, dbVaccines, dbWeights]);
 
   // Animais filtrados por busca, tab e sexo
   const filteredAnimals = useMemo(() => {
-    const list: Animal[] = dbAnimals || [];
+    const list: Animal[] = scopedAnimals;
     const query = searchQuery.trim().toLowerCase();
+    const today = todayISO();
 
     const filtered = list.filter((animal: Animal) => {
       // Filtro de Sexo
@@ -132,27 +216,21 @@ export function DataTable({ data: initialData }: DataTableProps) {
 
       // Filtro de Tabs
       if (selectedTab === "nascimentos") {
-        if (!animal.born_date) return false;
-        // Animais nascidos no último ano ou com menos de 12 meses
-        const ageDesc = formatAge(animal.born_date);
-        const isYoung = ageDesc.includes("mês") || ageDesc.includes("meses") || ageDesc.includes("dia");
-        if (!isYoung) return false;
+        if (!animal.born_date || animal.born_date > today) return false;
+        if (calculateAgeInMonths(animal.born_date, today) > 12) return false;
       } else if (selectedTab === "pesagens") {
         // Apenas animais com pesagem registrada
-        if (!latestWeightMap.has(animal.rgn)) return false;
+        if (!latestWeightMap.has(animal.animal_key ?? `rgn:${animal.rgn}`)) return false;
       } else if (selectedTab === "alertas") {
-        // Animais com alerta (ex: prenha, inativo, sem pesagem)
-        const isPrenha = animal.animal_state?.toUpperCase() === "PRENHA";
-        const isInativo = animal.animal_state?.toUpperCase() === "INATIVO";
-        const noWeight = !latestWeightMap.has(animal.rgn);
-        if (!isPrenha && !isInativo && !noWeight) return false;
+        const state = animal.animal_state?.toUpperCase();
+        if (state !== "ALERTA" && state !== "EM_TRATAMENTO") return false;
       }
 
       // Filtro de Busca textual
       if (!query) return true;
       const rgn = (animal.rgn || "").toLowerCase();
       const name = (animal.name || "").toLowerCase();
-      const serie = (animal.serie_rgd || "INDI").toLowerCase();
+      const serie = (animal.serie_rgd || "").toLowerCase();
       const fullDisplay = `${serie} ${rgn}`.toLowerCase();
 
       return (
@@ -186,45 +264,51 @@ export function DataTable({ data: initialData }: DataTableProps) {
 
       return sortOrder === "asc" ? -comparison : comparison;
     });
-  }, [dbAnimals, searchQuery, sexFilter, selectedTab, latestWeightMap, sortOrder]);
+  }, [scopedAnimals, searchQuery, sexFilter, selectedTab, latestWeightMap, sortOrder]);
 
   // Paginação dos dados
   const totalItems = filteredAnimals.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
     return filteredAnimals.slice(start, start + pageSize);
   }, [filteredAnimals, currentPage, pageSize]);
 
   // Seleção de linhas
-  const allCurrentSelected = paginatedData.length > 0 && paginatedData.every((a) => !!selectedRows[a.rgn]);
-  const someCurrentSelected = paginatedData.some((a) => !!selectedRows[a.rgn]) && !allCurrentSelected;
+  const allCurrentSelected = paginatedData.length > 0 && paginatedData.every((a) => !!selectedRows[getAnimalSelectionKey(a)]);
+  const someCurrentSelected = paginatedData.some((a) => !!selectedRows[getAnimalSelectionKey(a)]) && !allCurrentSelected;
 
   const toggleSelectAll = (checked: boolean) => {
     const next = { ...selectedRows };
     for (const a of paginatedData) {
+      const key = getAnimalSelectionKey(a);
       if (checked) {
-        next[a.rgn] = true;
+        next[key] = true;
       } else {
-        delete next[a.rgn];
+        delete next[key];
       }
     }
     setSelectedRows(next);
   };
 
-  const toggleSelectRow = (rgn: string, checked: boolean) => {
+  const toggleSelectRow = (key: string, checked: boolean) => {
     setSelectedRows((prev) => {
       const next = { ...prev };
       if (checked) {
-        next[rgn] = true;
+        next[key] = true;
       } else {
-        delete next[rgn];
+        delete next[key];
       }
       return next;
     });
   };
 
   const selectedCount = Object.keys(selectedRows).filter((k) => selectedRows[k]).length;
+  const isLoading = animalsLoading || weightsLoading || vaccinesLoading || movementsLoading;
+  const dataError = animalsError || weightsError || vaccinesError || movementsError;
 
   return (
     <div className="w-full space-y-4 px-4 lg:px-6">
@@ -243,7 +327,7 @@ export function DataTable({ data: initialData }: DataTableProps) {
               <Beef className="h-4 w-4 text-field-green" />
               <span>Todos os Animais</span>
               <Badge variant="secondary" className="ml-1 text-xs">
-                {dbAnimals?.length ?? 0}
+                {scopedAnimals.length}
               </Badge>
             </TabsTrigger>
             <TabsTrigger value="nascimentos" className="gap-2">
@@ -345,6 +429,12 @@ export function DataTable({ data: initialData }: DataTableProps) {
         </div>
       </div>
 
+      {dataError && (
+        <p role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          Não foi possível carregar os registros relacionados: {String(dataError)}
+        </p>
+      )}
+
       {/* Tabela de Dados */}
       <div className="rounded-xl border border-border/60 bg-card overflow-hidden shadow-xs">
         <Table>
@@ -379,10 +469,16 @@ export function DataTable({ data: initialData }: DataTableProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {animalsLoading ? (
+            {isLoading ? (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   Carregando rebanho do banco local...
+                </TableCell>
+              </TableRow>
+            ) : dataError ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-12 text-destructive">
+                  Os registros não puderam ser carregados.
                 </TableCell>
               </TableRow>
             ) : paginatedData.length === 0 ? (
@@ -393,17 +489,18 @@ export function DataTable({ data: initialData }: DataTableProps) {
               </TableRow>
             ) : (
               paginatedData.map((animal) => {
-                const isSelected = !!selectedRows[animal.rgn];
-                const displayName = `${animal.serie_rgd || "INDI"} ${animal.rgn}`;
+                const selectionKey = getAnimalSelectionKey(animal);
+                const isSelected = !!selectedRows[selectionKey];
+                const displayName = `${animal.serie_rgd || "—"} ${animal.rgn}`;
                 const isNeloreMocho = animal.breed?.trim().toLowerCase() === "nelore mocha";
-                const latestWeight = latestWeightMap.get(animal.rgn);
-                const latestVaccine = latestVaccineMap.get(animal.rgn);
+                const animalDataKey = animal.animal_key ?? `rgn:${animal.rgn}`;
+                const latestEvent = latestEventMap.get(animalDataKey);
                 const ageText = animal.born_date ? formatAge(animal.born_date) : "—";
-                const state = (animal.animal_state || "ATIVO").toUpperCase();
+                const state = (animal.animal_state || "").toUpperCase();
 
                 return (
                   <TableRow
-                    key={animal.rgn}
+                    key={animal.animal_key || animal.rgn}
                     data-state={isSelected ? "selected" : undefined}
                     className="hover:bg-muted/40 transition-colors cursor-pointer"
                     onClick={(e) => {
@@ -415,7 +512,7 @@ export function DataTable({ data: initialData }: DataTableProps) {
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={(checked) => toggleSelectRow(animal.rgn, !!checked)}
+                        onCheckedChange={(checked) => toggleSelectRow(selectionKey, !!checked)}
                         aria-label={`Selecionar ${displayName}`}
                       />
                     </TableCell>
@@ -439,10 +536,10 @@ export function DataTable({ data: initialData }: DataTableProps) {
                     </TableCell>
                     <TableCell>
                       <div className="text-xs font-medium text-foreground">
-                        {animal.breed || "Nelore"}
+                        {animal.breed || "Raça não informada"}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {animal.type || animal.classification || "Geral"}
+                        {animal.type || animal.classification || "Categoria não informada"}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -451,11 +548,17 @@ export function DataTable({ data: initialData }: DataTableProps) {
                           variant="outline"
                           className={`text-xs px-1.5 py-0 ${
                             animal.sex?.toUpperCase() === "M"
-                              ? "border-sky-500/40 text-sky-700 bg-sky-50 dark:bg-sky-950/30"
-                              : "border-pink-500/40 text-pink-700 bg-pink-50 dark:bg-pink-950/30"
+                              ? "border-primary/30 text-primary bg-primary/5"
+                              : animal.sex?.toUpperCase() === "F"
+                                ? "border-amber/30 text-amber bg-amber/5"
+                                : "border-border text-muted-foreground bg-muted"
                           }`}
                         >
-                          {animal.sex?.toUpperCase() === "M" ? "Macho" : "Fêmea"}
+                          {animal.sex?.toUpperCase() === "M"
+                            ? "Macho"
+                            : animal.sex?.toUpperCase() === "F"
+                              ? "Fêmea"
+                              : "Sexo não informado"}
                         </Badge>
                       </div>
                       <div className="text-xs text-muted-foreground mt-0.5">
@@ -463,20 +566,18 @@ export function DataTable({ data: initialData }: DataTableProps) {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {latestWeight ? (
+                      {latestEvent ? (
                         <div>
                           <span className="font-semibold text-foreground text-sm">
-                            {latestWeight.value} kg
+                            {latestEvent.label}
                           </span>
-                          {latestWeight.date && (
-                            <div className="text-xs text-muted-foreground">
-                              {formatDate(latestWeight.date)}
-                            </div>
-                          )}
+                          <div className="text-xs text-muted-foreground">
+                            {formatDate(latestEvent.date)}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-xs text-muted-foreground italic">
-                          Sem pesagem
+                          Sem manejo registrado
                         </span>
                       )}
                     </TableCell>
@@ -488,11 +589,13 @@ export function DataTable({ data: initialData }: DataTableProps) {
                             ? "bg-field-green/10 text-field-green border-field-green/30"
                             : state === "PRENHA"
                             ? "bg-amber/10 text-amber border-amber/30"
+                            : state === "ALERTA" || state === "EM_TRATAMENTO"
+                            ? "bg-destructive/10 text-destructive border-destructive/30"
                             : "bg-muted text-muted-foreground border-border"
                         }`}
                       >
                         {state === "ATIVO" && <CheckCircle2 className="mr-1 h-3 w-3" />}
-                        {state}
+                        {state || "Status não informado"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
@@ -608,14 +711,14 @@ export function DataTable({ data: initialData }: DataTableProps) {
               <SheetHeader>
                 <div className="flex items-center justify-between">
                   <Badge variant="outline" className="text-field-green border-field-green/30 bg-field-green/5">
-                    {inspectingAnimal.animal_state || "ATIVO"}
+                    {inspectingAnimal.animal_state || "Status não informado"}
                   </Badge>
                   <span className="text-xs text-muted-foreground">
-                    Criado em: {inspectingAnimal.created_at ? formatDate(new Date(inspectingAnimal.created_at).toISOString().split("T")[0]) : "—"}
+                    Criado em: {inspectingAnimal.created_at ? formatDate(inspectingAnimal.created_at) : "—"}
                   </span>
                 </div>
                 <SheetTitle className="text-xl font-bold text-primary flex items-center gap-2">
-                  <span>{inspectingAnimal.serie_rgd || "INDI"} {inspectingAnimal.rgn}</span>
+                  <span>{inspectingAnimal.serie_rgd || "—"} {inspectingAnimal.rgn}</span>
                   {inspectingAnimal.breed?.trim().toLowerCase() === "nelore mocha" && (
                     <span className="text-amber font-extrabold text-base">*</span>
                   )}
@@ -629,12 +732,16 @@ export function DataTable({ data: initialData }: DataTableProps) {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
                   <div className="text-xs text-muted-foreground">Raça</div>
-                  <div className="font-semibold text-foreground mt-0.5">{inspectingAnimal.breed || "Nelore"}</div>
+                  <div className="font-semibold text-foreground mt-0.5">{inspectingAnimal.breed || "Não informada"}</div>
                 </div>
                 <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
                   <div className="text-xs text-muted-foreground">Sexo</div>
                   <div className="font-semibold text-foreground mt-0.5">
-                    {inspectingAnimal.sex?.toUpperCase() === "M" ? "Macho" : "Fêmea"}
+                    {inspectingAnimal.sex?.toUpperCase() === "M"
+                      ? "Macho"
+                      : inspectingAnimal.sex?.toUpperCase() === "F"
+                        ? "Fêmea"
+                        : "Não informado"}
                   </div>
                 </div>
                 <div className="bg-muted/40 p-3 rounded-xl border border-border/40">
@@ -669,11 +776,11 @@ export function DataTable({ data: initialData }: DataTableProps) {
                   </div>
                   <div className="flex justify-between py-1 border-b border-border/40">
                     <span className="text-muted-foreground">Condição:</span>
-                    <span className="font-medium text-foreground">{inspectingAnimal.condition || "Solteira"}</span>
+                    <span className="font-medium text-foreground">{inspectingAnimal.condition || "Não informada"}</span>
                   </div>
                   <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Tipo / Função:</span>
-                    <span className="font-medium text-foreground">{inspectingAnimal.type || "Comum"}</span>
+                    <span className="font-medium text-foreground">{inspectingAnimal.type || "Não informado"}</span>
                   </div>
                 </div>
               </div>

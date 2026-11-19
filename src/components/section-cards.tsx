@@ -1,6 +1,6 @@
 "use client";
 
-import { TrendingUp, TrendingDown, Beef, Baby, Scale, Syringe } from "lucide-react";
+import { AlertTriangle, TrendingUp, TrendingDown, Beef, Baby, Scale, Syringe } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -12,8 +12,9 @@ import {
 } from "@/components/ui/card";
 import { useDashboardStats } from "@/hooks/dashboard/useDashboardStats";
 
-export function SectionCards() {
-  const { stats, loading } = useDashboardStats();
+export function SectionCards({ farmId }: { farmId?: string }) {
+  const { stats, loading, error } = useDashboardStats(farmId);
+  const unavailable = loading || Boolean(error);
   const {
     activeTotal,
     entradaEsteMes,
@@ -26,7 +27,14 @@ export function SectionCards() {
   } = stats;
 
   return (
-    <div className="grid grid-cols-2 gap-3 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+    <div className="space-y-3">
+      {error && (
+        <p role="alert" className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          Não foi possível carregar os indicadores: {String(error)}
+        </p>
+      )}
+      <div className="grid grid-cols-2 gap-3 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
 
       {/* Card 1 — Rebanho Ativo */}
       <Card className="@container/card">
@@ -36,13 +44,13 @@ export function SectionCards() {
             Rebanho Ativo
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {loading ? "—" : activeTotal}
+            {unavailable ? "—" : activeTotal}
           </CardTitle>
-          {entradaEsteMes > 0 && (
+          {!unavailable && entradaEsteMes > 0 && (
             <CardAction>
               <Badge variant="outline" className="text-field-green border-field-green/40">
                 <TrendingUp className="h-3 w-3" />
-                +{entradaEsteMes} este mês
+                +{entradaEsteMes} cadastros
               </Badge>
             </CardAction>
           )}
@@ -52,7 +60,7 @@ export function SectionCards() {
             Total de animais cadastrados e ativos
           </div>
           <div className="text-muted-foreground">
-            Entradas e nascimentos no mês
+            {unavailable ? "—" : "Animais cadastrados neste mês"}
           </div>
         </CardFooter>
       </Card>
@@ -65,9 +73,9 @@ export function SectionCards() {
             Nascimentos & Maternidade
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {loading ? "—" : nascimentos30d}
+            {unavailable ? "—" : nascimentos30d}
           </CardTitle>
-          {femeasPrenhas > 0 && (
+          {!unavailable && femeasPrenhas > 0 && (
             <CardAction>
               <Badge variant="outline" className="text-amber-600 border-amber-400/40">
                 {femeasPrenhas} prenhes
@@ -80,7 +88,11 @@ export function SectionCards() {
             Bezerros nascidos nos últimos 30 dias
           </div>
           <div className="text-muted-foreground">
-            {femeasPrenhas > 0 ? `${femeasPrenhas} fêmeas prenhas no rebanho` : "Sem registros de prenhez"}
+            {unavailable
+              ? "—"
+              : femeasPrenhas > 0
+                ? `${femeasPrenhas} fêmeas prenhas no rebanho`
+                : "Sem registros de prenhez"}
           </div>
         </CardFooter>
       </Card>
@@ -93,9 +105,9 @@ export function SectionCards() {
             Desempenho Ponderal
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {loading ? "—" : gmdMedio !== null ? `${gmdMedio.toFixed(3)} kg/d` : "—"}
+            {unavailable ? "—" : gmdMedio !== null ? `${gmdMedio.toFixed(3)} kg/d` : "—"}
           </CardTitle>
-          {gmdMedio !== null && (
+          {!unavailable && gmdMedio !== null && (
             <CardAction>
               <Badge
                 variant="outline"
@@ -112,7 +124,11 @@ export function SectionCards() {
             Ganho Médio Diário do rebanho
           </div>
           <div className="text-muted-foreground">
-            {totalPesagens > 0 ? `Baseado em ${totalPesagens} pesagens` : "Sem pesagens registradas"}
+            {unavailable
+              ? "—"
+              : totalPesagens > 0
+                ? `Baseado em ${totalPesagens} pesagens`
+                : "Sem pesagens registradas"}
           </div>
         </CardFooter>
       </Card>
@@ -125,9 +141,9 @@ export function SectionCards() {
             Alertas Sanitários
           </CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-            {loading ? "—" : animalEmTratamento + animalEmAlerta}
+            {unavailable ? "—" : animalEmTratamento + animalEmAlerta}
           </CardTitle>
-          {animalEmTratamento + animalEmAlerta > 0 && (
+          {!unavailable && animalEmTratamento + animalEmAlerta > 0 && (
             <CardAction>
               <Badge variant="outline" className="text-destructive border-destructive/40">
                 Atenção
@@ -140,12 +156,17 @@ export function SectionCards() {
             Animais em tratamento ou com alerta
           </div>
           <div className="text-muted-foreground">
-            {animalEmTratamento > 0 ? `${animalEmTratamento} em tratamento` : "Nenhum em tratamento"}
-            {animalEmAlerta > 0 ? ` · ${animalEmAlerta} com alerta` : ""}
+            {unavailable
+              ? "—"
+              : animalEmTratamento > 0
+                ? `${animalEmTratamento} em tratamento`
+                : "Nenhum em tratamento"}
+            {!unavailable && animalEmAlerta > 0 ? ` · ${animalEmAlerta} com alerta` : ""}
           </div>
         </CardFooter>
       </Card>
 
+      </div>
     </div>
   );
 }

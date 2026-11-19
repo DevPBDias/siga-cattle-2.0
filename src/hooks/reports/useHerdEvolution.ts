@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useMovements } from "@/hooks/db/movements/useMovements";
-import { calculateAgeInMonths, getAgeRange, type AgeRange } from "@/utils/dates";
+import {
+  calculateAgeInMonths,
+  getAgeRange,
+  toISODate,
+  type AgeRange,
+} from "@/utils/dates";
 
 export type HerdEvolutionPeriod = "month" | "year";
 export type HerdEvolutionCategory = "all" | AgeRange;
@@ -22,7 +27,7 @@ export interface HerdEvolutionPoint {
   [key: string]: number | string;
 }
 
-function toISODate(date: Date) {
+function toISODateLocal(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -61,6 +66,7 @@ function getPeriodLabel(period: HerdEvolutionPeriod, date: Date) {
 export function useHerdEvolution(
   period: HerdEvolutionPeriod,
   category: HerdEvolutionCategory,
+  farmId?: string,
 ) {
   const { data: animals, loading: animalsLoading, error: animalsError } = useAnimals();
   const { data: movements, loading: movementsLoading, error: movementsError } = useMovements();
@@ -70,23 +76,24 @@ export function useHerdEvolution(
       const date = getPeriodEnd(period, period === "month" ? 11 - index : 3 - index);
       return {
         date,
-        isoDate: toISODate(date),
+        isoDate: toISODateLocal(date),
         label: getPeriodLabel(period, date),
       };
     });
 
-    return points.map(({ date, isoDate, label }) => {
+    return points.map(({ isoDate, label }) => {
       const point: HerdEvolutionPoint = { label, date: isoDate, total: 0 };
 
       for (const animal of animals) {
+        if (farmId !== undefined && animal.farm_id !== farmId) continue;
         // Apenas animais ativos e não deletados — mesma lógica do StatsFooter
         if (animal._deleted) continue;
         if (animal.animal_state !== "ATIVO") continue;
 
-        const bornDate = animal.born_date || toISODate(new Date(animal.created_at));
+        const bornDate = animal.born_date || toISODate(animal.created_at);
         if (bornDate > isoDate) continue;
 
-        const createdDate = toISODate(new Date(animal.created_at));
+        const createdDate = toISODate(animal.created_at);
         if (createdDate > isoDate) continue;
 
         const terminalMovement = movements
@@ -109,7 +116,7 @@ export function useHerdEvolution(
 
       return point;
     });
-  }, [animals, category, movements, period]);
+  }, [animals, category, farmId, movements, period]);
 
   return {
     data,
