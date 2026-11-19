@@ -44,6 +44,7 @@ interface ReportsContextActions {
 type ReportsContextType = ReportsContextState & ReportsContextActions;
 
 const initialFilters: ReportFilters = {
+  breed: undefined,
   farmId: undefined,
   farmIds: [],
   farmName: undefined,

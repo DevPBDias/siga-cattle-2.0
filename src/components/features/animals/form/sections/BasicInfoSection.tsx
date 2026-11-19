@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormRow, FormSection } from "@/components/ui/FormRow";
+import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
 
 interface BasicInfoSectionProps {
   formData: any;
@@ -87,8 +88,11 @@ export function BasicInfoSection({
             <SelectValue placeholder="Selecione a raça" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Nelore">Nelore</SelectItem>
-            <SelectItem value="Nelore Mocha">Nelore Mocha</SelectItem>
+            {ANIMAL_BREEDS.map((breed) => (
+              <SelectItem key={breed} value={breed}>
+                {breed}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </FormRow>

@@ -4,6 +4,14 @@ import { useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import {
   CheckCircle2,
   X,
   AlertTriangle,
@@ -13,7 +21,8 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import { Animal } from "@/types/animal.type";
+import type { Animal, AnimalBreed } from "@/types/animal.type";
+import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
 import { getAnimalKey } from "@/utils/animalIdentity";
 import { isSupabaseConfigured } from "@/lib/supabase/api";
 import { getSupabase } from "@/lib/supabase/client";
@@ -33,6 +42,7 @@ const SearchCsvFile = () => {
   } = useCreateAnimal();
   const db = useRxDatabase();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedActiveBreed, setSelectedActiveBreed] = useState<AnimalBreed | "">("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentProcessType, setCurrentProcessType] =
     useState<ProcessPlanilhaType | null>(null);
@@ -52,6 +62,7 @@ const SearchCsvFile = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
       setSelectedFile(event.target.files[0]);
+      setSelectedActiveBreed("");
     }
   };
 
@@ -60,7 +71,7 @@ const SearchCsvFile = () => {
   };
 
   const handleProcessFile = async (type: ProcessPlanilhaType) => {
-    if (!selectedFile) return;
+    if (!selectedFile || (type === "ativos" && !selectedActiveBreed)) return;
 
     setIsProcessing(true);
     setCurrentProcessType(type);
@@ -76,7 +87,10 @@ const SearchCsvFile = () => {
       let extractedData: Animal[] = [];
 
       if (type === "ativos") {
-        extractedData = await extractActiveProductsFromExcel(selectedFile);
+        extractedData = await extractActiveProductsFromExcel(
+          selectedFile,
+          selectedActiveBreed,
+        );
       } else {
         extractedData = await extractDataFromExcel(selectedFile);
       }
@@ -257,9 +271,37 @@ const SearchCsvFile = () => {
             </Button>
 
             {/* Botão 2: Produtos Ativos */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="active-products-breed"
+                className="text-xs font-semibold uppercase text-muted-foreground"
+              >
+                Raça para todos os animais processados
+              </Label>
+              <Select
+                value={selectedActiveBreed}
+                onValueChange={(value) =>
+                  setSelectedActiveBreed(value as AnimalBreed)
+                }
+              >
+                <SelectTrigger
+                  id="active-products-breed"
+                  className="w-full bg-card"
+                >
+                  <SelectValue placeholder="Selecione a raça" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ANIMAL_BREEDS.map((breed) => (
+                    <SelectItem key={breed} value={breed}>
+                      {breed}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button
               onClick={() => handleProcessFile("ativos")}
-              disabled={!selectedFile || isProcessing}
+              disabled={!selectedFile || !selectedActiveBreed || isProcessing}
               variant="outline"
               className="w-full rounded-lg border-2 border-primary py-6 text-xs sm:text-sm uppercase font-semibold text-primary hover:bg-primary/10 disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
             >

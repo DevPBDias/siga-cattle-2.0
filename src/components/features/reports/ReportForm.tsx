@@ -37,6 +37,8 @@ import { AnimalStateFilterModal } from "./AnimalStateFilterModal";
 import { TableColumn } from "@/lib/pdf/types";
 import { EventType } from "@/types/reproduction_event.type";
 import { formatDate } from "@/utils/dates";
+import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
+import type { AnimalBreed } from "@/constants/animalBreeds";
 
 interface ReportFormProps {
   showGenerateActions?: boolean;
@@ -498,6 +500,40 @@ export function ReportForm({
                   <SelectItem value="IATF" className="rounded-lg">IATF</SelectItem>
                   <SelectItem value="FIV" className="rounded-lg">FIV</SelectItem>
                   <SelectItem value="Monta natural" className="rounded-lg">Monta natural</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {selectedReport.id === "animals-by-farm" && (
+            <div className="space-y-1 md:w-48">
+              <Label
+                htmlFor="report-animal-breed"
+                className="text-[10px] font-bold uppercase text-primary tracking-tight"
+              >
+                Raça
+              </Label>
+              <Select
+                value={filters.breed ?? "all"}
+                onValueChange={(value) =>
+                  updateFilters({
+                    breed: value === "all" ? undefined : (value as AnimalBreed),
+                  })
+                }
+              >
+                <SelectTrigger
+                  id="report-animal-breed"
+                  className="w-full bg-muted/40 border-0 focus:ring-primary"
+                >
+                  <SelectValue placeholder="Todas as raças" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as raças</SelectItem>
+                  {ANIMAL_BREEDS.map((breed) => (
+                    <SelectItem key={breed} value={breed}>
+                      {breed}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -366,6 +366,14 @@ export default function ReportsWorkspace() {
                               {farmSummary}
                             </dd>
                           </div>
+                          {filters.breed && (
+                            <div className="flex justify-between gap-3 border-b border-border pb-2">
+                              <dt className="text-muted-foreground">Raça</dt>
+                              <dd className="text-right font-semibold text-primary">
+                                {filters.breed}
+                              </dd>
+                            </div>
+                          )}
                           <div className="flex justify-between gap-3 border-b border-border pb-2">
                             <dt className="text-muted-foreground">Colunas</dt>
                             <dd className="text-right font-semibold text-primary">

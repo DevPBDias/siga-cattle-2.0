@@ -63,4 +63,13 @@ describe("extractActiveProductsFromExcel", () => {
     );
     expect(animals.every((animal) => animal.breed === "Gir")).toBe(true);
   });
+
+  it("uses the selected breed for every imported animal", async () => {
+    const file = createAbczWorkbookFile(createAbczRows());
+
+    const animals = await extractActiveProductsFromExcel(file, "Angus");
+
+    expect(animals).toHaveLength(18);
+    expect(animals.every((animal) => animal.breed === "Angus")).toBe(true);
+  });
 });

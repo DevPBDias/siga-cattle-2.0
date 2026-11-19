@@ -92,6 +92,10 @@ async function generateAnimalByFarmReport(
     selector.animal_state = { $eq: filters.animalState };
   }
 
+  if (filters.breed) {
+    selector.breed = { $eq: filters.breed };
+  }
+
   // Fetch animals from database
   const docs = await db.animals
     .find({

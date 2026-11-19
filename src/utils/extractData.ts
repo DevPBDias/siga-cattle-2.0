@@ -1,5 +1,5 @@
 import * as XLSX from "xlsx";
-import { Animal } from "@/types/animal.type";
+import type { Animal, AnimalBreed } from "@/types/animal.type";
 import { parseImportedDate } from "@/utils/dates";
 
 /**
@@ -522,7 +522,10 @@ function extractBreedFromAbczMetadata(value: unknown): string | undefined {
  * Extrai dados da planilha de Produtos Ativos (RelatorioProdutosAtivos da ABCZ).
  * Mapeia RG (Série e RGN), Nome, Sexo, Dt.Nasc., Pai, Mãe e Status ativo.
  */
-export async function extractActiveProductsFromExcel(file: File): Promise<Animal[]> {
+export async function extractActiveProductsFromExcel(
+  file: File,
+  selectedBreed?: AnimalBreed,
+): Promise<Animal[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
 
@@ -627,7 +630,7 @@ export async function extractActiveProductsFromExcel(file: File): Promise<Animal
             document_situation: statusVal,
             status: statusVal || "-",
             animal_state: "ATIVO",
-            breed: detectedBreed,
+            breed: selectedBreed ?? detectedBreed,
             farm_id: undefined,
           };
 

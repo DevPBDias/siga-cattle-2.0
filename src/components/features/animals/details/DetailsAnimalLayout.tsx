@@ -11,6 +11,7 @@ import { useDeleteAnimalVaccine } from "@/hooks/db/animal_vaccines/useDeleteAnim
 import { useUpdateAnimal } from "@/hooks/db/animals/useUpdateAnimal";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { Animal } from "@/types/animal.type";
+import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
 import {
   Trash2,
   Syringe,
@@ -311,10 +312,10 @@ const selectRow = (
                     {selectRow(
                       "Raça",
                       "breed",
-                      [
-                        { value: "Nelore", label: "Nelore" },
-                        { value: "Nelore Mocha", label: "Nelore Mocha" },
-                      ],
+                      ANIMAL_BREEDS.map((breed) => ({
+                        value: breed,
+                        label: breed,
+                      })),
                       animal.breed || "Nelore",
                     )}
                     <Row label="Nascimento">

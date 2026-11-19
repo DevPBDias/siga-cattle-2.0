@@ -22,6 +22,7 @@ import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { useUserProfile } from "@/hooks/db/user_profiles/useUserProfile";
 import { getSupabase } from "@/lib/supabase/client";
 import { Animal, AnimalBreed } from "@/types/animal.type";
+import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
 import { toast } from "sonner";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, isFutureDate } from "@/utils/dates";
@@ -43,25 +44,6 @@ const getDefaultFormData = () => ({
 
 const SEX_OPTIONS = ["Macho", "Fêmea"] as const;
 const COLOR_OPTIONS = ["Branco", "Vermelho"] as const;
-const BREED_OPTIONS: AnimalBreed[] = [
-  "Nelore",
-  "Nelore Mocha",
-  "Gir",
-  "Guzerá",
-  "Brahman",
-  "Tabapuã",
-  "Caracu",
-  "Curraleiro",
-  "Girolando",
-  "Canchim",
-  "Brangus",
-  "Charolês",
-  "Angus",
-  "Holandês",
-  "Hereford",
-  "Senepol",
-];
-
 const FIELD_CLASS = "h-10 w-full border-0 bg-muted/40 text-sm";
 
 export function BirthForm({ onSuccess }: BirthFormProps) {
@@ -453,7 +435,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
                   <SelectValue placeholder="Selecione a raça" />
                 </SelectTrigger>
                 <SelectContent>
-                  {BREED_OPTIONS.map((option) => (
+                  {ANIMAL_BREEDS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>

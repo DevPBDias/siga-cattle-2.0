@@ -8,6 +8,7 @@
  */
 
 import { TableColumn } from "../types";
+import type { AnimalBreed } from "@/constants/animalBreeds";
 
 // =============================================================================
 // Filter Types
@@ -47,6 +48,7 @@ export type BirthForecastSortBy = "rgn" | "farm" | "birthDate";
  * Active filters state
  */
 export interface ReportFilters {
+  breed?: AnimalBreed;
   farmId?: string;
   farmIds?: string[];
   farmName?: string;

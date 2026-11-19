@@ -1,17 +1,6 @@
-export type AnimalBreed =
-  | "Nelore"
-  | "Nelore Mocha"
-  | "Gir"
-  | "Guzerá"
-  | "Brahman"
-  | "Caracu"
-  | "Girolando"
-  | "Charolês"
-  | "Angus"
-  | "Sindi"
-  | "Senepol"
-  | "Retinta"
-  | (string & {});
+import type { AnimalBreed } from "@/constants/animalBreeds";
+
+export type { AnimalBreed } from "@/constants/animalBreeds";
 
 export interface Animal {
   animal_key?: string;
