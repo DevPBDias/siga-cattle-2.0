@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
@@ -6,16 +7,85 @@ import ServiceWorkerUpdater from "@/components/sync/ServiceWorkerUpdater";
 import RegisterSW from "@/components/sync/RegisterSW";
 import AgendaReminderNotifier from "@/components/sync/AgendaReminderNotifier";
 import { AccessProvider, AuthProvider, LocalFirstProvider } from "@/providers";
-import { getActiveTenant, getTenantCssVariables, getTenantPageTitle } from "@/config/tenant";
+import {
+  getActiveTenant,
+  getTenantCssVariables,
+  getTenantPageTitle,
+  getTenantSocialMetadata,
+} from "@/config/tenant";
 
-export function generateMetadata(): Metadata {
+async function getMetadataBase(): Promise<URL> {
+  const requestHeaders = await headers();
+  const rawHost =
+    requestHeaders.get("host") ?? requestHeaders.get("x-forwarded-host");
+  const host = rawHost?.split(",")[0].trim();
+  const forwardedProtocol = requestHeaders
+    .get("x-forwarded-proto")
+    ?.split(",")[0]
+    .trim()
+    .toLowerCase();
+  const protocol =
+    forwardedProtocol === "http" || forwardedProtocol === "https"
+      ? forwardedProtocol
+      : host?.startsWith("localhost")
+        ? "http"
+        : "https";
+
+  if (host && !/[\\/\s?#@]/.test(host)) {
+    const requestOrigin = `${protocol}://${host}`;
+    if (URL.canParse(requestOrigin)) return new URL(requestOrigin);
+  }
+
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000");
+  const normalizedUrl = /^https?:\/\//i.test(configuredUrl)
+    ? configuredUrl
+    : `https://${configuredUrl}`;
+
+  if (!URL.canParse(normalizedUrl)) {
+    throw new Error("A URL base dos metadados sociais é inválida.");
+  }
+
+  return new URL(normalizedUrl);
+}
+
+export async function generateMetadata(): Promise<Metadata> {
   const resolution = getActiveTenant();
   const title = getTenantPageTitle(resolution);
+  const social = getTenantSocialMetadata(resolution);
+  const metadataBase = await getMetadataBase();
 
   return {
+    metadataBase,
     title,
-    description:
-      "Gerencie o rebanho, pesos e vacinas da fazenda — mesmo offline.",
+    description: social.description,
+    applicationName: social.siteName,
+    openGraph: {
+      type: "website",
+      locale: "pt_BR",
+      siteName: social.siteName,
+      title: social.title,
+      description: social.description,
+      images: [
+        {
+          url: social.image,
+          width: 1920,
+          height: 1080,
+          alt: `${social.siteName} — gestão pecuária`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: social.title,
+      description: social.description,
+      images: [social.image],
+    },
     manifest: "/manifest.json",
     appleWebApp: {
       capable: true,

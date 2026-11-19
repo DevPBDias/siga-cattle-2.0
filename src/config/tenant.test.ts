@@ -4,6 +4,7 @@ import {
   resolveTenant,
   getTenantPageTitle,
   getTenantCssVariables,
+  getTenantSocialMetadata,
 } from "./tenant";
 import { getTenantBranding, hexToRgb } from "@/lib/branding/get-tenant-branding";
 import {
@@ -211,6 +212,35 @@ describe("Tenant Configuration & Resolution (Multi-tenant Branding)", () => {
       expect(cssVars["--color-tenant-secondary"]).toBe("#F7E9D4");
       expect(cssVars["--color-tenant-background"]).toBe("#F4F7F4");
       expect(cssVars["--color-tenant-text"]).toBe("#1A241C");
+    });
+
+    describe("Metadados para compartilhamento social", () => {
+      it("deve variar título e descrição por tenant e manter a imagem escolhida", () => {
+        const agro = getTenantSocialMetadata(resolveTenant("agro3mil"));
+        const haras = getTenantSocialMetadata(resolveTenant("harasLuma"));
+        const indi = getTenantSocialMetadata(resolveTenant("indi-ouro"));
+        const siga = getTenantSocialMetadata(resolveTenant("siga-cattle"));
+
+        expect(agro.title).toBe("Fazenda Agro 3mil | SIGA Cattle");
+        expect(agro.description).toContain("Fazenda Agro 3mil");
+        expect(haras.title).toBe("Haras Fazenda Luma | SIGA Cattle");
+        expect(haras.description).toContain("Haras Fazenda Luma");
+        expect(indi.title).toBe("Nelore INDI Ouro | SIGA Cattle");
+        expect(indi.description).toContain("INDI Ouro");
+        expect(siga.title).toBe("SIGA Cattle | Gestão Pecuária");
+        expect(siga.image).toBe("/Background_Siga.png");
+        expect(agro.image).toBe(siga.image);
+        expect(haras.image).toBe(siga.image);
+        expect(indi.image).toBe(siga.image);
+      });
+
+      it("deve usar texto genérico sem identificar um tenant inválido", () => {
+        const social = getTenantSocialMetadata(resolveTenant("tenant-invalido"));
+
+        expect(social.title).toBe("SIGA Cattle | Gestão Pecuária");
+        expect(social.description).not.toContain("Fazenda Agro 3mil");
+        expect(social.image).toBe("/Background_Siga.png");
+      });
     });
   });
 });

@@ -16,6 +16,7 @@ export type TenantConfig = {
   textColor: string;
   tagline?: string;
   badgeText?: string;
+  socialDescription?: string;
 };
 
 export const TENANTS: Record<string, TenantConfig> = {
@@ -30,6 +31,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#1A241C",
     tagline: "Gestão Pecuária • Alta Performance",
     badgeText: "Agro 3mil",
+    socialDescription:
+      "Sistema de gestão pecuária da Fazenda Agro 3mil: rebanho, manejo, reprodução e indicadores em um só lugar.",
   },
   harasLuma: {
     id: "haras-luma",
@@ -42,6 +45,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#1C2D1E",
     tagline: "Haras & Equinos de Elite",
     badgeText: "Haras Luma",
+    socialDescription:
+      "Acompanhe o plantel, a reprodução e os manejos do Haras Fazenda Luma em uma plataforma de gestão.",
   },
   "haras-luma": {
     id: "haras-luma",
@@ -54,6 +59,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#1C2D1E",
     tagline: "Haras & Equinos de Elite",
     badgeText: "Haras Luma",
+    socialDescription:
+      "Acompanhe o plantel, a reprodução e os manejos do Haras Fazenda Luma em uma plataforma de gestão.",
   },
   "nelore-indi-ouro": {
     id: "nelore-indi-ouro",
@@ -66,6 +73,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#ffffff",
     tagline: "Nelore PO • Genética",
     badgeText: "INDI Ouro",
+    socialDescription:
+      "Nelore PO, genética e gestão de rebanho em uma plataforma integrada da INDI Ouro.",
   },
   "indi-ouro": {
     id: "nelore-indi-ouro",
@@ -78,6 +87,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#ffffff",
     tagline: "Nelore PO • Genética",
     badgeText: "INDI Ouro",
+    socialDescription:
+      "Nelore PO, genética e gestão de rebanho em uma plataforma integrada da INDI Ouro.",
   },
   "siga-cattle": {
     id: "siga-cattle",
@@ -90,6 +101,8 @@ export const TENANTS: Record<string, TenantConfig> = {
     textColor: "#ffffff",
     tagline: "Gestão Pecuária Inteligente",
     badgeText: "SIGA Cattle",
+    socialDescription:
+      "Gestão pecuária inteligente para organizar rebanho, manejos e indicadores em um só lugar.",
   },
 };
 
@@ -153,6 +166,30 @@ export function getTenantPageTitle(resolution?: TenantResolution): string {
     return `Siga Cattle - ${res.tenant.name}`;
   }
   return "Siga Cattle";
+}
+
+export interface TenantSocialMetadata {
+  siteName: string;
+  title: string;
+  description: string;
+  image: string;
+}
+
+export function getTenantSocialMetadata(
+  resolution: TenantResolution = getActiveTenant(),
+): TenantSocialMetadata {
+  const tenant = resolution.tenant;
+  return {
+    siteName: "SIGA Cattle",
+    title:
+      tenant?.id === "siga-cattle" || !tenant
+        ? "SIGA Cattle | Gestão Pecuária"
+        : `${tenant.name} | SIGA Cattle`,
+    description:
+      tenant?.socialDescription ??
+      "Plataforma de gestão pecuária para acompanhar rebanho, manejo, reprodução e indicadores, mesmo offline.",
+    image: "/Background_Siga.png",
+  };
 }
 
 /**
