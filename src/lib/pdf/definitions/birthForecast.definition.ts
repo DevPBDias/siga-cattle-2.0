@@ -1,7 +1,8 @@
 import { getDatabase } from "@/db/client";
 import { Animal } from "@/types/animal.type";
 import { Movement } from "@/types/movement.type";
-import { formatDate, getTodayFormatted } from "@/utils/dates";
+import { diffInDays, formatDate, getTodayFormatted } from "@/utils/dates";
+import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { generateBirthForecastPDF } from "../generators/birth-forecast";
 import { ReportDefinition, ReportGeneratorParams } from "./types";
 import { BirthReportItem } from "../types";
@@ -72,7 +73,24 @@ async function generateBirthForecastReport({
     if (name) profileMap.set(p.id, name);
   }
 
-  // 6. Montar filtros
+  // 6. Eventos reprodutivos das matrizes (fonte da IA D10/D11)
+  const reproductionDocs = await db.reproduction_events
+    .find({
+      selector: { _deleted: { $eq: false } },
+    })
+    .exec();
+  const reproductionEvents = reproductionDocs.map(
+    (doc) => doc.toJSON() as ReproductionEvent,
+  );
+  const reproductionByMother = new Map<string, ReproductionEvent[]>();
+  for (const event of reproductionEvents) {
+    if (!event.rgn) continue;
+    const list = reproductionByMother.get(event.rgn) || [];
+    list.push(event);
+    reproductionByMother.set(event.rgn, list);
+  }
+
+  // 7. Montar filtros
   const targetFarmId =
     filters.farmFilterMode === "specific"
       ? filters.farmId || filters.farmIds?.[0]
@@ -114,7 +132,7 @@ async function generateBirthForecastReport({
     return true;
   });
 
-  // 7. Ordenação
+  // 8. Ordenação
   const sortBy = filters.birthForecastSortBy || "birthDate";
   filteredMovements.sort((a, b) => {
     const animalA = animalMap.get(a.animal_id);
@@ -130,16 +148,20 @@ async function generateBirthForecastReport({
       const rgnB = animalB?.rgn || "";
       return rgnA.localeCompare(rgnB, "pt-BR");
     }
-    // default: birthDate desc
+    // default: birthDate asc
     const dateA = a.event_date || a.date || animalA?.born_date || "";
     const dateB = b.event_date || b.date || animalB?.born_date || "";
-    return dateA.localeCompare(dateB); // asc para leitura natural
+    const dateComparison = dateA.localeCompare(dateB);
+    if (dateComparison !== 0) return dateComparison;
+
+    return (animalA?.rgn || "").localeCompare(animalB?.rgn || "", "pt-BR", {
+      numeric: true,
+    });
   });
 
-  // 8. Montar linhas do relatório
+  // 9. Montar linhas do relatório
   const reportRows: BirthReportItem[] = filteredMovements.map((m) => {
     const animal = animalMap.get(m.animal_id)!;
-    const animalName = `${animal.serie_rgd ? animal.serie_rgd + " " : ""}${animal.rgn}`.trim();
     const sex =
       animal.sex === "M" || animal.sex === "m"
         ? "Macho"
@@ -152,6 +174,23 @@ async function generateBirthForecastReport({
       ? formatDate(effectiveBirthDate)
       : "---";
 
+    const motherEvents = animal.mother_rgn
+      ? reproductionByMother.get(animal.mother_rgn) || []
+      : [];
+    const matchingReproduction = motherEvents
+      .map((event) => ({
+        event,
+        iaDate: event.d11_date || event.d10_date || event.d0_date,
+      }))
+      .filter(({ iaDate }) => iaDate && (!effectiveBirthDate || iaDate <= effectiveBirthDate.slice(0, 10)))
+      .sort((a, b) => b.iaDate.localeCompare(a.iaDate))[0];
+    const iaDate = matchingReproduction?.iaDate;
+    const iaDateFormatted = iaDate ? formatDate(iaDate) : "---";
+    const gestationDays =
+      effectiveBirthDate && iaDate
+        ? String(diffInDays(effectiveBirthDate, iaDate))
+        : "---";
+
     const weightVal = weightMap.get(animal.rgn);
     const weightFormatted = weightVal ? `${weightVal} kg` : "---";
 
@@ -160,6 +199,11 @@ async function generateBirthForecastReport({
     const motherFormatted = animal.mother_rgn
       ? `${animal.mother_serie_rgd ? animal.mother_serie_rgd + " " : ""}${animal.mother_rgn}`.trim()
       : "---";
+
+    const fatherFormatted =
+      animal.father_name?.trim() ||
+      matchingReproduction?.event.bull_name?.trim() ||
+      "---";
 
     const farmName = farmMap.get(animal.farm_id || "") || "---";
 
@@ -171,12 +215,15 @@ async function generateBirthForecastReport({
       "---";
 
     return {
-      animal: animalName,
-      sex,
+      rgn: animal.rgn,
       birth_date: birthDateFormatted,
-      weight: weightFormatted,
+      ia_date: iaDateFormatted,
+      gestation_days: gestationDays,
+      sex,
       color: colorFormatted,
+      weight: weightFormatted,
       mother: motherFormatted,
+      father: fatherFormatted,
       farm_name: farmName,
       registration_date: regDateFormatted,
       created_by: registeredBy,

@@ -78,12 +78,15 @@ export interface ReproductionByCowReportData extends ReportBaseData {
 }
 
 export interface BirthReportItem {
-  animal: string;
-  sex: string;
+  rgn: string;
   birth_date: string;
-  weight: string;
+  ia_date: string;
+  gestation_days: string;
+  sex: string;
   color: string;
+  weight: string;
   mother: string;
+  father: string;
   farm_name: string;
   registration_date: string;
   created_by: string;

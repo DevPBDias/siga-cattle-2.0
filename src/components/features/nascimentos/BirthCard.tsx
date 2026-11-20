@@ -84,6 +84,12 @@ export function BirthCard({
               {SEX_LABEL[animal.sex ?? ""] ?? "-"}
             </span>
 
+            {animal.born_color?.trim() ? (
+              <span className="shrink-0 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[9px] font-bold text-primary">
+                {animal.born_color.trim()}
+              </span>
+            ) : null}
+
             {/* Nome + data */}
             <div className="min-w-0">
               <p className="text-[13px] font-bold leading-tight text-primary truncate">
@@ -102,6 +108,7 @@ export function BirthCard({
             <Field label="Fazenda" value={farmName} />
             <Field label="Peso ao nascer" value={pesoFormatado} />
             <Field label="Sexo" value={SEX_LABEL[animal.sex ?? ""] ?? "-"} />
+            <Field label="Cor" value={animal.born_color?.trim()} />
             <Field
               label="Criado por"
               value={createdBy}

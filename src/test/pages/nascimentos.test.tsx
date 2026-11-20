@@ -153,6 +153,7 @@ describe("Módulo: Nascimentos e Histórico", () => {
       born_date: "2026-04-12",
       mother_rgn: "3030",
       mother_serie_rgd: "INDI",
+      born_color: "Preta",
       farm_id: "farm-1",
       breed: "Nelore",
     } as Animal;
@@ -171,6 +172,7 @@ describe("Módulo: Nascimentos e Histórico", () => {
       expect(screen.getByText("INDI 5050")).toBeInTheDocument();
       expect(screen.getByText("12/04/2026")).toBeInTheDocument();
       expect(screen.getByText("Macho")).toBeInTheDocument();
+      expect(screen.getAllByText("Preta").length).toBeGreaterThan(0);
 
       const trigger = screen.getByRole("button", {
         name: /Ver detalhes do nascimento INDI 5050/i,

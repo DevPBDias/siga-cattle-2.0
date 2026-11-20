@@ -153,6 +153,7 @@ describe("Item 8: Nascimentos e Histórico", () => {
       born_date: "2026-04-12",
       mother_rgn: "3030",
       mother_serie_rgd: "INDI",
+      born_color: "Preta",
       farm_id: "farm-1",
       breed: "Nelore",
     } as Animal;
@@ -176,6 +177,9 @@ describe("Item 8: Nascimentos e Histórico", () => {
 
       // Sexo visível no trigger
       expect(screen.getByText("Macho")).toBeInTheDocument();
+
+      // Cor visível no trigger e nos detalhes
+      expect(screen.getAllByText("Preta").length).toBeGreaterThan(0);
 
       // Clica no trigger do accordion para expandir
       const trigger = screen.getByRole("button", {
