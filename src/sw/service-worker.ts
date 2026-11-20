@@ -6,10 +6,11 @@ declare const self: ServiceWorkerGlobalScope;
 // ============================================================================
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
-// v35: Unified tenant loading screen across the app shell.
-const SCHEMA_VERSION = "v36";
+// v38: Precache current routes, public imagery, and production Next.js assets.
+const SCHEMA_VERSION = "v38";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
+const STATIC_ASSETS_MANIFEST = "/sw-static-assets.json";
 
 // ============================================================================
 // APP SHELL - Essential assets that MUST be available offline
@@ -23,6 +24,19 @@ const APP_SHELL_ASSETS = [
   "/apple-touch-icon.png",
   "/favicon.ico",
   "/logo_siga_cattle.png",
+  "/logo_hor_siga_cattle.png",
+  "/logo.svg",
+  "/Background_Siga.png",
+  "/branding/agro3mil/logo.png",
+  "/branding/agro3mil/logo-report.png",
+  "/branding/agro3mil/logo-icon.png",
+  "/branding/agro3mil/logo-hor-indiouro.png",
+  "/branding/agro3mil/Loading Screen Mobile.png",
+  "/branding/agro3mil/Loading Screen Desktop.jpg",
+  "/branding/haras-luma/logo_haras_luma.png",
+  "/branding/haras-luma/logo-report.png",
+  "/branding/haras-luma/Loading Screen Mobile.png",
+  "/branding/haras-luma/Loading Screen Desktop.jpg",
   "/login",
   "/home",
   "/cadastro",
@@ -45,8 +59,10 @@ const APP_SHELL_ASSETS = [
   "/geral",
   "/geral/planilhas",
   "/geral/relatorios",
+  "/geral/evolucao",
   "/geral/relatorios/pdf",
   "/geral/relatorios/planilhas",
+  "/mover-rebanho",
 ];
 
 // ============================================================================
@@ -89,6 +105,30 @@ async function cacheUrls(urls: string[]): Promise<void> {
   }
 }
 
+async function getStaticAssets(): Promise<string[]> {
+  try {
+    const response = await fetch(STATIC_ASSETS_MANIFEST, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Manifest request failed with status ${response.status}`);
+    }
+
+    const assets: unknown = await response.json();
+    if (
+      !Array.isArray(assets) ||
+      !assets.every(
+        (asset): asset is string =>
+          typeof asset === "string" && asset.startsWith("/_next/static/"),
+      )
+    ) {
+      throw new Error("Static asset manifest has an invalid format");
+    }
+    return assets;
+  } catch (error) {
+    console.warn("Service Worker: Failed to load static asset manifest", error);
+    return [];
+  }
+}
+
 // ============================================================================
 // LIFECYCLE EVENTS
 // ============================================================================
@@ -96,16 +136,18 @@ async function cacheUrls(urls: string[]): Promise<void> {
 self.addEventListener("install", (event: ExtendableEvent) => {
   console.log(`Service Worker: Installing ${SCHEMA_VERSION}...`);
   event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      const cachePromises = APP_SHELL_ASSETS.map(async (url) => {
+    (async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const assets = [...APP_SHELL_ASSETS, ...(await getStaticAssets())];
+      const cachePromises = assets.map(async (url) => {
         try {
           await cache.add(url);
         } catch (error) {
-          // Missing assets shouldn't block installation
+          console.warn(`Service Worker: Failed to precache ${url}`, error);
         }
       });
       await Promise.all(cachePromises);
-    }),
+    })(),
   );
   self.skipWaiting();
 });

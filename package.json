@@ -4,13 +4,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "npm run build:sw && next build --turbopack",
+    "build": "next build --turbopack && npm run build:sw-assets && npm run build:sw",
     "build:sw": "npx esbuild src/sw/service-worker.ts --bundle --outfile=public/sw.js --minify",
+    "build:sw-assets": "node scripts/generate-sw-static-assets.mjs",
     "start": "next start",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:offline": "npm run build && playwright test --config=playwright.offline.config.ts",
     "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {

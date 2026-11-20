@@ -25,6 +25,7 @@
 
 # production
 /build
+/public/sw-static-assets.json
 
 # misc
 .DS_Store
