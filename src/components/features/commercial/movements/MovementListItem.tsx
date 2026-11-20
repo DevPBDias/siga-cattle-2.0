@@ -204,7 +204,9 @@ function resolveResponsibleName(
 export function MovementListItem({
   movement,
 }: MovementListItemProps) {
-  const config = (typeConfig as any)[movement.type] || typeConfig.morte;
+  if (movement.type === "nascimento") return null;
+
+  const config = typeConfig[movement.type];
   const Icon = config.icon;
   const { data: profiles = [] } = useUserProfiles();
 

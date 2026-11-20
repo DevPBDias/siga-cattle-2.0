@@ -15,6 +15,12 @@ import { Exchange } from "@/types/exchange.type";
 import type { MangoQuery } from "rxdb";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 
+export function isCommercialMovement(
+  movement: Pick<Movement, "type">,
+): boolean {
+  return movement.type !== "nascimento";
+}
+
 export function MovementList() {
   const { role } = useUserAccess();
   const isOwner = role === "owner";
@@ -70,6 +76,7 @@ export function MovementList() {
       })),
     ];
     return [...movements, ...missingRecords]
+      .filter(isCommercialMovement)
       .filter((movement) => isOwner || movement.type !== "venda")
       .filter((movement) => {
         // Filter by Tab (Type)
