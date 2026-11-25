@@ -8,7 +8,7 @@
  */
 
 import { TableColumn } from "../types";
-import type { AnimalBreed } from "@/constants/animalBreeds";
+import type { AnimalBreed } from "@/constants/animalVariations";
 
 // =============================================================================
 // Filter Types

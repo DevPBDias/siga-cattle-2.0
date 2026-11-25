@@ -16,7 +16,7 @@ interface ManageClassificationProps {
 
 export const ManageClassification = (props: ManageClassificationProps) => {
   return (
-    <FeatureErrorBoundary featureName="Gerenciar Classificação">
+    <FeatureErrorBoundary featureName="Gerenciar Classe Visual">
       <ManageClassificationContent {...props} />
     </FeatureErrorBoundary>
   );
@@ -80,7 +80,7 @@ const ManageClassificationContent = ({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-muted/20 rounded-2xl border-2 border-dashed border-muted">
         <p className="text-muted-foreground font-medium">
-          Selecione um animal acima para gerenciar sua classificação.
+          Selecione um animal acima para gerenciar sua classe visual.
         </p>
       </div>
     );
@@ -98,7 +98,7 @@ const ManageClassificationContent = ({
         <div className="flex flex-row justify-between items-end gap-3 w-full">
           <div className="p-3 flex-1 rounded-xl bg-primary/5 border border-primary/10 flex flex-col gap-0.5">
             <span className="text-[9px] font-bold uppercase text-primary/60 tracking-wider">
-              Classe Atual:
+              Classe Visual Atual:
             </span>
             <span className="text-base font-black text-primary uppercase">
               {selectedAnimal.classification || "Nenhuma"}
@@ -137,8 +137,8 @@ const ManageClassificationContent = ({
         open={confirmModalOpen}
         onClose={() => setConfirmModalOpen(false)}
         onConfirm={handleConfirmClear}
-        title="Limpar Classificação"
-        description="Tem certeza que deseja remover a classificação deste animal?"
+        title="Limpar Classe Visual"
+        description="Tem certeza que deseja remover a classe visual deste animal?"
       />
     </div>
   );

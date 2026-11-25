@@ -69,7 +69,7 @@ export default function SearchCard({
             </dd>
           </div>
           <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
-            <dt className="text-[#718074] text-[8px] uppercase font-bold">Fazenda</dt>
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Fazenda/Pasto</dt>
             <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
               {farmName}
             </dd>
@@ -81,7 +81,7 @@ export default function SearchCard({
             </dd>
           </div>
           <div className="flex items-center justify-between min-w-0 border-b border-[#e4ebe4] pb-0.5">
-            <dt className="text-[#718074] text-[8px] uppercase font-bold">Classe</dt>
+            <dt className="text-[#718074] text-[8px] uppercase font-bold">Classe visual</dt>
             <dd className="m-0 overflow-hidden text-primary text-[10px] font-semibold text-right truncate">
               {animal?.classification || "-"}
             </dd>

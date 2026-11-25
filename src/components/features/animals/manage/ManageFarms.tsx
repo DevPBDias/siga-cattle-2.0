@@ -20,7 +20,7 @@ interface ManageFarmsProps {
 
 export const ManageFarms = (props: ManageFarmsProps) => {
   return (
-    <FeatureErrorBoundary featureName="Gerenciar Fazenda">
+    <FeatureErrorBoundary featureName="Gerenciar Fazenda/Pasto">
       <ManageFarmsContent {...props} />
     </FeatureErrorBoundary>
   );
@@ -99,7 +99,7 @@ const ManageFarmsContent = ({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-muted/20 rounded-2xl border-2 border-dashed border-muted">
         <p className="text-muted-foreground font-medium">
-          Selecione um animal acima para gerenciar sua fazenda.
+          Selecione um animal acima para gerenciar sua fazenda/pasto.
         </p>
       </div>
     );
@@ -116,7 +116,7 @@ const ManageFarmsContent = ({
 
         <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 flex flex-col gap-0.5">
           <span className="text-[9px] font-bold uppercase text-primary/60 tracking-wider">
-            Fazenda Atual:
+            Fazenda/Pasto Atual:
           </span>
           <span className="text-base font-black text-primary uppercase">
             {farms.find((f) => f.id === selectedAnimal.farm_id)?.farm_name ||

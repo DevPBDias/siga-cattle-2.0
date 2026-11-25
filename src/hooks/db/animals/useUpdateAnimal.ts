@@ -162,30 +162,13 @@ async function syncMotherStatusOnParentChange(
         );
 
       if (remainingCalves.length > 0) {
-        const latestCalf = remainingCalves.sort((a, b) =>
-          (b.born_date ?? "").localeCompare(a.born_date ?? ""),
-        )[0];
         const oldMotherData = oldMotherDoc.toJSON() as Animal;
-        if (
-          oldMotherData.parturition_from?.baby_rgn === oldData.rgn ||
-          oldMotherData.condition !== "Parida"
-        ) {
+        if (oldMotherData.condition !== "Parida") {
           await oldMotherDoc.patch({
             condition: "Parida",
-            parturition_from: {
-              baby_sex: latestCalf.sex === "M" ? "M" : "F",
-              baby_rgn: latestCalf.rgn,
-            },
             updated_at: timestamp,
           });
         }
-      } else if (typeof oldMotherDoc.modify === "function") {
-        await oldMotherDoc.modify((docData) => {
-          docData.condition = "Solteira";
-          delete docData.parturition_from;
-          docData.updated_at = timestamp;
-          return docData;
-        });
       } else {
         await oldMotherDoc.patch({
           condition: "Solteira",
@@ -210,10 +193,6 @@ async function syncMotherStatusOnParentChange(
     ) {
       await newMotherDoc.patch({
         condition: "Parida",
-        parturition_from: {
-          baby_sex: updatedAnimal.sex === "M" ? "M" : "F",
-          baby_rgn: updatedAnimal.rgn,
-        },
         updated_at: timestamp,
       });
     }
@@ -276,7 +255,7 @@ export function useUpdateAnimal() {
         [db.animal_vaccines, "rgn"],
         [db.reproduction_events, "rgn"],
         [db.deaths, "animal_rgn"],
-        [db.sales, "animal_rgn"],
+        [db.transactions, "animal_rgn"],
         [db.movements, "animal_id"],
       ] as const;
       for (const [collection, rgnField] of relatedCollections) {

@@ -13,11 +13,10 @@ import { SelectedEntityCard } from "@/components/shared/SelectedEntityCard";
 import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export default function SearchAnimal() {
-  const { canAccess, role } = useUserAccess();
+  const { canAccess } = useUserAccess();
   const { data: animals, loading: isLoading } = useAnimals();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAnimalKey, setSelectedAnimalKey] = useState<string | null>(null);
-  const [isEditingAnimal, setIsEditingAnimal] = useState(false);
 
   const searchResults = useMemo(() => {
     const rawQuery = searchQuery.trim();
@@ -63,12 +62,10 @@ export default function SearchAnimal() {
 
   const handleSelectAnimal = (animalKey: string) => {
     setSelectedAnimalKey(animalKey);
-    setIsEditingAnimal(false);
   };
 
   const handleClearSelection = () => {
     setSelectedAnimalKey(null);
-    setIsEditingAnimal(false);
   };
 
   const selectedDisplayName = selectedAnimal
@@ -104,20 +101,11 @@ export default function SearchAnimal() {
               }
               onClear={handleClearSelection}
               clearLabel="Fechar detalhes do animal"
-              onEdit={
-                role === "owner"
-                  ? () => setIsEditingAnimal((prev) => !prev)
-                  : undefined
-              }
-              editLabel="Editar informações"
             />
 
             {/* Componente de detalhes do animal */}
             <DetailsAnimalLayout
               animalKey={getAnimalKeyFromReference(selectedAnimal)}
-              isEditing={isEditingAnimal}
-              onToggleEdit={() => setIsEditingAnimal((prev) => !prev)}
-              onSaveSuccess={() => setIsEditingAnimal(false)}
             />
           </div>
         ) : (

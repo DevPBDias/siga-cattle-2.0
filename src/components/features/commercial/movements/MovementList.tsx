@@ -9,7 +9,7 @@ import { Search, Plus } from "lucide-react";
 import { Accordion } from "@/components/ui/accordion";
 import { Movement } from "@/types/movement.type";
 import { useLocalQuery } from "@/hooks/core";
-import { Sale } from "@/types/sale.type";
+import { Transaction } from "@/types/transaction.type";
 import { Death } from "@/types/death.type";
 import { Exchange } from "@/types/exchange.type";
 import type { MangoQuery } from "rxdb";
@@ -32,18 +32,16 @@ export function MovementList() {
     () => ({ selector: { _deleted: { $eq: false } } }),
     [],
   );
-  const salesQuery = useMemo<MangoQuery<Sale>>(
+  const transactionsQuery = useMemo<MangoQuery<Transaction>>(
     () => ({
       selector: isOwner
         ? { _deleted: { $eq: false } }
-        : { id: "__owner_only_sales__" },
+        : { id: "__owner_only_transactions__" },
     }),
     [isOwner],
   );
-  const { data: sales = [], loading: salesLoading } = useLocalQuery<Sale>(
-    "sales",
-    salesQuery,
-  );
+  const { data: transactions = [], loading: transactionsLoading } =
+    useLocalQuery<Transaction>("transactions", transactionsQuery);
   const { data: deaths = [], loading: deathsLoading } = useLocalQuery<Death>(
     "deaths",
     recordsQuery as MangoQuery<Death>,
@@ -62,10 +60,24 @@ export function MovementList() {
         (!movement.details_id && movement.animal_id === animal && movement.date.slice(0, 10) === date.slice(0, 10))
       ));
     const missingRecords: Movement[] = [
-      ...sales.filter((record) => !represented("venda", record.id, record.animal_rgn, record.date)).map((record) => ({
-        id: `legacy-venda-${record.id}`, type: "venda" as const, animal_id: record.animal_rgn, date: record.date,
-        details_id: record.id, created_at: record.created_at, updated_at: record.updated_at, _deleted: false,
-      })),
+      ...transactions
+        .filter((record) => {
+          const txType =
+            record.transaction_type === "compra" ? "compra" : "venda";
+          return !represented(txType, record.id, record.animal_rgn, record.date);
+        })
+        .map((record) => ({
+          id: `legacy-${record.transaction_type === "compra" ? "compra" : "venda"}-${record.id}`,
+          type: (record.transaction_type === "compra"
+            ? "compra"
+            : "venda") as Movement["type"],
+          animal_id: record.animal_rgn,
+          date: record.date,
+          details_id: record.id,
+          created_at: record.created_at,
+          updated_at: record.updated_at,
+          _deleted: false,
+        })),
       ...deaths.filter((record) => !represented("morte", record.id, record.animal_rgn, record.date)).map((record) => ({
         id: `legacy-morte-${record.id}`, type: "morte" as const, animal_id: record.animal_rgn, date: record.date,
         details_id: record.id, created_at: record.created_at, updated_at: record.updated_at, _deleted: false,
@@ -77,7 +89,10 @@ export function MovementList() {
     ];
     return [...movements, ...missingRecords]
       .filter(isCommercialMovement)
-      .filter((movement) => isOwner || movement.type !== "venda")
+      .filter(
+        (movement) =>
+          isOwner || (movement.type !== "venda" && movement.type !== "compra"),
+      )
       .filter((movement) => {
         // Filter by Tab (Type)
         if (activeTab !== "all" && movement.type !== activeTab) {
@@ -95,9 +110,9 @@ export function MovementList() {
         return true;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [movements, sales, deaths, exchanges, activeTab, searchTerm, isOwner]);
+  }, [movements, transactions, deaths, exchanges, activeTab, searchTerm, isOwner]);
 
-  if (loading || salesLoading || deathsLoading || exchangesLoading) {
+  if (loading || transactionsLoading || deathsLoading || exchangesLoading) {
     return (
       <div className="flex flex-col gap-3">
         {[1, 2, 3].map((i) => (
@@ -140,6 +155,7 @@ export function MovementList() {
             { value: "all", label: "Todas" },
             { value: "morte", label: "Morte" },
             ...(isOwner ? [{ value: "venda", label: "Venda" }] : []),
+            ...(isOwner ? [{ value: "compra", label: "Compra" }] : []),
             { value: "troca", label: "Troca" },
           ]}
           activeTab={activeTab}

@@ -1,6 +1,6 @@
-import type { AnimalBreed } from "@/constants/animalBreeds";
+import type { AnimalBreed, AnimalColor } from "@/constants/animalVariations";
 
-export type { AnimalBreed } from "@/constants/animalBreeds";
+export type { AnimalBreed, AnimalColor } from "@/constants/animalVariations";
 
 export interface Animal {
   animal_key?: string;
@@ -12,7 +12,7 @@ export interface Animal {
   born_date?: string;
   serie_rgd: string;
   breed?: AnimalBreed;
-  born_color?: string;
+  born_color?: AnimalColor;
   iabcgz?: string;
   deca?: string;
   p?: string;
@@ -24,13 +24,8 @@ export interface Animal {
   defects?: string[];
   farm_id?: string;
   classification?: string;
-  type?: "Doadora" | "Reprodutora" | "Receptora FIV";
   genotyping?: string;
   condition?: "Parida" | "Solteira";
-  parturition_from?: {
-    baby_sex?: "M" | "F";
-    baby_rgn?: string;
-  };
   father_name?: string;
   mother_rgn?: string;
   mother_serie_rgd?: string;

@@ -16,7 +16,7 @@ export function ClassificationSelector({
   return (
     <div className="flex flex-col justify-start items-start w-full gap-2">
       <label className="text-primary font-bold text-sm uppercase w-full text-left">
-        Classificação:
+        Classe visual:
       </label>
       <div className="grid grid-cols-2 gap-3 w-full">
         {CLASSIFICATION_OPTIONS.map((name) => {

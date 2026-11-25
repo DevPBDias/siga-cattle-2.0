@@ -45,7 +45,7 @@ export const generateAnimalsByFarmPDF = async (
     { header: "RGD RGN", dataKey: "rgdn" },
     // Adiciona colunas de filtro se necessário (quando filterMode é "all")
     ...(reportData.showFarmColumn
-      ? [{ header: "FAZENDA", dataKey: "farmName" }]
+      ? [{ header: "FAZENDA/PASTO", dataKey: "farmName" }]
       : []),
     ...(reportData.showSexColumn ? [{ header: "SEXO", dataKey: "sex" }] : []),
     ...(reportData.showStatusColumn

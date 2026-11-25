@@ -37,6 +37,12 @@ export const ReproductionEventCard = ({
   const d10Formatted = d10Date ? formatDate(d10Date) : "";
 
   const generalRows: InfoRowProps[] = [
+    ...(event.reproduction_role
+      ? [{ label: "Função", value: event.reproduction_role }]
+      : []),
+    ...(event.event_type === "FIV" && event.donor_name
+      ? [{ label: "Mãe Doadora", value: event.donor_name }]
+      : []),
     { label: "Idade", value: formatAge(matriz?.born_date) },
     { label: "Genotipagem", value: matriz?.genotyping || "Não" },
     {

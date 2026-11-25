@@ -3,16 +3,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { StatusSelector } from "@/components/features/animals/status/StatusSelector";
-import {
-  useStatuses,
-  useCreateStatus,
-  useDeleteStatus,
-} from "@/hooks/db/statuses";
 import { useUpdateAnimal } from "@/hooks/db/animals/useUpdateAnimal";
 import { Animal } from "@/types/animal.type";
+import { STATUS_ABCZ_OPTIONS } from "@/types/status.type";
 import { StatusSuccessModal } from "@/components/features/animals/modals/status/StatusSuccessModal";
-import { AddStatusModal } from "@/components/features/animals/modals/status/AddStatusModal";
-import { DeleteStatusModal } from "@/components/features/animals/modals/status/DeleteStatusModal";
 import { FeatureErrorBoundary } from "@/components/ui/FeatureErrorBoundary";
 
 interface ManageStatusProps {
@@ -22,7 +16,7 @@ interface ManageStatusProps {
 
 export const ManageStatus = (props: ManageStatusProps) => {
   return (
-    <FeatureErrorBoundary featureName="Gerenciar Status">
+    <FeatureErrorBoundary featureName="Gerenciar Status ABCZ">
       <ManageStatusContent {...props} />
     </FeatureErrorBoundary>
   );
@@ -35,24 +29,15 @@ const ManageStatusContent = ({
   const {
     actions: { updateAnimal },
   } = useUpdateAnimal();
-  const { data: statuses = [], loading: isLoading } = useStatuses();
-  const {
-    actions: { createStatus },
-  } = useCreateStatus();
-  const {
-    actions: { deleteStatus },
-  } = useDeleteStatus();
 
   const [successModalOpen, setSuccessModalOpen] = useState(false);
-  const [addModalOpen, setAddModalOpen] = useState(false);
-  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedStatusNames, setSelectedStatusNames] = useState<string[]>([]);
 
   useEffect(() => {
-    if (selectedAnimal?.status && statuses.length > 0) {
+    if (selectedAnimal?.status) {
       const animalStatusParts = selectedAnimal.status.split(" / ");
-      const validStatusNames = statuses.map((s) => s.status_name);
+      const validStatusNames: readonly string[] = STATUS_ABCZ_OPTIONS;
 
       setSelectedStatusNames(
         animalStatusParts.filter(
@@ -63,7 +48,7 @@ const ManageStatusContent = ({
     } else if (selectedAnimal) {
       setSelectedStatusNames([]);
     }
-  }, [selectedAnimal, statuses]);
+  }, [selectedAnimal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,32 +65,8 @@ const ManageStatusContent = ({
       setSuccessModalOpen(true);
       onSuccess?.();
     } catch (err) {
-      console.error("Erro ao atualizar status:", err);
-      setError("Erro ao atualizar status");
-    }
-  };
-
-  const handleCreateStatus = async (name: string) => {
-    try {
-      await createStatus({ status_name: name });
-    } catch (err) {
-      console.error("Erro ao criar status:", err);
-      setError("Erro ao criar status");
-    }
-  };
-
-  const handleDeleteStatus = async (id: string) => {
-    try {
-      await deleteStatus(id);
-      const status = statuses.find((s) => s.id === id);
-      if (status && selectedStatusNames.includes(status.status_name)) {
-        setSelectedStatusNames((prev) =>
-          prev.filter((name) => name !== status.status_name),
-        );
-      }
-    } catch (err) {
-      console.error("Erro ao deletar status:", err);
-      setError("Erro ao deletar status");
+      console.error("Erro ao atualizar status ABCZ:", err);
+      setError("Erro ao atualizar status ABCZ");
     }
   };
 
@@ -113,7 +74,7 @@ const ManageStatusContent = ({
     return (
       <div className="flex flex-col items-center justify-center py-12 px-6 text-center bg-muted/20 rounded-2xl border-2 border-dashed border-muted">
         <p className="text-muted-foreground font-medium">
-          Selecione um animal acima para gerenciar seu status.
+          Selecione um animal acima para gerenciar seu Status ABCZ.
         </p>
       </div>
     );
@@ -130,7 +91,7 @@ const ManageStatusContent = ({
 
         <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 flex flex-col gap-0.5">
           <span className="text-[9px] font-bold uppercase text-primary/60 tracking-wider">
-            Status Atual:
+            Status ABCZ Atual:
           </span>
           <span className="text-base font-black text-primary uppercase">
             {selectedAnimal.status &&
@@ -142,12 +103,8 @@ const ManageStatusContent = ({
         </div>
 
         <StatusSelector
-          statuses={statuses}
-          loading={isLoading}
           selectedStatusNames={selectedStatusNames}
           onToggle={setSelectedStatusNames}
-          onAddClick={() => setAddModalOpen(true)}
-          onDeleteClick={() => setDeleteModalOpen(true)}
         />
 
         <Button
@@ -162,19 +119,6 @@ const ManageStatusContent = ({
       <StatusSuccessModal
         open={successModalOpen}
         onClose={() => setSuccessModalOpen(false)}
-      />
-
-      <AddStatusModal
-        open={addModalOpen}
-        onClose={() => setAddModalOpen(false)}
-        onAdd={handleCreateStatus}
-      />
-
-      <DeleteStatusModal
-        open={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
-        statuses={statuses}
-        onDelete={handleDeleteStatus}
       />
     </div>
   );

@@ -27,9 +27,9 @@ export const generateReproductionPDF = async (
   // Fixed Columns based on requested layout
   const columns = [
     { header: "rgn", dataKey: "rgn" },
-    { header: "fazenda", dataKey: "farmName" },
+    { header: "fazenda/pasto", dataKey: "farmName" },
     { header: "idade", dataKey: "idade" },
-    { header: "classe", dataKey: "classification" },
+    { header: "classe visual", dataKey: "classification" },
     { header: "tipo de evento", dataKey: "event_type" },
     { header: "status produtivo", dataKey: "productive_status" },
     { header: "ecc", dataKey: "body_score" },

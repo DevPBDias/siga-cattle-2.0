@@ -28,7 +28,7 @@ export function FarmSelector({
           htmlFor="fazendas"
           className="text-primary font-bold text-sm uppercase w-full text-left"
         >
-          Fazendas:
+          Fazenda/Pasto:
         </label>
         <FarmManagerActions
           onAddClick={onAddClick}

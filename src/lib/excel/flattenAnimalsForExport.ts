@@ -41,7 +41,6 @@ export function flattenAnimalsForExport(
       Parceria: item.partnership || "-",
       Genotipagem: item.genotyping || "-",
       Condição: item.condition || "-",
-      Tipo: item.type || "-",
       "Última Atualização": item.updated_at || "-",
     };
   });

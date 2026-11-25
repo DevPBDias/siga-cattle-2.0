@@ -1,17 +1,10 @@
 export type EventType = "IATF" | "FIV" | "Monta natural";
-
-export type ReproductionStatus = "parida" | "solteira";
-
-export type GestationalStatus = "prenha" | "vazia";
-
-export type OvarySize = "normal" | "pequeno" | "grande";
-
+export type ReproductionRole = "Matriz" | "Doadora" | "Receptora";
+export type ReproductionStatus = "Parida" | "Solteira";
+export type OvarySize = "Normal" | "Pequeno" | "Grande";
 export type OvaryStructure = "Folículo" | "Corpo Lúteo" | "Cisto";
-
 export type CycleStage = "Estro" | "Anestro 1" | "Anestro 2";
-
-export type Diagnostic = "prenha" | "vazia";
-
+export type Diagnostic = "Prenha" | "Vazia";
 export type PregnancyOrigin = "d10" | "resync" | "natural_mating";
 
 export interface ReproductionEvent {
@@ -22,6 +15,8 @@ export interface ReproductionEvent {
 
   /** Type and Status */
   event_type: EventType;
+  reproduction_role?: ReproductionRole;
+  donor_name?: string;
   productive_status?: ReproductionStatus;
   age?: number;
 
@@ -33,7 +28,7 @@ export interface ReproductionEvent {
   /** Productive evaluation */
   evaluation_date?: string; // ISO Date (YYYY-MM-DD)
   body_score?: 1 | 2 | 3 | 4 | 5;
-  gestational_condition?: GestationalStatus;
+  gestational_condition?: Diagnostic;
 
   ovary_size?: OvarySize;
   ovary_structure?: OvaryStructure;

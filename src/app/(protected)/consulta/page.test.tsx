@@ -75,14 +75,11 @@ vi.mock("@/hooks/auth/useUserAccess", () => ({
 vi.mock("@/components/features/animals/details/DetailsAnimalLayout", () => ({
   default: ({
     animalKey,
-    isEditing,
   }: {
     animalKey: string;
-    isEditing?: boolean;
   }) => (
     <div data-testid="details-animal-layout">
-      Ficha do animal RGN: {animalKey}{" "}
-      {isEditing ? "(editando)" : "(visualizando)"}
+      Ficha do animal: {animalKey}
     </div>
   ),
 }));
@@ -139,7 +136,7 @@ describe("ConsultAnimals Page", () => {
     expect(screen.getByText("Cadastrar Animal")).toBeInTheDocument();
   });
 
-  it("deve selecionar o animal, fixar card no topo com botão X e Editar, e ocultar lista não relacionada", () => {
+  it("deve selecionar o animal, fixar card no topo com botão X e ocultar lista não relacionada", () => {
     render(<ConsultAnimals />);
     const searchInput = screen.getByPlaceholderText(
       "Digite o RGN, nome ou série...",
@@ -156,8 +153,8 @@ describe("ConsultAnimals Page", () => {
     expect(screen.getByText("Animal Selecionado")).toBeInTheDocument();
     expect(screen.getByTestId("details-animal-layout")).toHaveTextContent("580");
     expect(
-      screen.getByRole("button", { name: "Editar informações" }),
-    ).toBeInTheDocument();
+      screen.queryByRole("button", { name: "Editar informações" }),
+    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Fechar detalhes do animal" }),
     ).toBeInTheDocument();

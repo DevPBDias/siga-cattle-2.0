@@ -42,7 +42,6 @@ describe("useUpdateAnimal", () => {
         serie_rgd: "INDI",
         sex: "F",
         condition: "Parida",
-        parturition_from: { baby_sex: "M", baby_rgn: "BEZ1" },
         created_at: now,
         updated_at: now,
         _deleted: false,
@@ -145,13 +144,7 @@ describe("useUpdateAnimal", () => {
     ).toJSON();
 
     expect(oldMother.condition).toBe("Solteira");
-    expect(oldMother.parturition_from).toBeUndefined();
-
     expect(newMother.condition).toBe("Parida");
-    expect(newMother.parturition_from).toEqual({
-      baby_sex: "M",
-      baby_rgn: "BEZ1",
-    });
   });
 });
 

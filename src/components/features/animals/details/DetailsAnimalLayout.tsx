@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { StandardTabList } from "@/components/ui/StandardTabList";
 import ShortHeader from "@/components/layout/ShortHeader";
 import { useAnimalById } from "@/hooks/db/animals/useAnimalById";
@@ -8,10 +8,8 @@ import { useAnimalVaccines } from "@/hooks/db/animal_vaccines/useAnimalVaccines"
 import { useVaccines } from "@/hooks/db/vaccines/useVaccines";
 import { useFarms } from "@/hooks/db/farms/useFarms";
 import { useDeleteAnimalVaccine } from "@/hooks/db/animal_vaccines/useDeleteAnimalVaccine";
-import { useUpdateAnimal } from "@/hooks/db/animals/useUpdateAnimal";
-import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { Animal } from "@/types/animal.type";
-import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
+import { normalizeAnimalRegistration } from "@/utils/animalIdentity";
 import {
   Trash2,
   Syringe,
@@ -22,8 +20,6 @@ import {
   VenusAndMars,
   RulerDimensionLine,
   History,
-  Pencil,
-  Save,
 } from "lucide-react";
 import { DetailsMovementList } from "@/components/features/commercial/movements/DetailsMovementList";
 import { ChartLineLabel } from "@/components/charts/BoiCharts";
@@ -34,15 +30,16 @@ import {
   formatDate,
   calculateAgeInMonths as getAgeMonths,
   getAgeRange,
-  isFutureDate,
-  toISODate,
 } from "@/utils/dates";
-import { toast } from "sonner";
 import Link from "next/link";
 import { DetailsWeightList } from "@/components/features/animals/lists/DetailsWeightList";
 import { DetailsCircunfList } from "@/components/features/animals/lists/DetailsCircunfList";
 import { DetailsSkeleton } from "@/components/ui/skeletons/DetailsSkeleton";
 import { useReproductionEvents } from "@/hooks/db/reproduction_event/useReproductionEvents";
+import { useMovementsByAnimal } from "@/hooks/db/movements/useMovementsByAnimal";
+import { useLocalQuery } from "@/hooks/core";
+import { Transaction } from "@/types/transaction.type";
+import type { MangoQuery } from "rxdb";
 import { Accordion } from "@/components/ui/accordion";
 import { EditReproductionModal } from "@/components/features/reproduction/modals/reproduction/EditReproductionModal";
 import { DeleteReproductionModal } from "@/components/features/reproduction/modals/reproduction/DeleteReproductionModal";
@@ -51,15 +48,10 @@ import { ReproductionEventCard } from "@/components/features/reproduction/Reprod
 
 interface DetailsAnimalLayoutProps {
   animalKey: string;
-  isEditing?: boolean;
-  onToggleEdit?: () => void;
-  onSaveSuccess?: () => void;
 }
 
 const LABEL = "text-[10px] text-gray-500 uppercase";
 const VALUE = "text-[12px] font-semibold text-primary uppercase text-right truncate";
-const INPUT =
-  "w-full max-w-[170px] rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary outline-none focus:border-field-green font-semibold";
 
 const Row = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="flex items-center justify-between gap-2 border-b border-border py-0.5 last:border-b-0">
@@ -72,6 +64,10 @@ const Val = ({ children }: { children?: React.ReactNode }) => (
   <span className={VALUE}>{children || "-"}</span>
 );
 
+const ValueActive = ({ children }: { children?: React.ReactNode }) => (
+  <span className={VALUE}>{children || "Ativo"}</span>
+);
+
 const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div className="bg-card border border-border rounded-lg px-3 py-1.5 w-full">
     <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider">{title}</h3>
@@ -79,13 +75,7 @@ const Card = ({ title, children }: { title: string; children: React.ReactNode })
   </div>
 );
 
-const DetailsAnimalLayout = ({
-  animalKey,
-  isEditing: externalIsEditing,
-  onToggleEdit,
-  onSaveSuccess,
-}: DetailsAnimalLayoutProps) => {
-  const { role } = useUserAccess();
+const DetailsAnimalLayout = ({ animalKey }: DetailsAnimalLayoutProps) => {
   const { data: animal, loading: animalLoading } = useAnimalById(animalKey);
   const { data: animalVaccines, loading: vaccinesLoading } =
     useAnimalVaccines(undefined, animalKey);
@@ -100,6 +90,87 @@ const DetailsAnimalLayout = ({
   const { data: weights } = useAnimalWeights(undefined, animalKey);
   const { data: ceMetrics } = useAnimalCE(undefined, animalKey);
   const { data: reproductionEvents } = useReproductionEvents(undefined, animalKey);
+  const { data: animalMovements = [] } = useMovementsByAnimal(
+    animal?.animal_key || animalKey,
+  );
+  const salesQuery = useMemo<MangoQuery<Transaction>>(
+    () => ({ selector: { _deleted: { $eq: false } } }),
+    [],
+  );
+  const { data: sales = [] } = useLocalQuery<Transaction>(
+    "transactions",
+    salesQuery,
+  );
+  const childrenQuery = useMemo<MangoQuery<Animal>>(
+    () => ({
+      selector: {
+        mother_rgn: { $eq: animal?.rgn || "__none__" },
+        _deleted: { $eq: false },
+      },
+    }),
+    [animal?.rgn],
+  );
+  const { data: potentialChildren = [] } = useLocalQuery<Animal>(
+    "animals",
+    childrenQuery,
+  );
+
+  const latestOffspringLabel = useMemo(() => {
+    if (!animal || animal.sex !== "F" || !potentialChildren.length) return "";
+    const motherSerie = normalizeAnimalRegistration(animal.serie_rgd || "");
+    const matching = potentialChildren.filter((child) => {
+      if (!child.mother_serie_rgd) return true;
+      return normalizeAnimalRegistration(child.mother_serie_rgd) === motherSerie;
+    });
+    if (!matching.length) return "";
+    const latest = [...matching].sort((a, b) => {
+      const dateDiff = (b.born_date || "").localeCompare(a.born_date || "");
+      if (dateDiff !== 0) return dateDiff;
+      return (b.created_at || 0) - (a.created_at || 0);
+    })[0];
+    const baseLabel = `${latest.serie_rgd || "INDI"} ${latest.rgn}`.trim();
+    return latest.sex ? `${baseLabel} - ${latest.sex}` : baseLabel;
+  }, [animal, potentialChildren]);
+
+  const latestReproductionEvent = useMemo(() => {
+    if (!reproductionEvents?.length) return null;
+    return [...reproductionEvents].sort((a, b) => {
+      const dateDiff = (b.d0_date || "").localeCompare(a.d0_date || "");
+      if (dateDiff !== 0) return dateDiff;
+      return (b.created_at || 0) - (a.created_at || 0);
+    })[0];
+  }, [reproductionEvents]);
+
+  const movementSummary = useMemo(() => {
+    const labels: string[] = [];
+    const addLabel = (label: string) => {
+      if (!labels.includes(label)) labels.push(label);
+    };
+
+    for (const movement of animalMovements) {
+      if (movement.type === "morte") {
+        addLabel("Morto");
+      } else if (movement.type === "venda") {
+        const sale = sales.find(
+          (s) =>
+            (movement.details_id && s.id === movement.details_id) ||
+            (animal?.animal_key && s.animal_key === animal.animal_key) ||
+            (animal?.rgn && s.animal_rgn === animal.rgn),
+        );
+        addLabel(
+          sale?.sale_type === "abate"
+            ? "Vendido para abate"
+            : "Vendido para reprodução",
+        );
+      } else if (movement.type === "compra") {
+        addLabel("Comprado");
+      } else if (movement.type === "troca") {
+        addLabel("Trocado");
+      }
+    }
+
+    return labels.join(", ");
+  }, [animalMovements, sales, animal?.animal_key, animal?.rgn]);
 
   const [activeTab, setActiveTab] = useState("dados");
 
@@ -113,114 +184,6 @@ const DetailsAnimalLayout = ({
   );
 
   const [vaccineToDelete, setVaccineToDelete] = useState<string | null>(null);
-
-  const {
-    actions: { updateAnimal },
-    loading: isSavingAnimal,
-  } = useUpdateAnimal();
-  const [internalEditing, setInternalEditing] = useState(false);
-  const editing =
-    externalIsEditing !== undefined ? externalIsEditing : internalEditing;
-  const setEditing = (val: boolean) => {
-    setInternalEditing(val);
-    if (onToggleEdit) onToggleEdit();
-  };
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [editData, setEditData] = useState<Partial<Animal>>({});
-
-  useEffect(() => {
-    if (animal) {
-      setEditData({
-        farm_id: animal.farm_id || "",
-        breed: animal.breed || "Nelore",
-        born_date: toISODate(animal.born_date) || "",
-        sex: animal.sex || "F",
-        type: animal.type,
-        genotyping: animal.genotyping || "",
-        f: animal.f || "",
-        p: animal.p || "",
-        iabcgz: animal.iabcgz || "",
-        deca: animal.deca || "",
-        father_name: animal.father_name || "",
-        mother_rgn: animal.mother_rgn || "",
-        mother_serie_rgd: animal.mother_serie_rgd || "INDI",
-        maternal_grandfather_name: animal.maternal_grandfather_name || "",
-        paternal_grandfather_name: animal.paternal_grandfather_name || "",
-      });
-    }
-  }, [animal, editing]);
-
-  type TextKey =
-  | "genotyping" | "f" | "p" | "iabcgz" | "deca"
-  | "father_name" | "maternal_grandfather_name" | "paternal_grandfather_name";
-
-const onField =
-  (key: keyof Animal) =>
-  (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setEditData((prev) => ({ ...prev, [key]: e.target.value }));
-
-const textRow = (label: string, key: TextKey) => (
-  <Row label={label}>
-    {editing ? (
-      <input
-        aria-label={label}
-        value={(editData[key] as string) || ""}
-        onChange={onField(key)}
-        className={INPUT}
-      />
-    ) : (
-      <Val>{animal?.[key]}</Val>
-    )}
-  </Row>
-);
-
-const selectRow = (
-  label: string,
-  key: keyof Animal,
-  options: { value: string; label: string }[],
-  shown?: React.ReactNode,
-) => (
-  <Row label={label}>
-    {editing ? (
-      <select
-        aria-label={label}
-        value={(editData[key] as string) || ""}
-        onChange={onField(key)}
-        className={INPUT}
-      >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    ) : (
-      <Val>{shown}</Val>
-    )}
-  </Row>
-);
-
-  const handleSaveAnimal = async () => {
-    if (!animal) return;
-    setSaveError(null);
-    if (editData.born_date && isFutureDate(editData.born_date)) {
-      setSaveError("A data de nascimento não pode ser no futuro.");
-      return;
-    }
-    try {
-      await updateAnimal(animal.animal_key || animalKey, editData);
-      toast.success("Dados do animal atualizados!");
-      setEditing(false);
-      if (onSaveSuccess) onSaveSuccess();
-    } catch (err) {
-      console.error("Erro ao atualizar dados do animal:", err);
-      setSaveError(
-        err instanceof Error
-          ? err.message
-          : "Não foi possível salvar os dados do animal.",
-      );
-    }
-  };
 
   const handleEditReproduction = (event: ReproductionEvent) => {
     setEventToEdit(event);
@@ -256,12 +219,13 @@ const selectRow = (
 
   const farmName = useMemo(() => {
     if (!animal?.farm_id) return "SEM DADO";
-    const farm = farms.find((f) => f.id === animal.farm_id);
+    const farm = farms?.find((f) => f.id === animal.farm_id);
     return farm ? farm.farm_name : "SEM DADO";
   }, [animal?.farm_id, farms]);
 
-  const mother_name = `${animal?.mother_serie_rgd || ""} ${animal?.mother_rgn || ""
-    }`;
+  const mother_name = `${animal?.mother_serie_rgd || ""} ${
+    animal?.mother_rgn || ""
+  }`.trim();
 
   if (isLoading) {
     return <DetailsSkeleton />;
@@ -308,36 +272,14 @@ const selectRow = (
               <TabsContent value="dados" className="mt-0 animate-in fade-in-0 duration-200 w-full">
                 <div className="grid grid-cols-1 gap-y-1 w-full">
                   <Card title="Dados Básicos">
-                    {selectRow(
-                      "Fazenda",
-                      "farm_id",
-                      [
-                        { value: "", label: "Selecione..." },
-                        ...(farms || []).map((f) => ({ value: f.id, label: f.farm_name })),
-                      ],
-                      farmName,
-                    )}
-                    {selectRow(
-                      "Raça",
-                      "breed",
-                      ANIMAL_BREEDS.map((breed) => ({
-                        value: breed,
-                        label: breed,
-                      })),
-                      animal.breed || "Nelore",
-                    )}
+                    <Row label="Fazenda/Pasto">
+                      <Val>{farmName}</Val>
+                    </Row>
+                    <Row label="Raça">
+                      <Val>{animal.breed || "Nelore"}</Val>
+                    </Row>
                     <Row label="Nascimento">
-                      {editing ? (
-                        <input
-                          type="date"
-                          aria-label="Nascimento"
-                          value={editData.born_date || ""}
-                          onChange={onField("born_date")}
-                          className={INPUT}
-                        />
-                      ) : (
-                        <Val>{formatDate(animal.born_date)}</Val>
-                      )}
+                      <Val>{formatDate(animal.born_date)}</Val>
                     </Row>
                     <Row label="Idade">
                       <Val>
@@ -349,115 +291,81 @@ const selectRow = (
                     <Row label="Categoria">
                       <Val>{getAgeRange(getMonths)}</Val>
                     </Row>
-                    {selectRow(
-                      "Sexo",
-                      "sex",
-                      [
-                        { value: "F", label: "F" },
-                        { value: "M", label: "M" },
-                      ],
-                      animal.sex,
+                    <Row label="Sexo">
+                      <Val>{animal.sex}</Val>
+                    </Row>
+                    {(animal.sex === "F" || Boolean(latestReproductionEvent)) && (
+                      <>
+                        <Row label="Tipo">
+                          <Val>{latestReproductionEvent?.reproduction_role}</Val>
+                        </Row>
+                        <Row label="Status reprodutivo">
+                          <Val>{latestReproductionEvent?.productive_status}</Val>
+                        </Row>
+                        <Row label="Diagnóstico final">
+                          <Val>{latestReproductionEvent?.final_diagnostic}</Val>
+                        </Row>
+                        {animal.sex === "F" && (
+                          <Row label="Filho atual">
+                            <Val>{latestOffspringLabel}</Val>
+                          </Row>
+                        )}
+                      </>
                     )}
-                    {(editing || (editData.sex || animal.sex) === "F") &&
-                      selectRow(
-                        "Tipo",
-                        "type",
-                        [
-                          { value: "", label: "Não informado" },
-                          { value: "Doadora", label: "Doadora" },
-                          { value: "Reprodutora", label: "Reprodutora" },
-                          { value: "Receptora FIV", label: "Receptora FIV" },
-                        ],
-                        animal.type,
-                      )}
-                    {textRow("Genotipagem", "genotyping")}
+                    <Row label="Genotipagem">
+                      <Val>{animal.genotyping}</Val>
+                    </Row>
                   </Card>
 
                   <Card title="Índices Genéticos">
                     <div className="grid grid-cols-2 gap-x-4">
-                      {textRow("F%", "f")}
-                      {textRow("P%", "p")}
-                      {textRow("IABCZG", "iabcgz")}
-                      {textRow("Deca", "deca")}
+                      <Row label="F%">
+                        <Val>{animal.f}</Val>
+                      </Row>
+                      <Row label="P%">
+                        <Val>{animal.p}</Val>
+                      </Row>
+                      <Row label="IABCZG">
+                        <Val>{animal.iabcgz}</Val>
+                      </Row>
+                      <Row label="Deca">
+                        <Val>{animal.deca}</Val>
+                      </Row>
                     </div>
                   </Card>
 
                   <Card title="Genealogia">
-                    {textRow("Pai", "father_name")}
-                    <Row label="Mãe">
-                      {editing ? (
-                        <div className="flex items-center gap-1 max-w-[170px]">
-                          <input
-                            aria-label="Série da Mãe"
-                            value={editData.mother_serie_rgd || ""}
-                            onChange={onField("mother_serie_rgd")}
-                            placeholder="Série"
-                            className={`${INPUT} w-16`}
-                          />
-                          <input
-                            aria-label="RGN da Mãe"
-                            value={editData.mother_rgn || ""}
-                            onChange={onField("mother_rgn")}
-                            placeholder="RGN"
-                            className={`${INPUT} w-20`}
-                          />
-                        </div>
-                      ) : (
-                        <Val>{mother_name.trim()}</Val>
-                      )}
+                    <Row label="Pai">
+                      <Val>{animal.father_name}</Val>
                     </Row>
-                    {textRow("Avô Materno", "maternal_grandfather_name")}
-                    {textRow("Avô Paterno", "paternal_grandfather_name")}
+                    <Row label="Mãe">
+                      <Val>{mother_name}</Val>
+                    </Row>
+                    <Row label="Avô Materno">
+                      <Val>{animal.maternal_grandfather_name}</Val>
+                    </Row>
+                    <Row label="Avô Paterno">
+                      <Val>{animal.paternal_grandfather_name}</Val>
+                    </Row>
                   </Card>
 
                   <Card title="Outras informações">
-                    <Row label="Classe">
+                    <Row label="Classe visual">
                       <Val>{animal.classification}</Val>
                     </Row>
-                    <Row label="Status">
+                    <Row label="Status ABCZ">
                       <Val>{animal.status?.split(" / ").join(", ")}</Val>
                     </Row>
-                    <Row label="Situação">
+                    <Row label="Situação do animal">
                       <Val>{animal.document_situation?.split(" / ").join(", ")}</Val>
                     </Row>
                     <Row label="Sociedade">
                       <Val>{animal.partnership}</Val>
                     </Row>
+                    <Row label="Movimentações">
+                      <ValueActive>{movementSummary}</ValueActive>
+                    </Row>
                   </Card>
-
-                  {role === "owner" && (
-                    <div className="mt-2 space-y-2">
-                      {saveError && (
-                        <p role="alert" className="text-xs text-destructive text-center">
-                          {saveError}
-                        </p>
-                      )}
-                      <button
-                        type="button"
-                        className="flex min-h-[32px] w-full items-center justify-center gap-2 rounded-md bg-primary text-xs font-bold text-white transition-colors hover:bg-field-green disabled:opacity-60 cursor-pointer shadow-xs"
-                        onClick={() => (editing ? void handleSaveAnimal() : setEditing(true))}
-                        disabled={isSavingAnimal}
-                      >
-                        {isSavingAnimal ? (
-                          "Salvando..."
-                        ) : editing ? (
-                          <><Save className="h-4 w-4" /> Salvar alterações</>
-                        ) : (
-                          <><Pencil className="h-4 w-4" /> Editar informações</>
-                        )}
-                      </button>
-                      {editing && (
-                        <button
-                          type="button"
-                          className="flex min-h-[38px] w-full items-center justify-center gap-2 rounded-xl border border-border bg-white text-xs font-bold text-primary hover:bg-muted transition-colors cursor-pointer"
-                          onClick={() => setEditing(false)}
-                          disabled={isSavingAnimal}
-                        >
-                          Cancelar
-                        </button>
-                      )}
-                    </div>
-                  )}
                 </div>
               </TabsContent>
               <TabsContent

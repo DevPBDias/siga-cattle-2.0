@@ -28,14 +28,13 @@ export {
   replicateReproductionEventsNew,
 } from "./reproduction.replication";
 export {
-  animalStatusReplication,
-  replicateAnimalStatusesNew,
-} from "./status.replication";
-export {
   animalSituationReplication,
   replicateAnimalSituationsNew,
 } from "./situation.replication";
-export { saleReplication, replicateSalesNew } from "./sale.replication";
+export {
+  transactionReplication,
+  replicateTransactionsNew,
+} from "./transaction.replication";
 export { clientReplication, replicateClientsNew } from "./client.replication";
 export {
   movementReplication,

@@ -191,6 +191,7 @@ export function DataTable({ farmId }: DataTableProps) {
       morte: "Morte",
       venda: "Venda",
       troca: "Troca",
+      compra: "Compra",
     };
     for (const movement of dbMovements ?? []) {
       addEvent(
@@ -539,7 +540,7 @@ export function DataTable({ farmId }: DataTableProps) {
                         {animal.breed || "Raça não informada"}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {animal.type || animal.classification || "Categoria não informada"}
+                        {animal.classification || "Categoria não informada"}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -774,13 +775,9 @@ export function DataTable({ farmId }: DataTableProps) {
                       {inspectingAnimal.mother_serie_rgd ? `${inspectingAnimal.mother_serie_rgd} ` : ""}{inspectingAnimal.mother_rgn || "—"}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-border/40">
+                  <div className="flex justify-between py-1">
                     <span className="text-muted-foreground">Condição:</span>
                     <span className="font-medium text-foreground">{inspectingAnimal.condition || "Não informada"}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span className="text-muted-foreground">Tipo / Função:</span>
-                    <span className="font-medium text-foreground">{inspectingAnimal.type || "Não informado"}</span>
                   </div>
                 </div>
               </div>

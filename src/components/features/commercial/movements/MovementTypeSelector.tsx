@@ -32,6 +32,7 @@ export function MovementTypeSelector({ value, onChange }: MovementTypeSelectorPr
         <SelectContent>
           <SelectItem value="morte">Morte</SelectItem>
           {role === "owner" && <SelectItem value="venda">Venda</SelectItem>}
+          {role === "owner" && <SelectItem value="compra">Compra</SelectItem>}
           <SelectItem value="troca">Troca</SelectItem>
         </SelectContent>
       </Select>

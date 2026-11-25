@@ -21,12 +21,12 @@ import { useMovements } from "@/hooks/db/movements/useMovements";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { useUserProfile } from "@/hooks/db/user_profiles/useUserProfile";
 import { getSupabase } from "@/lib/supabase/client";
-import { Animal, AnimalBreed } from "@/types/animal.type";
-import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
+import { Animal, AnimalBreed, AnimalColor } from "@/types/animal.type";
 import { toast } from "sonner";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, isFutureDate } from "@/utils/dates";
 import { BirthReviewModal } from "./BirthReviewModal";
+import { ANIMAL_BREEDS, ANIMAL_COLORS } from "@/constants/animalVariations";
 
 interface BirthFormProps {
   onSuccess?: () => void;
@@ -38,13 +38,12 @@ const getDefaultFormData = () => ({
   peso: "",
   mae: "",
   farmId: "",
-  cor: "Branco",
+  cor: "Branca" as AnimalColor,
   sexo: "",
   raca: "Nelore" as AnimalBreed,
 });
 
 const SEX_OPTIONS = ["Macho", "Fêmea"] as const;
-const COLOR_OPTIONS = ["Branco", "Vermelho"] as const;
 const FIELD_CLASS = "h-10 w-full border-0 bg-muted/40 text-sm";
 
 export function BirthForm({ onSuccess }: BirthFormProps) {
@@ -218,10 +217,6 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       if (mother) {
         await updateAnimal(mother.animal_key || mother.rgn, {
           condition: "Parida",
-          parturition_from: {
-            baby_sex: formData.sexo === "Macho" ? "M" : "F",
-            baby_rgn: finalRgn,
-          },
           updated_at: timestamp,
         });
       }
@@ -442,7 +437,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COLOR_OPTIONS.map((option) => (
+                  {ANIMAL_COLORS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
                     </SelectItem>

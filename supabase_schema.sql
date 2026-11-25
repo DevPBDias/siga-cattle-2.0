@@ -186,6 +186,8 @@ CREATE TABLE IF NOT EXISTS reproduction_events (
   animal_key               TEXT,
   rgn                      TEXT    NOT NULL,
   event_type               TEXT    NOT NULL,
+  reproduction_role        TEXT,
+  donor_name               TEXT,
   productive_status        TEXT,
   age                      NUMERIC,
   evaluation_date          DATE,
@@ -515,6 +517,8 @@ END $$;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS updated_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS created_at                BIGINT  NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS _deleted                  BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS reproduction_role         TEXT;
+ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS donor_name                TEXT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS productive_status         TEXT;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS age                       NUMERIC;
 ALTER TABLE reproduction_events ADD COLUMN IF NOT EXISTS evaluation_date           DATE;

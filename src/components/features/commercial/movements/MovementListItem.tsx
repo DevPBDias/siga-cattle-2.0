@@ -1,5 +1,5 @@
 import { Movement, SalePayload } from "@/types/movement.type";
-import { Skull, Banknote, ArrowRightLeft } from "lucide-react";
+import { Skull, Banknote, ArrowRightLeft, ShoppingBag } from "lucide-react";
 import { formatDate } from "@/utils/dates";
 import { useClientById } from "@/hooks/db/clients/useClientById";
 import {
@@ -39,6 +39,13 @@ const typeConfig = {
     color: "text-orange-500",
     bg: "bg-orange-500/10",
     border: "border-orange-500/20",
+  },
+  compra: {
+    icon: ShoppingBag,
+    label: "Compra",
+    color: "text-blue-500",
+    bg: "bg-blue-500/10",
+    border: "border-blue-500/20",
   },
 };
 
@@ -146,6 +153,47 @@ const VendaDetails = ({ details_id }: { details_id: string }) => {
   );
 };
 
+const CompraDetails = ({ details_id }: { details_id: string }) => {
+  const { data: fetchedPurchase, loading: isLoading } =
+    useSaleById(details_id);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 animate-pulse my-2 px-2">
+        <div className="h-4 bg-muted rounded w-full" />
+        <div className="h-4 bg-muted rounded w-2/3" />
+      </div>
+    );
+  }
+
+  if (!fetchedPurchase) return null;
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      <InfoRow
+        label="Cliente"
+        value={(<ClientName clientId={fetchedPurchase.client_id} />) as any}
+      />
+      <InfoRow
+        label="Valor Total"
+        value={
+          fetchedPurchase.total_value?.toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }) || "-"
+        }
+        highlight
+      />
+      <InfoRow label="GTA" value={fetchedPurchase.gta_number || "-"} />
+      <InfoRow
+        label="Nota Fiscal"
+        value={fetchedPurchase.invoice_number || "-"}
+      />
+      <InfoRow label="ADT" value={fetchedPurchase.adt || "-"} />
+    </div>
+  );
+};
+
 const TrocaDetails = ({ details_id }: { details_id: string }) => {
   const { data: fetchedExchange, loading: isLoading } =
     useExchangeById(details_id);
@@ -227,6 +275,8 @@ export function MovementListItem({
         return <MorteDetails details_id={movement.details_id} />;
       case "venda":
         return <VendaDetails details_id={movement.details_id} />;
+      case "compra":
+        return <CompraDetails details_id={movement.details_id} />;
       case "troca":
         return <TrocaDetails details_id={movement.details_id} />;
       default:

@@ -1,6 +1,6 @@
-import { Sale } from "./sale.type";
+import { Transaction } from "./transaction.type";
 
-export type MovementType = "nascimento" | "morte" | "venda" | "troca";
+export type MovementType = "nascimento" | "morte" | "venda" | "troca" | "compra";
 
 export interface MortePayload {
   reason: string;
@@ -8,7 +8,9 @@ export interface MortePayload {
   photos?: string[];
 }
 
-export interface SalePayload extends Partial<Sale> {}
+export interface SalePayload extends Partial<Transaction> {}
+
+export interface PurchasePayload extends Partial<Transaction> {}
 
 export interface TrocaPayload {
   client_id: string;

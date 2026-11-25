@@ -265,7 +265,7 @@ export async function generateAnimalReportPDF(
       farm_id: animal.farm_id?.toString() || "",
       daily_gain: calculateGMD(animalWeights),
       classification: animal.classification || "",
-      type: animal.type || "",
+      type: "",
       genotyping: animal.genotyping || "",
       condition: animal.condition || "",
     };

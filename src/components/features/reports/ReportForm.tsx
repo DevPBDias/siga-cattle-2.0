@@ -17,7 +17,6 @@ import {
   AnimalStateFilterValue,
 } from "@/lib/pdf/definitions/types";
 import { useReproductionEvents } from "@/hooks/db/reproduction_event/useReproductionEvents";
-import { useStatuses } from "@/hooks/db/statuses/useStatuses";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useFarms } from "@/hooks/db/farms/useFarms";
 import { useMovements } from "@/hooks/db/movements/useMovements";
@@ -37,8 +36,8 @@ import { AnimalStateFilterModal } from "./AnimalStateFilterModal";
 import { TableColumn } from "@/lib/pdf/types";
 import { EventType } from "@/types/reproduction_event.type";
 import { formatDate } from "@/utils/dates";
-import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
-import type { AnimalBreed } from "@/constants/animalBreeds";
+import { ANIMAL_BREEDS } from "@/constants/animalVariations";
+import type { AnimalBreed } from "@/constants/animalVariations";
 
 interface ReportFormProps {
   showGenerateActions?: boolean;
@@ -60,7 +59,6 @@ export function ReportForm({
   } = useReports();
 
   // Hooks must be called unconditionally (before any early returns)
-  const { data: statuses = [] } = useStatuses();
   const { data: allEvents = [] } = useReproductionEvents();
   const { data: animals = [] } = useAnimals();
   const { data: farms = [] } = useFarms();
@@ -634,7 +632,7 @@ export function ReportForm({
                 onChange={() => updateFilters({ sortBy: "classification" })}
                 className="sr-only"
               />
-              <span className="text-xs">Classe</span>
+              <span className="text-xs">Classe visual</span>
             </label>
           </div>
         </div>
@@ -648,7 +646,7 @@ export function ReportForm({
           <div className="grid grid-cols-3 gap-2">
             {[
               { value: "rgn", label: "Animal" },
-              { value: "farm", label: "Fazenda" },
+              { value: "farm", label: "Fazenda/Pasto" },
               { value: "birthDate", label: "Nascimento" },
             ].map((option) => (
               <label
@@ -750,7 +748,6 @@ export function ReportForm({
       <StatusFilterModal
         open={statusModalOpen}
         onOpenChange={setStatusModalOpen}
-        statuses={statuses}
         currentStatus={filters.status}
         currentFilterMode={filters.statusFilterMode || "all"}
         onConfirm={(status, filterMode) => {
@@ -772,7 +769,7 @@ export function ReportForm({
         onConfirm={(classes, filterMode) => {
           handleClassFilterConfirm(classes, filterMode);
           if (!isClassColumnSelected) {
-            toggleColumn({ header: "CLASSE", dataKey: "classification" });
+            toggleColumn({ header: "CLASSE VISUAL", dataKey: "classification" });
           }
         }}
       />

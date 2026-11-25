@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { DatePicker } from "@/components/ui/date-picker";
 import { FormRow, FormSection } from "@/components/ui/FormRow";
-import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
+import { ANIMAL_BREEDS } from "@/constants/animalVariations";
 
 interface BasicInfoSectionProps {
   formData: any;

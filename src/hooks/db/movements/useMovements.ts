@@ -5,10 +5,11 @@ import { useLocalQuery, useLocalMutation } from "@/hooks/core";
 import {
   Movement,
   SalePayload,
+  PurchasePayload,
   MortePayload,
   TrocaPayload,
 } from "@/types/movement.type";
-import { Sale } from "@/types/sale.type";
+import { Transaction } from "@/types/transaction.type";
 import { Death } from "@/types/death.type";
 import { Exchange } from "@/types/exchange.type";
 import { getDatabase } from "@/db/client";
@@ -24,7 +25,7 @@ export function useMovements() {
     () => ({
       selector: {
         _deleted: { $eq: false },
-        ...(role === "owner" ? {} : { type: { $nin: ["venda"] } }),
+        ...(role === "owner" ? {} : { type: { $nin: ["venda", "compra"] } }),
       },
       sort: [{ date: "desc" as const }],
     }),
@@ -44,7 +45,8 @@ export function useMovements() {
     error: movementMutationError,
   } = useLocalMutation<Movement>("movements");
 
-  const { actions: saleActions } = useLocalMutation<Sale>("sales");
+  const { actions: transactionActions } =
+    useLocalMutation<Transaction>("transactions");
   const { actions: deathActions } = useLocalMutation<Death>("deaths");
   const { actions: exchangeActions } = useLocalMutation<Exchange>("exchanges");
 
@@ -56,15 +58,20 @@ export function useMovements() {
       > & {
         details:
           | SalePayload
+          | PurchasePayload
           | MortePayload
           | TrocaPayload
           | Record<string, unknown>;
       },
     ) => {
       try {
-        if (data.type === "venda" && role !== "owner") {
-          toast.error("Apenas o proprietário pode registrar vendas.");
-          throw new Error("Venda restrita ao proprietário");
+        if ((data.type === "venda" || data.type === "compra") && role !== "owner") {
+          toast.error(
+            data.type === "venda"
+              ? "Apenas o proprietário pode registrar vendas."
+              : "Apenas o proprietário pode registrar compras.",
+          );
+          throw new Error("Movimentação restrita ao proprietário");
         }
 
         const db = await getDatabase();
@@ -111,6 +118,41 @@ export function useMovements() {
           _deleted: false,
         } as Movement);
 
+        if (data.type === "compra") {
+          const compraDetails = data.details as PurchasePayload;
+          const purchaseId = uuidv4();
+
+          try {
+            await transactionActions.create({
+              id: purchaseId,
+              animal_key: animalData.animal_key,
+              animal_rgn: animalData.rgn,
+              client_id: compraDetails.client_id || "",
+              date: data.date,
+              transaction_type: "compra",
+              total_value: compraDetails.total_value || 0,
+              gta_number: compraDetails.gta_number || "",
+              invoice_number: compraDetails.invoice_number || "",
+              adt: compraDetails.adt || "",
+              created_at: timestamp,
+              updated_at: timestamp,
+              _deleted: false,
+            });
+          } catch (purchaseErr) {
+            console.error("❌ Error inserting purchase record:", purchaseErr);
+            toast.error(
+              "Movimentação salva, mas erro ao criar registro de compra.",
+            );
+          }
+
+          const movementDoc = await db.movements.findOne(id).exec();
+          if (movementDoc) {
+            await movementDoc.patch({
+              details_id: purchaseId,
+            });
+          }
+        }
+
         // 2. Handle Side Effects based on Type
         if (["morte", "venda", "troca"].includes(data.type)) {
           // 3. Update Animal Status to INATIVO
@@ -125,12 +167,13 @@ export function useMovements() {
             const saleId = uuidv4();
 
             try {
-              await saleActions.create({
+              await transactionActions.create({
                 id: saleId,
                 animal_key: animalData.animal_key,
                 animal_rgn: animalData.rgn,
                 client_id: vendaDetails.client_id || "",
                 date: data.date,
+                transaction_type: "venda",
                 total_value: vendaDetails.total_value || 0,
                 down_payment: vendaDetails.down_payment || 0,
                 payment_method: vendaDetails.payment_method || "",
@@ -233,7 +276,7 @@ export function useMovements() {
         throw err;
       }
     },
-    [movementActions, saleActions, deathActions, exchangeActions, role],
+    [movementActions, transactionActions, deathActions, exchangeActions, role],
   );
 
   const updateMovement = useCallback(
@@ -242,6 +285,7 @@ export function useMovements() {
       data: Partial<Movement> & {
         details?:
           | SalePayload
+          | PurchasePayload
           | MortePayload
           | TrocaPayload
           | Record<string, unknown>;
@@ -269,15 +313,16 @@ export function useMovements() {
           const details_id = movement.details_id;
           const patchData = data.details;
 
-          // Sync Venda
+          // Sync Venda / Compra (tabela unificada transactions)
           if (movement.type === "venda" && details_id) {
-            const saleDoc = await db.sales.findOne(details_id).exec();
+            const saleDoc = await db.transactions.findOne(details_id).exec();
             const saleData = patchData as SalePayload | undefined;
             if (saleDoc && saleData) {
               await saleDoc.patch({
                 date: data.date || movement.date,
                 animal_rgn: data.animal_id || movement.animal_id,
                 client_id: saleData.client_id,
+                transaction_type: "venda",
                 total_value: saleData.total_value,
                 down_payment: saleData.down_payment,
                 payment_method: saleData.payment_method,
@@ -288,6 +333,25 @@ export function useMovements() {
                 gta_number: saleData.gta_number,
                 invoice_number: saleData.invoice_number,
                 sale_type: saleData.sale_type,
+                updated_at: timestamp,
+              });
+            }
+          }
+
+          // Sync Compra
+          if (movement.type === "compra" && details_id) {
+            const purchaseDoc = await db.transactions.findOne(details_id).exec();
+            const purchaseData = patchData as PurchasePayload | undefined;
+            if (purchaseDoc && purchaseData) {
+              await purchaseDoc.patch({
+                date: data.date || movement.date,
+                animal_rgn: data.animal_id || movement.animal_id,
+                client_id: purchaseData.client_id,
+                transaction_type: "compra",
+                total_value: purchaseData.total_value,
+                gta_number: purchaseData.gta_number,
+                invoice_number: purchaseData.invoice_number,
+                adt: purchaseData.adt,
                 updated_at: timestamp,
               });
             }
@@ -367,10 +431,15 @@ export function useMovements() {
 
         // 1. Delete associated records
         const details_id = movement.details_id;
-        if (movement.type === "venda" && details_id) {
-          const saleDoc = await db.sales.findOne(details_id).exec();
-          if (saleDoc)
-            await saleDoc.patch({ _deleted: true, updated_at: timestamp });
+        if (
+          (movement.type === "venda" || movement.type === "compra") &&
+          details_id
+        ) {
+          const transactionDoc = await db.transactions
+            .findOne(details_id)
+            .exec();
+          if (transactionDoc)
+            await transactionDoc.patch({ _deleted: true, updated_at: timestamp });
         }
         if (movement.type === "morte" && details_id) {
           const deathDoc = await db.deaths.findOne(details_id).exec();

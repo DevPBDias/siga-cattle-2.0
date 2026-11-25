@@ -65,10 +65,10 @@ export function ClassFilterModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Filtrar por Classe</DialogTitle>
+          <DialogTitle>Filtrar por Classe Visual</DialogTitle>
           <DialogDescription>
-            Escolha se deseja mostrar animais de todas as classes ou filtrar por
-            classes específicas.
+            Escolha se deseja mostrar animais de todas as classes visuais ou filtrar por
+            classes visuais específicas.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,7 +98,7 @@ export function ClassFilterModal({
                 className="h-5 w-5"
               />
               <Label className="text-sm font-medium cursor-pointer flex-1">
-                Todas as Classes
+                Todas as Classes Visuais
               </Label>
             </div>
             <div
@@ -121,7 +121,7 @@ export function ClassFilterModal({
                 className="h-5 w-5"
               />
               <Label className="text-sm font-medium cursor-pointer flex-1">
-                Classes Específicas
+                Classes Visuais Específicas
               </Label>
             </div>
           </div>
@@ -142,7 +142,7 @@ export function ClassFilterModal({
                     htmlFor={`class-${cls}`}
                     className="text-sm font-bold cursor-pointer flex-1"
                   >
-                    Classe {cls}
+                    Classe visual {cls}
                   </Label>
                 </div>
               ))}

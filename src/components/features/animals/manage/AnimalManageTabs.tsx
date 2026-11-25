@@ -10,9 +10,9 @@ import { ManageSituation } from "@/components/features/animals/manage/ManageSitu
 import { Animal } from "@/types/animal.type";
 
 const TABS = [
-  { value: "fazenda", label: "Fazenda" },
-  { value: "status", label: "Status" },
-  { value: "classe", label: "Classe" },
+  { value: "fazenda", label: "Fazenda/Pasto" },
+  { value: "status", label: "Status ABCZ" },
+  { value: "classe", label: "Classe visual" },
   { value: "sociedade", label: "Sociedade" },
   { value: "situacao", label: "Situação" },
 ];

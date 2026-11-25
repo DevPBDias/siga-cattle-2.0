@@ -3,7 +3,7 @@ import { RxJsonSchema } from "rxdb";
 
 export const reproductionEventSchema: RxJsonSchema<ReproductionEvent> = {
   title: "reproduction schema",
-  version: 2,
+  version: 3,
   primaryKey: "event_id",
   type: "object",
   properties: {
@@ -11,6 +11,8 @@ export const reproductionEventSchema: RxJsonSchema<ReproductionEvent> = {
     animal_key: { type: "string" },
     rgn: { type: "string", maxLength: 10 },
     event_type: { type: "string", maxLength: 10 },
+    reproduction_role: { type: "string", maxLength: 20 },
+    donor_name: { type: "string" },
     productive_status: { type: "string", maxLength: 20 },
     age: { type: "number" },
     evaluation_date: { type: "string", format: "date" },

@@ -21,7 +21,10 @@ export function useSales() {
   );
 
   const query = useMemo<MangoQuery<Sale>>(() => {
-    const baseSelector: any = { _deleted: { $eq: false } };
+    const baseSelector: any = {
+      _deleted: { $eq: false },
+      transaction_type: { $ne: "compra" },
+    };
 
     if (searchQuery) {
       baseSelector.$or = [
@@ -50,7 +53,7 @@ export function useSales() {
     loading: queryLoading,
     error: queryError,
     actions: { refetch },
-  } = useLocalQuery<Sale>("sales", query);
+  } = useLocalQuery<Sale>("transactions", query);
 
   // Filter by year and month after fetching (RxDB date handling)
   const sales = useMemo(() => {
@@ -69,7 +72,7 @@ export function useSales() {
     actions: mutationActions,
     loading: mutationLoading,
     error: mutationError,
-  } = useLocalMutation<Sale>("sales");
+  } = useLocalMutation<Sale>("transactions");
 
   // Helper to get unique years from sales data
   const availableYears = useMemo(() => {

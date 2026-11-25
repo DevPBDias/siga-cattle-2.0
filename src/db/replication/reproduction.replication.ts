@@ -13,6 +13,8 @@ export const reproductionEventReplication = createReplication<ReproductionEvent>
     animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     event_type: doc.event_type,
+    reproduction_role: doc.reproduction_role ?? null,
+    donor_name: doc.donor_name ?? null,
     productive_status: doc.productive_status ?? null,
     age: doc.age ?? null,
     evaluation_date: doc.evaluation_date ?? null,

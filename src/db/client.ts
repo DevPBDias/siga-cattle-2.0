@@ -16,14 +16,13 @@ import { animalMetricCESchema } from "./schemas/animal_metric_ce.schema";
 import { animalMetricWeightSchema } from "./schemas/animal_metric_weight.schema";
 import { animalVaccineSchema } from "./schemas/animal_vaccines.type";
 import { reproductionEventSchema } from "./schemas/reproduction_event.schema";
-import { animalStatusSchema } from "./schemas/animal_status.schema";
 import { semenDoseSchema } from "./schemas/semen_dose.schema";
 import { lastWriteWins } from "./replication/base/conflictResolver";
 import { RxConflictHandler, defaultConflictHandler } from "rxdb";
 import { animalSituationSchema } from "./schemas/animal_situation.schema";
 import { clientSchema } from "./schemas/client.schema";
 import { movementSchema } from "./schemas/movement.schema";
-import { saleSchema } from "./schemas/sale.schema";
+import { transactionSchema } from "./schemas/transaction.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
 import {
@@ -69,7 +68,6 @@ const LEGACY_COLLECTIONS = [
   "animal_metrics_weight",
   "animal_vaccines",
   "reproduction_events",
-  "animal_statuses",
   "animal_situations",
   "semen_doses",
   "clients",
@@ -118,6 +116,14 @@ const animalMigrationStrategies = {
     }),
     id: oldDocument.id ?? uuidv4(),
   }),
+  7: (oldDocument: Record<string, unknown>) => {
+    const { parturition_from: _removed, ...rest } = oldDocument;
+    return rest;
+  },
+  8: (oldDocument: Record<string, unknown>) => {
+    const { type: _removed, ...rest } = oldDocument;
+    return rest;
+  },
 };
 
 const legacyAnimalMigrationStrategies = {
@@ -177,7 +183,6 @@ async function loadLegacyAnimalDocuments(): Promise<
           }),
         },
       },
-      animal_statuses: { schema: animalStatusSchema },
       animal_situations: { schema: animalSituationSchema },
       semen_doses: { schema: semenDoseSchema },
       clients: { schema: clientSchema },
@@ -190,7 +195,7 @@ async function loadLegacyAnimalDocuments(): Promise<
           }),
         },
       },
-      sales: { schema: legacySchema(saleSchema, 0, ["animal_key"]) },
+      sales: { schema: legacySchema(transactionSchema, 0, ["animal_key", "transaction_type", "adt"]) },
       deaths: {
         schema: legacySchema(deathSchema, 1, ["animal_key"]),
         migrationStrategies: {
@@ -286,7 +291,9 @@ async function migrateLegacyAnimalDatabase(
   if (!legacyDocuments) return;
 
   for (const collectionName of LEGACY_COLLECTIONS) {
-    const collection = (targetDb as any)[collectionName];
+    const targetCollectionName =
+      collectionName === "sales" ? "transactions" : collectionName;
+    const collection = (targetDb as any)[targetCollectionName];
     const documents = legacyDocuments.get(collectionName) ?? [];
     for (let offset = 0; offset < documents.length; offset += 100) {
       await Promise.all(
@@ -418,11 +425,8 @@ async function createDatabase(): Promise<MyDatabase> {
               return { ...oldDoc, d11_date: oldDoc.d11_date ?? undefined };
             },
             2: (oldDoc) => oldDoc,
+            3: (oldDoc) => oldDoc,
           },
-        },
-        animal_statuses: {
-          schema: animalStatusSchema,
-          conflictHandler: customConflictHandler,
         },
         animal_situations: {
           schema: animalSituationSchema,
@@ -447,12 +451,9 @@ async function createDatabase(): Promise<MyDatabase> {
             2: (oldDocument: Record<string, unknown>) => oldDocument,
           },
         },
-        sales: {
-          schema: saleSchema,
+        transactions: {
+          schema: transactionSchema,
           conflictHandler: customConflictHandler,
-          migrationStrategies: {
-            1: (oldDocument: Record<string, unknown>) => oldDocument,
-          },
         },
         deaths: {
           schema: deathSchema,

@@ -3,7 +3,7 @@ import { RxJsonSchema } from "rxdb";
 
 export const animalSchema: RxJsonSchema<Animal> = {
   title: "animals",
-  version: 6,
+  version: 8,
   primaryKey: "animal_key",
   type: "object",
   properties: {
@@ -24,19 +24,11 @@ export const animalSchema: RxJsonSchema<Animal> = {
     status: { type: "string" },
     document_situation: { type: "string" },
     farm_id: { type: "string", maxLength: 36 },
-    type: { type: "string" },
     genotyping: { type: "string" },
     condition: { type: "string" },
     classification: { type: "string" },
     animal_state: { type: "string" },
     defects: { type: "array", items: { type: "string" } },
-    parturition_from: {
-      type: "object",
-      properties: {
-        baby_sex: { type: "string" },
-        baby_rgn: { type: "string" },
-      },
-    },
     father_name: { type: "string" },
     mother_serie_rgd: { type: "string" },
     mother_rgn: { type: "string" },

@@ -18,12 +18,12 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AnimalStatus } from "@/types/status.type";
+import { STATUS_ABCZ_OPTIONS } from "@/types/status.type";
 
 interface StatusFilterModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  statuses: AnimalStatus[];
+  statuses?: readonly string[];
   currentStatus?: string;
   currentFilterMode?: "all" | "specific";
   onConfirm: (
@@ -35,7 +35,7 @@ interface StatusFilterModalProps {
 export function StatusFilterModal({
   open,
   onOpenChange,
-  statuses,
+  statuses = STATUS_ABCZ_OPTIONS,
   currentStatus,
   currentFilterMode = "all",
   onConfirm,
@@ -139,8 +139,8 @@ export function StatusFilterModal({
               </SelectTrigger>
               <SelectContent>
                 {statuses.map((status) => (
-                  <SelectItem key={status.id} value={status.status_name}>
-                    {status.status_name}
+                  <SelectItem key={status} value={status}>
+                    {status}
                   </SelectItem>
                 ))}
               </SelectContent>

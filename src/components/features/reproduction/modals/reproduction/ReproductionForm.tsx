@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
@@ -59,9 +60,9 @@ const CYCLE_STAGES: Option<CycleStage>[] = [
 ];
 
 const OVARY_SIZES: Option<OvarySize>[] = [
-  { value: "normal", label: "Normal" },
-  { value: "pequeno", label: "Pequeno" },
-  { value: "grande", label: "Grande" },
+  { value: "Normal", label: "Normal" },
+  { value: "Pequeno", label: "Pequeno" },
+  { value: "Grande", label: "Grande" },
 ];
 
 const OVARY_STRUCTURES: Option<OvaryStructure>[] = [
@@ -71,13 +72,13 @@ const OVARY_STRUCTURES: Option<OvaryStructure>[] = [
 ];
 
 const REPRODUCTION_STATUS: Option<ReproductionStatus>[] = [
-  { value: "parida", label: "Parida" },
-  { value: "solteira", label: "Solteira" },
+  { value: "Parida", label: "Parida" },
+  { value: "Solteira", label: "Solteira" },
 ];
 
 const DIAGNOSTICS: Option<Diagnostic>[] = [
-  { value: "prenha", label: "Prenha" },
-  { value: "vazia", label: "Vazia" },
+  { value: "Prenha", label: "Prenha" },
+  { value: "Vazia", label: "Vazia" },
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -324,7 +325,12 @@ export function ReproductionForm({
 
   const handleTypeSelect = (type: EventType) => {
     setSelectedType(type);
-    handleChange("event_type", type);
+    setFormData((prev) => ({
+      ...prev,
+      event_type: type,
+      reproduction_role: type === "FIV" ? "Receptora" : "Matriz",
+      ...(type !== "FIV" ? { donor_name: "" } : {}),
+    }));
   };
 
   /** Ao checar/desmarcar Resync — atualiza pregnancy_origin e recalcula parto */
@@ -359,7 +365,12 @@ export function ReproductionForm({
   };
 
   const cleanData = (data: Partial<ReproductionEvent>) => {
-    const cleaned = { ...data };
+    const cleaned: Partial<ReproductionEvent> = {
+      ...data,
+      reproduction_role:
+        data.reproduction_role ||
+        (data.event_type === "FIV" ? "Receptora" : "Matriz"),
+    };
     // @ts-ignore
     delete cleaned.d35_date;
     // @ts-ignore
@@ -413,6 +424,25 @@ export function ReproductionForm({
           >
             {/* ── 1. Dados do Evento ─────────────────────────────────── */}
             <Section value="event-data" title="Dados do Evento">
+              {selectedType === "FIV" && (
+                <>
+                  <FormRow label="Função">
+                    <div className="flex h-9 w-full items-center rounded-md bg-muted/40 px-3 text-sm font-medium text-primary">
+                      Receptora
+                    </div>
+                  </FormRow>
+                  <FormRow label="Mãe Doadora" htmlFor="donor_name">
+                    <Input
+                      id="donor_name"
+                      value={formData.donor_name || ""}
+                      onChange={(e) => handleChange("donor_name", e.target.value)}
+                      placeholder="RGN ou nome da doadora"
+                      className="w-full border-0 bg-muted/40 text-sm"
+                    />
+                  </FormRow>
+                </>
+              )}
+
               <FormRow label="Data D0" required>
                 <DatePicker
                   value={formData.d0_date || ""}

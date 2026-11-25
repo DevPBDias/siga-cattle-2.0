@@ -1,10 +1,13 @@
 "use client";
 
 import { useLocalMutation } from "@/hooks/core";
+import { useRxDatabase } from "@/providers";
 import { ReproductionEvent } from "@/types/reproduction_event.type";
 import { v4 as uuidv4 } from "uuid";
+import { syncAnimalConditionFromEvent } from "./syncAnimalCondition";
 
 export function useCreateReproductionEvent() {
+  const db = useRxDatabase();
   const { loading, error, actions } = useLocalMutation<ReproductionEvent>(
     "reproduction_events",
   );
@@ -23,7 +26,14 @@ export function useCreateReproductionEvent() {
       throw new Error("É necessário selecionar um animal pela combinação Série/RGD e RGN.");
     }
 
-    return await actions.create(newEvent);
+    const created = await actions.create(newEvent);
+    await syncAnimalConditionFromEvent(db, {
+      eventId: created.event_id,
+      animalKey: created.animal_key,
+      rgn: created.rgn,
+      productiveStatus: created.productive_status,
+    });
+    return created;
   };
 
   return {

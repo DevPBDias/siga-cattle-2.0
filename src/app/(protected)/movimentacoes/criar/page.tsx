@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ShortHeader from "@/components/layout/ShortHeader";
-import { MovementForm } from "@/components/features/commercial/movements";
+import { MovementForm, PurchaseForm } from "@/components/features/commercial/movements";
 import { DeathForm } from "@/components/features/mortes/DeathForm";
 import {
   MovementTypeSelector,
@@ -33,6 +33,7 @@ export default function CriarMovimentacaoPage() {
             onSuccess={goToList}
           />
         )}
+        {movementType === "compra" && <PurchaseForm onSuccess={goToList} />}
       </main>
     </div>
   );

@@ -1,9 +1,9 @@
-import { Sale } from "@/types/sale.type";
+import { Transaction } from "@/types/transaction.type";
 import { RxJsonSchema } from "rxdb";
 
-export const saleSchema: RxJsonSchema<Sale> = {
-  title: "sales",
-  version: 1,
+export const transactionSchema: RxJsonSchema<Transaction> = {
+  title: "transactions",
+  version: 0,
   primaryKey: "id",
   type: "object",
   properties: {
@@ -12,6 +12,7 @@ export const saleSchema: RxJsonSchema<Sale> = {
     animal_rgn: { type: "string" },
     client_id: { type: "string", maxLength: 36 },
     date: { type: "string", maxLength: 50 },
+    transaction_type: { type: "string" },
     total_value: { type: "number" },
     down_payment: { type: "number" },
     payment_method: { type: "string" },
@@ -20,6 +21,8 @@ export const saleSchema: RxJsonSchema<Sale> = {
     financial_status: { type: "string" },
     gta_number: { type: "string" },
     invoice_number: { type: "string" },
+    sale_type: { type: "string" },
+    adt: { type: "string" },
     created_at: {
       type: "number",
       multipleOf: 1,
@@ -28,7 +31,6 @@ export const saleSchema: RxJsonSchema<Sale> = {
     },
     updated_at: { type: "number" },
     _deleted: { type: "boolean" },
-    sale_type: { type: "string" },
   },
   required: [
     "id",

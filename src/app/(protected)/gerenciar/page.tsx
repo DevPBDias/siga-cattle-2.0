@@ -2,7 +2,7 @@
 
 import ShortHeader from "@/components/layout/ShortHeader";
 import { AnimalManageSelector } from "@/components/features/animals/manage/AnimalManageSelector";
-import { AnimalManageTabs } from "@/components/features/animals/manage/AnimalManageTabs";
+import { EditAnimalManagementLayout } from "@/components/features/animals/manage/EditAnimalManagementLayout";
 import { useAnimalManage } from "@/hooks/forms/useAnimalManage";
 
 export default function GerenciarPage() {
@@ -23,10 +23,8 @@ export default function GerenciarPage() {
           />
 
           {data.selectedAnimal && (
-            <AnimalManageTabs
+            <EditAnimalManagementLayout
               animal={data.selectedAnimal}
-              activeTab={actions.activeTab}
-              onTabChange={actions.setActiveTab}
             />
           )}
         </div>

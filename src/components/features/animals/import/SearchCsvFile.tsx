@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Animal, AnimalBreed } from "@/types/animal.type";
-import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
+import { ANIMAL_BREEDS } from "@/constants/animalVariations";
 import { getAnimalKey } from "@/utils/animalIdentity";
 import { isSupabaseConfigured } from "@/lib/supabase/api";
 import { getSupabase } from "@/lib/supabase/client";

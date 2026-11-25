@@ -33,7 +33,7 @@ export const generateBirthForecastPDF = async (reportData: BirthForecastReportDa
     { header: "PESO", dataKey: "weight" },
     { header: "MATRIZ (MÃE)", dataKey: "mother" },
     { header: "PAI", dataKey: "father" },
-    { header: "FAZENDA", dataKey: "farm_name" },
+    { header: "FAZENDA/PASTO", dataKey: "farm_name" },
     { header: "DATA REGISTRO", dataKey: "registration_date" },
     { header: "REGISTRADO POR", dataKey: "created_by" },
   ];

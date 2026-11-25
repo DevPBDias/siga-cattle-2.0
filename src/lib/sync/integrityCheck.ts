@@ -36,12 +36,11 @@ const COLLECTION_TABLE_MAP: Record<string, string> = {
   animal_metrics_weight: "animal_metrics_weight",
   animal_vaccines: "animal_vaccines",
   reproduction_events: "reproduction_events",
-  animal_statuses: "animal_statuses",
   animal_situations: "animal_situations",
   semen_doses: "semen_doses",
   clients: "clients",
   movements: "movements",
-  sales: "sales",
+  transactions: "transactions",
   deaths: "deaths",
   exchanges: "exchanges",
 };

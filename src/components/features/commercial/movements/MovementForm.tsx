@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useMovements } from "@/hooks/db/movements/useMovements";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useClients } from "@/hooks/db/clients/useClients";
@@ -424,6 +425,15 @@ export function MovementForm({
                       Obrigatório selecionar um cliente.
                     </p>
                   )}
+                  <p className="text-[11px] text-muted-foreground mt-1 px-1">
+                    Não encontrou o cliente?{" "}
+                    <Link
+                      href="/gerenciar/clientes/novo"
+                      className="font-semibold text-primary underline hover:text-primary/80"
+                    >
+                      Cadastrar novo cliente
+                    </Link>
+                  </p>
                 </FormRow>
               </div>
 

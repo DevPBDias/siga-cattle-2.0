@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import * as XLSX from "xlsx";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useFarms } from "@/hooks/db/farms/useFarms";
-import { useStatuses } from "@/hooks/db/statuses/useStatuses";
 import { saveBlobAsFile } from "@/utils/saveBlobFile";
 import { flattenAnimalsForExport } from "@/lib/excel/flattenAnimalsForExport";
 import { todayISO } from "@/utils/dates";
@@ -23,7 +22,6 @@ export function useAnimalExcelExport() {
 
   const { data: rawData = [] } = useAnimals();
   const { data: farms = [] } = useFarms();
-  const { data: statuses = [] } = useStatuses();
 
   const filteredData = useMemo(() => {
     if (filterState === "Ambos") return rawData;
@@ -42,18 +40,6 @@ export function useAnimalExcelExport() {
     [farms],
   );
 
-  const statusMap = useMemo(
-    () =>
-      statuses.reduce(
-        (acc, status) => {
-          acc[status.id] = status.status_name;
-          return acc;
-        },
-        {} as Record<string, string>,
-      ),
-    [statuses],
-  );
-
   const handleExportFile = async () => {
     if (filteredData.length === 0) {
       toast.error("Não há dados para exportar.");
@@ -63,7 +49,7 @@ export function useAnimalExcelExport() {
     setIsExporting(true);
     try {
       const branding = getTenantBranding();
-      const flattenedData = flattenAnimalsForExport(filteredData, farmMap, statusMap);
+      const flattenedData = flattenAnimalsForExport(filteredData, farmMap, {});
       const worksheet = XLSX.utils.json_to_sheet(flattenedData);
       const workbook = XLSX.utils.book_new();
 

@@ -3,7 +3,7 @@ import { TableColumn } from "../types";
 export const MAX_SELECTABLE_COLUMNS = 10;
 
 export const ANIMAL_REPORT_AVAILABLE_COLUMNS: TableColumn[] = [
-  { header: "FAZENDA", dataKey: "farmName" },
+  { header: "FAZENDA/PASTO", dataKey: "farmName" },
   { header: "SEXO", dataKey: "sex" },
   { header: "STATUS", dataKey: "status" },
   { header: "NASCIMENTO", dataKey: "birthDate" },
@@ -16,7 +16,7 @@ export const ANIMAL_REPORT_AVAILABLE_COLUMNS: TableColumn[] = [
   { header: "AVÔ PATERNO", dataKey: "paternal_grandfather_name" },
   { header: "P%", dataKey: "p" },
   { header: "F%", dataKey: "f" },
-  { header: "CLASSE", dataKey: "classification" },
+  { header: "CLASSE VISUAL", dataKey: "classification" },
   { header: "SOCIEDADE", dataKey: "society" },
   { header: "CATEGORIA", dataKey: "category" },
   { header: "GENOTIPAGEM", dataKey: "genotype" },
@@ -26,7 +26,7 @@ export const ANIMAL_REPORT_AVAILABLE_COLUMNS: TableColumn[] = [
 
 export const DEFAULT_SELECTED_COLUMNS: TableColumn[] = [
   { header: "NASCIMENTO", dataKey: "birthDate" },
-  { header: "CLASSE", dataKey: "classification" },
+  { header: "CLASSE VISUAL", dataKey: "classification" },
   { header: "STATUS", dataKey: "status" },
 ];
 

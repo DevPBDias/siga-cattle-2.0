@@ -46,11 +46,9 @@ export const animalReplication = createReplication<ReplicableAnimal>({
     animal_state: doc.animal_state ?? "ATIVO",
     defects: doc.defects ?? [],
     farm_id: doc.farm_id ?? null,
-    type: doc.type ?? null,
     genotyping: doc.genotyping ?? null,
     condition: doc.condition ?? null,
     classification: doc.classification ?? null,
-    parturition_from: doc.parturition_from ?? null,
     father_name: doc.father_name ?? null,
     mother_serie_rgd: doc.mother_serie_rgd ?? null,
     mother_rgn: doc.mother_rgn ?? null,
@@ -71,15 +69,20 @@ export const animalReplication = createReplication<ReplicableAnimal>({
 
   mapFromSupabase: (doc) => {
     const cleaned = cleanSupabaseDocument(doc);
-    cleaned.animal_key =
-      typeof cleaned.animal_key === "string" && cleaned.animal_key
-        ? cleaned.animal_key
-        : getAnimalKey(cleaned as Pick<Animal, "serie_rgd" | "rgn">);
+    const {
+      parturition_from: _removedParturition,
+      type: _removedType,
+      ...rest
+    } = cleaned as Record<string, unknown>;
+    rest.animal_key =
+      typeof rest.animal_key === "string" && rest.animal_key
+        ? rest.animal_key
+        : getAnimalKey(rest as Pick<Animal, "serie_rgd" | "rgn">);
     return {
-      ...cleaned,
-      _deleted: !!cleaned._deleted,
-      updated_at: Number(cleaned.updated_at) || Date.now(),
-      created_at: Number(cleaned.created_at) || Date.now(),
+      ...rest,
+      _deleted: !!rest._deleted,
+      updated_at: Number(rest.updated_at) || Date.now(),
+      created_at: Number(rest.created_at) || Date.now(),
     } as unknown as ReplicableAnimal;
   },
 });
