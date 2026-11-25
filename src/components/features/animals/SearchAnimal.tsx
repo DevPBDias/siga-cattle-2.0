@@ -13,7 +13,7 @@ import { SelectedEntityCard } from "@/components/shared/SelectedEntityCard";
 import { getAnimalKeyFromReference } from "@/utils/animalIdentity";
 
 export default function SearchAnimal() {
-  const { canAccess } = useUserAccess();
+  const { canAccess, role } = useUserAccess();
   const { data: animals, loading: isLoading } = useAnimals();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAnimalKey, setSelectedAnimalKey] = useState<string | null>(null);
@@ -104,7 +104,11 @@ export default function SearchAnimal() {
               }
               onClear={handleClearSelection}
               clearLabel="Fechar detalhes do animal"
-              onEdit={() => setIsEditingAnimal((prev) => !prev)}
+              onEdit={
+                role === "owner"
+                  ? () => setIsEditingAnimal((prev) => !prev)
+                  : undefined
+              }
               editLabel="Editar informações"
             />
 

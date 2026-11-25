@@ -255,6 +255,7 @@ export function useMovements() {
           type: data.type,
           animal_id: data.animal_id,
           date: data.date,
+          event_date: data.event_date ?? data.date,
           details_id: data.details_id,
           id,
           updated_at: timestamp,

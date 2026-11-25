@@ -79,12 +79,15 @@ export function BirthHistory() {
       setLimit(PAGE_SIZE);
     };
 
-  /** Mapa de rgn → peso de nascimento (born_metric=true, menor data) */
+  /** Mapa de animal_key / rgn → peso de nascimento (born_metric=true) */
   const birthWeightMap = useMemo(() => {
     const map = new Map<string, number>();
     const bornWeights = allWeights.filter((w) => w.born_metric);
     for (const w of bornWeights) {
-      if (!map.has(w.rgn)) {
+      if (w.animal_key && !map.has(w.animal_key)) {
+        map.set(w.animal_key, w.value);
+      }
+      if (w.rgn && !map.has(w.rgn)) {
         map.set(w.rgn, w.value);
       }
     }
@@ -93,9 +96,11 @@ export function BirthHistory() {
 
   // Apenas animais que possuem uma movimentação registrada do tipo 'nascimento'
   const births = useMemo(() => {
-    const animalMap = new Map<string, Animal>();
+    const animalByKey = new Map<string, Animal>();
+    const animalByRgn = new Map<string, Animal>();
     for (const a of animals) {
-      if (a.rgn) animalMap.set(a.rgn, a);
+      if (a.animal_key) animalByKey.set(a.animal_key, a);
+      if (a.rgn) animalByRgn.set(a.rgn, a);
     }
 
     const birthMovements = movements.filter(
@@ -110,10 +115,12 @@ export function BirthHistory() {
     }> = [];
 
     for (const m of birthMovements) {
-      const animal = animalMap.get(m.animal_id);
+      const animal =
+        (m.animal_key ? animalByKey.get(m.animal_key) : undefined) ??
+        animalByRgn.get(m.animal_id);
       if (!animal) continue;
 
-      const rawDate = m.event_date || m.date || animal.born_date;
+      const rawDate = animal.born_date || m.event_date || m.date;
       const parsedDate = parseBirthDate(rawDate);
       if (!parsedDate) continue;
 
@@ -316,7 +323,11 @@ export function BirthHistory() {
               farmName={
                 animal.farm_id ? farmNames.get(animal.farm_id) : undefined
               }
-              birthWeightKg={birthWeightMap.get(animal.rgn) ?? null}
+              birthWeightKg={
+                (animal.animal_key ? birthWeightMap.get(animal.animal_key) : undefined) ??
+                birthWeightMap.get(animal.rgn) ??
+                null
+              }
               createdBy={createdByName}
             />
           ))}

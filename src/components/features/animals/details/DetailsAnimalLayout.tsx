@@ -34,7 +34,10 @@ import {
   formatDate,
   calculateAgeInMonths as getAgeMonths,
   getAgeRange,
+  isFutureDate,
+  toISODate,
 } from "@/utils/dates";
+import { toast } from "sonner";
 import Link from "next/link";
 import { DetailsWeightList } from "@/components/features/animals/lists/DetailsWeightList";
 import { DetailsCircunfList } from "@/components/features/animals/lists/DetailsCircunfList";
@@ -130,7 +133,7 @@ const DetailsAnimalLayout = ({
       setEditData({
         farm_id: animal.farm_id || "",
         breed: animal.breed || "Nelore",
-        born_date: animal.born_date || "",
+        born_date: toISODate(animal.born_date) || "",
         sex: animal.sex || "F",
         type: animal.type,
         genotyping: animal.genotyping || "",
@@ -200,8 +203,13 @@ const selectRow = (
   const handleSaveAnimal = async () => {
     if (!animal) return;
     setSaveError(null);
+    if (editData.born_date && isFutureDate(editData.born_date)) {
+      setSaveError("A data de nascimento não pode ser no futuro.");
+      return;
+    }
     try {
       await updateAnimal(animal.animal_key || animalKey, editData);
+      toast.success("Dados do animal atualizados!");
       setEditing(false);
       if (onSaveSuccess) onSaveSuccess();
     } catch (err) {

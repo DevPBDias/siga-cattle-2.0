@@ -29,10 +29,15 @@ async function generateBirthForecastReport({
     .find({ selector: { _deleted: { $eq: false } } })
     .exec();
   const animals = animalDocs.map((doc) => doc.toJSON() as Animal);
-  const animalMap = new Map<string, Animal>();
+  const animalByKey = new Map<string, Animal>();
+  const animalByRgn = new Map<string, Animal>();
   for (const a of animals) {
-    if (a.rgn) animalMap.set(a.rgn, a);
+    if (a.animal_key) animalByKey.set(a.animal_key, a);
+    if (a.rgn) animalByRgn.set(a.rgn, a);
   }
+  const resolveAnimal = (m: Movement) =>
+    (m.animal_key ? animalByKey.get(m.animal_key) : undefined) ??
+    animalByRgn.get(m.animal_id);
 
   // 3. Fazendas
   const farmDocs = await db.farms
@@ -56,8 +61,11 @@ async function generateBirthForecastReport({
     .exec();
   const weightMap = new Map<string, number>();
   for (const doc of weightDocs) {
-    const w = doc.toJSON() as { rgn: string; value: number };
-    if (!weightMap.has(w.rgn)) {
+    const w = doc.toJSON() as { animal_key?: string; rgn: string; value: number };
+    if (w.animal_key && !weightMap.has(w.animal_key)) {
+      weightMap.set(w.animal_key, w.value);
+    }
+    if (w.rgn && !weightMap.has(w.rgn)) {
       weightMap.set(w.rgn, w.value);
     }
   }
@@ -104,13 +112,13 @@ async function generateBirthForecastReport({
 
   const filteredMovements = movements.filter((m) => {
     if (!m.animal_id) return false;
-    const animal = animalMap.get(m.animal_id);
+    const animal = resolveAnimal(m);
     if (!animal) return false;
 
     // Filtro por fazenda
     if (targetFarmId && animal.farm_id !== targetFarmId) return false;
 
-    const rawDate = m.event_date || m.date || animal.born_date;
+    const rawDate = animal.born_date || m.event_date || m.date;
 
     if (hasDateRange) {
       // Filtro por intervalo de datas (YYYY-MM-DD)
@@ -135,8 +143,8 @@ async function generateBirthForecastReport({
   // 8. Ordenação
   const sortBy = filters.birthForecastSortBy || "birthDate";
   filteredMovements.sort((a, b) => {
-    const animalA = animalMap.get(a.animal_id);
-    const animalB = animalMap.get(b.animal_id);
+    const animalA = resolveAnimal(a);
+    const animalB = resolveAnimal(b);
     if (sortBy === "farm") {
       const farmA = farmMap.get(animalA?.farm_id || "") || "";
       const farmB = farmMap.get(animalB?.farm_id || "") || "";
@@ -149,8 +157,8 @@ async function generateBirthForecastReport({
       return rgnA.localeCompare(rgnB, "pt-BR");
     }
     // default: birthDate asc
-    const dateA = a.event_date || a.date || animalA?.born_date || "";
-    const dateB = b.event_date || b.date || animalB?.born_date || "";
+    const dateA = animalA?.born_date || a.event_date || a.date || "";
+    const dateB = animalB?.born_date || b.event_date || b.date || "";
     const dateComparison = dateA.localeCompare(dateB);
     if (dateComparison !== 0) return dateComparison;
 
@@ -161,7 +169,7 @@ async function generateBirthForecastReport({
 
   // 9. Montar linhas do relatório
   const reportRows: BirthReportItem[] = filteredMovements.map((m) => {
-    const animal = animalMap.get(m.animal_id)!;
+    const animal = resolveAnimal(m)!;
     const sex =
       animal.sex === "M" || animal.sex === "m"
         ? "Macho"
@@ -169,7 +177,7 @@ async function generateBirthForecastReport({
         ? "Fêmea"
         : animal.sex || "---";
 
-    const effectiveBirthDate = m.event_date || m.date || animal.born_date;
+    const effectiveBirthDate = animal.born_date || m.event_date || m.date;
     const birthDateFormatted = effectiveBirthDate
       ? formatDate(effectiveBirthDate)
       : "---";
@@ -191,7 +199,9 @@ async function generateBirthForecastReport({
         ? String(diffInDays(effectiveBirthDate, iaDate))
         : "---";
 
-    const weightVal = weightMap.get(animal.rgn);
+    const weightVal =
+      (animal.animal_key ? weightMap.get(animal.animal_key) : undefined) ??
+      weightMap.get(animal.rgn);
     const weightFormatted = weightVal ? `${weightVal} kg` : "---";
 
     const colorFormatted = animal.born_color?.trim() || "---";

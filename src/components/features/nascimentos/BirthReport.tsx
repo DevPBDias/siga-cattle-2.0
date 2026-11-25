@@ -78,16 +78,23 @@ export function BirthReport() {
         ? farmFilter
         : undefined;
 
-    const animalMap = new Map(animals.map((a) => [a.rgn, a]));
+    const animalByKey = new Map<string, (typeof animals)[number]>();
+    const animalByRgn = new Map<string, (typeof animals)[number]>();
+    for (const a of animals) {
+      if (a.animal_key) animalByKey.set(a.animal_key, a);
+      if (a.rgn) animalByRgn.set(a.rgn, a);
+    }
 
     return movements.filter((m) => {
       if (m.type !== "nascimento" || m._deleted || !m.animal_id) return false;
-      const animal = animalMap.get(m.animal_id);
+      const animal =
+        (m.animal_key ? animalByKey.get(m.animal_key) : undefined) ??
+        animalByRgn.get(m.animal_id);
       if (!animal) return false;
 
       if (effectiveFarmId && animal.farm_id !== effectiveFarmId) return false;
 
-      const rawDate = m.event_date || m.date || animal.born_date;
+      const rawDate = animal.born_date || m.event_date || m.date;
 
       if (mode === "period") {
         if (!rawDate) return false;

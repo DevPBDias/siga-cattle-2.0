@@ -26,6 +26,7 @@ import { ANIMAL_BREEDS } from "@/constants/animalBreeds";
 import { toast } from "sonner";
 import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, isFutureDate } from "@/utils/dates";
+import { BirthReviewModal } from "./BirthReviewModal";
 
 interface BirthFormProps {
   onSuccess?: () => void;
@@ -48,6 +49,7 @@ const FIELD_CLASS = "h-10 w-full border-0 bg-muted/40 text-sm";
 
 export function BirthForm({ onSuccess }: BirthFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -101,13 +103,20 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
     });
     setErrorMessage(null);
     setShowSuccess(false);
+    setIsReviewOpen(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const effectiveFarmId = memberFarm ? memberFarm.id : formData.farmId;
+  const effectiveFarmName = memberFarm
+    ? memberFarm.farm_name
+    : (farms.find((f) => f.id === formData.farmId)?.farm_name ?? "");
+  const trimmedRgn = formData.rgn.trim();
+  const finalRgnPreview = trimmedRgn || (formData.mae ? `N${formData.mae}` : "");
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
 
-    // Validações
     if (formData.rgn.length > 10) {
       setErrorMessage("O RGN deve ter no máximo 10 caracteres.");
       return;
@@ -128,22 +137,36 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       return;
     }
 
-    const effectiveFarmId = memberFarm ? memberFarm.id : formData.farmId;
     if (!effectiveFarmId) {
       setErrorMessage("A fazenda onde o bezerro nasceu é obrigatória.");
       return;
     }
 
+    if (formData.peso.trim() !== "") {
+      const parsedWeight = Number(formData.peso.replace(",", "."));
+      if (isNaN(parsedWeight) || parsedWeight <= 0) {
+        setErrorMessage("Informe um peso válido maior que zero.");
+        return;
+      }
+    }
+
+    setIsReviewOpen(true);
+  };
+
+  const handleConfirmRegister = async () => {
+    setErrorMessage(null);
     setIsSubmitting(true);
 
     try {
       // Localizar a mãe para herdar fazenda e atualizar status
       const motherMatches = animals.filter((a) => a.rgn === formData.mae);
-      const mother = motherMatches.length === 1 ? motherMatches[0] : undefined;
+      const mother =
+        motherMatches.length === 1
+          ? motherMatches[0]
+          : motherMatches.find((a) => a.serie_rgd === "INDI");
 
       // Gerar RGN temporário se estiver em branco: N<RGN da mãe>
-      let finalRgn = formData.rgn;
-      if (!finalRgn) finalRgn = `N${formData.mae}`;
+      const finalRgn = trimmedRgn || `N${formData.mae}`;
 
       const timestamp = Date.now();
       const newAnimal: Partial<Animal> = {
@@ -177,7 +200,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       });
 
       // 3. Adicionar registro de métrica de peso se informado
-      const weightValue = formData.peso
+      const weightValue = formData.peso.trim()
         ? Number(formData.peso.replace(",", "."))
         : null;
 
@@ -228,6 +251,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       }
 
       toast.success("Nascimento registrado com sucesso!");
+      setIsReviewOpen(false);
       setShowSuccess(true);
       onSuccess?.();
     } catch (error) {
@@ -237,6 +261,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
           ? error.message
           : "Ocorreu um erro ao salvar os dados.",
       );
+      setIsReviewOpen(false);
       toast.error("Erro ao registrar nascimento.");
     } finally {
       setIsSubmitting(false);
@@ -465,6 +490,24 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
           </div>
         )}
       </form>
+
+      <BirthReviewModal
+        open={isReviewOpen}
+        onClose={() => setIsReviewOpen(false)}
+        onConfirm={() => void handleConfirmRegister()}
+        isSubmitting={isSubmitting}
+        reviewData={{
+          sexo: formData.sexo,
+          rgn: finalRgnPreview,
+          isAutoRgn: !trimmedRgn,
+          data: formData.data,
+          peso: formData.peso,
+          mae: formData.mae,
+          farmName: effectiveFarmName,
+          cor: formData.cor,
+          raca: formData.raca,
+        }}
+      />
     </div>
   );
 }
