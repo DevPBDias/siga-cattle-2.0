@@ -99,7 +99,7 @@ export async function generateAnimalReportPDF(
       // Buscar pesos
       if (selectedFields.animal_metrics_weight || selectedFields.daily_gain) {
         const weights = await db.animal_metrics_weight
-          .find({ selector: { _deleted: { $eq: false } } })
+          .find({ selector: { _deleted: { $eq: false }, metric_type: { $eq: "weight" } } })
           .exec();
         weights.forEach((w) => {
           const rgn = w.rgn;
@@ -110,8 +110,8 @@ export async function generateAnimalReportPDF(
 
       // Buscar circunferências
       if (selectedFields.animal_metrics_ce) {
-        const ceMetrics = await db.animal_metrics_ce
-          .find({ selector: { _deleted: { $eq: false } } })
+        const ceMetrics = await db.animal_metrics_weight
+          .find({ selector: { _deleted: { $eq: false }, metric_type: { $eq: "ce" } } })
           .exec();
         ceMetrics.forEach((ce) => {
           const rgn = ce.rgn;

@@ -12,7 +12,6 @@ import sales_clients from "@/assets/btn-icons/sales.png";
 import rfidReader from "@/assets/btn-icons/earrings.png";
 import moveCattle from "@/assets/btn-icons/move-cattle.png";
 
-
 export const homeLinks: Links[] = [
   {
     id: 1,
@@ -40,7 +39,7 @@ export const homeLinks: Links[] = [
   },
   {
     id: 4,
-    name: "Nascimentos",
+    name: "Nascimentos Desmamas",
     href: "/nascimentos",
     iconSrc: borns2,
     className: "h-12 w-13 object-cover",

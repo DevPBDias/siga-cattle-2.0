@@ -22,6 +22,7 @@ const TABLES = [
   "exchanges",
   "retreats",
   "agenda_reminders",
+  "weaning_records",
 ] as const;
 
 let activeChannel: RealtimeChannel | null = null;
@@ -42,7 +43,11 @@ export function setupRealtimeSync(
 
   const requestPull = (tableName: string) => {
     const replicationName =
-      tableName === "user_profile_deletions" ? "user_profiles" : tableName;
+      tableName === "user_profile_deletions"
+        ? "user_profiles"
+        : tableName === "animal_metrics_ce"
+          ? "animal_metrics_weight"
+          : tableName;
     const replication = replications[replicationName];
     if (!replication || typeof replication.reSync !== "function") {
       SyncLogger.warn("realtime", `Replication missing for ${tableName}`);

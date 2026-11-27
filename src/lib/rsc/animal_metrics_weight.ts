@@ -8,6 +8,7 @@ export async function getAnimalMetricsWeightRSC(): Promise<AnimalMetric[]> {
     .find({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
       },
       sort: [{ date: "desc" as const }],
     })
@@ -21,7 +22,14 @@ export async function getAnimalMetricWeightRSC(
 ): Promise<AnimalMetric | null> {
   const db = await getDatabase();
   if (!db) throw new Error("Database not initialized");
-  const doc = await db.animal_metrics_weight.findOne(id.toString()).exec();
+  const doc = await db.animal_metrics_weight
+    .findOne({
+      selector: {
+        id: { $eq: id.toString() },
+        metric_type: { $eq: "weight" },
+      },
+    })
+    .exec();
   return doc ? (doc.toJSON() as AnimalMetric) : null;
 }
 
@@ -34,6 +42,7 @@ export async function getAnimalMetricsWeightByRgnRSC(
     .find({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
         ...(animalKeyOrRgn.includes("::")
           ? { animal_key: { $eq: animalKeyOrRgn } }
           : { rgn: { $eq: animalKeyOrRgn } }),
@@ -52,6 +61,7 @@ export async function countAnimalMetricsWeightRSC(): Promise<number> {
     .count({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
       },
     })
     .exec();

@@ -11,6 +11,7 @@ const mockCreateAnimal = vi.fn().mockResolvedValue({ animal_key: "INDI::2026" })
 const mockUpdateAnimal = vi.fn().mockResolvedValue({});
 const mockCreateWeight = vi.fn().mockResolvedValue({});
 const mockCreateMovement = vi.fn().mockResolvedValue({});
+const mockCreateDeath = vi.fn().mockResolvedValue({});
 
 const mockMovements = [
   {
@@ -48,6 +49,12 @@ vi.mock("@/hooks/db/animals/useUpdateAnimal", () => ({
 vi.mock("@/hooks/db/animal_weights/useCreateAnimalWeight", () => ({
   useCreateAnimalWeight: () => ({
     actions: { createAnimalWeight: mockCreateWeight },
+  }),
+}));
+
+vi.mock("@/hooks/db/deaths/useCreateDeath", () => ({
+  useCreateDeath: () => ({
+    actions: { createDeath: mockCreateDeath },
   }),
 }));
 
@@ -226,8 +233,24 @@ describe("Módulo: Nascimentos e Histórico", () => {
   describe("BirthForm", () => {
     it("deve renderizar o formulário de nascimento", () => {
       mockUserRole = "owner";
-      render(<BirthForm />);
+      const { container } = render(<BirthForm />);
       expect(screen.getByText("Sexo do animal")).toBeInTheDocument();
+
+      const fieldLabels = Array.from(
+        container.querySelectorAll("form label"),
+        (label) => label.textContent?.replace(/\s*\*$/, "").trim(),
+      );
+      expect(fieldLabels).toEqual([
+        "Data",
+        "RGN (Bezerro)",
+        "Sexo do animal",
+        "Pelagem / Cor",
+        "Peso (kg)",
+        "RGN da mãe",
+        "Raça",
+        "Fazenda do nascimento",
+        "Natimorto",
+      ]);
     });
 
     it("deve abrir o modal de revisão antes de salvar ao submeter como membro com fazenda vinculada", async () => {
@@ -278,6 +301,47 @@ describe("Módulo: Nascimentos e Histórico", () => {
         expect(mockCreateAnimal).toHaveBeenCalledTimes(1);
         expect(mockCreateMovement).toHaveBeenCalledTimes(1);
         expect(mockCreateWeight).toHaveBeenCalledTimes(1);
+        expect(mockCreateDeath).not.toHaveBeenCalled();
+      });
+    });
+
+    it("registra o natimorto no histórico de mortes", async () => {
+      mockUserRole = "member";
+      mockUserProfile = { farm_name: "Fazenda Ouro", id: "user-123" };
+
+      render(<BirthForm />);
+
+      fireEvent.click(screen.getByRole("combobox", { name: /Sexo do animal/i }));
+      fireEvent.click(await screen.findByRole("option", { name: "Fêmea" }));
+      fireEvent.change(screen.getByLabelText(/RGN \(Bezerro\)/i), {
+        target: { value: "2026" },
+      });
+      fireEvent.change(screen.getByLabelText(/RGN da mãe/i), {
+        target: { value: "900" },
+      });
+      fireEvent.click(screen.getByRole("checkbox", { name: "Natimorto" }));
+      fireEvent.click(
+        screen.getByRole("button", { name: /Cadastrar Nascimento/i }),
+      );
+      fireEvent.click(await screen.findByRole("button", { name: /^Confirmar$/i }));
+
+      await waitFor(() => {
+        expect(mockCreateAnimal).toHaveBeenCalledWith(
+          expect.objectContaining({
+            status: "Morto",
+            animal_state: "MORTO",
+          }),
+        );
+        expect(mockCreateDeath).toHaveBeenCalledWith(
+          expect.objectContaining({
+            animal_rgn: "2026",
+            reason: "Natimorto",
+            mother_name: "900",
+            photos: [],
+            photo_paths: [],
+            _deleted: false,
+          }),
+        );
       });
     });
   });
@@ -303,6 +367,7 @@ describe("Módulo: Nascimentos e Histórico", () => {
             farmName: "Fazenda Ouro",
             cor: "Branco",
             raca: "Nelore",
+            natimorto: false,
           }}
         />,
       );

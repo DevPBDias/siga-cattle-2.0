@@ -56,6 +56,7 @@ async function generateBirthForecastReport({
       selector: {
         born_metric: { $eq: true },
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
       },
     })
     .exec();

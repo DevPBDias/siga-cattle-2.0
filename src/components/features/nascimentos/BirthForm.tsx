@@ -12,11 +12,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useCreateAnimal } from "@/hooks/db/animals/useCreateAnimal";
 import { useUpdateAnimal } from "@/hooks/db/animals/useUpdateAnimal";
 import { useAnimals } from "@/hooks/db/animals/useAnimals";
 import { useFarms } from "@/hooks/db/farms/useFarms";
 import { useCreateAnimalWeight } from "@/hooks/db/animal_weights/useCreateAnimalWeight";
+import { useCreateDeath } from "@/hooks/db/deaths/useCreateDeath";
 import { useMovements } from "@/hooks/db/movements/useMovements";
 import { useUserAccess } from "@/hooks/auth/useUserAccess";
 import { useUserProfile } from "@/hooks/db/user_profiles/useUserProfile";
@@ -27,6 +29,7 @@ import { FormRow } from "@/components/ui/FormRow";
 import { todayISO, isFutureDate } from "@/utils/dates";
 import { BirthReviewModal } from "./BirthReviewModal";
 import { ANIMAL_BREEDS, ANIMAL_COLORS } from "@/constants/animalVariations";
+import { NATIMORTO } from "@/utils/death.utils";
 
 interface BirthFormProps {
   onSuccess?: () => void;
@@ -41,6 +44,7 @@ const getDefaultFormData = () => ({
   cor: "Branca" as AnimalColor,
   sexo: "",
   raca: "Nelore" as AnimalBreed,
+  natimorto: false,
 });
 
 const SEX_OPTIONS = ["Macho", "Fêmea"] as const;
@@ -67,6 +71,9 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
     actions: { createAnimalWeight: createWeight },
   } = useCreateAnimalWeight();
   const {
+    actions: { createDeath },
+  } = useCreateDeath();
+  const {
     actions: { createMovement },
   } = useMovements();
 
@@ -78,8 +85,9 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
     if (role !== "member" || !userProfile?.farm_name) return null;
     const cleanProfileFarm = userProfile.farm_name.trim().toLowerCase();
     return (
-      farms.find((f) => f.farm_name.trim().toLowerCase() === cleanProfileFarm) ??
-      null
+      farms.find(
+        (f) => f.farm_name.trim().toLowerCase() === cleanProfileFarm,
+      ) ?? null
     );
   }, [role, userProfile?.farm_name, farms]);
 
@@ -110,7 +118,8 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
     ? memberFarm.farm_name
     : (farms.find((f) => f.id === formData.farmId)?.farm_name ?? "");
   const trimmedRgn = formData.rgn.trim();
-  const finalRgnPreview = trimmedRgn || (formData.mae ? `N${formData.mae}` : "");
+  const finalRgnPreview =
+    trimmedRgn || (formData.mae ? `N${formData.mae}` : "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,6 +142,13 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
 
     if (!formData.sexo) {
       setErrorMessage("O sexo é obrigatório.");
+      return;
+    }
+
+    if (!formData.natimorto && !formData.peso.trim()) {
+      setErrorMessage(
+        "O peso ao nascer é necessário para calcular o peso ajustado aos 210 dias na desmama.",
+      );
       return;
     }
 
@@ -176,8 +192,8 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
         born_color: formData.cor,
         mother_rgn: formData.mae,
         mother_serie_rgd: "INDI",
-        status: "Ativo",
-        animal_state: "ATIVO",
+        status: formData.natimorto ? "Morto" : "Ativo",
+        animal_state: formData.natimorto ? "MORTO" : "ATIVO",
         farm_id: effectiveFarmId,
         breed: formData.raca,
         created_at: timestamp,
@@ -187,6 +203,21 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
 
       // 1. Criar o animal na tabela de animais
       const createdAnimal = await createAnimal(newAnimal);
+
+      if (formData.natimorto) {
+        await createDeath({
+          animal_rgn: finalRgn,
+          animal_key: createdAnimal.animal_key,
+          date: formData.data,
+          reason: NATIMORTO,
+          mother_name: formData.mae.trim(),
+          photos: [],
+          photo_paths: [],
+          created_at: timestamp,
+          updated_at: timestamp,
+          _deleted: false,
+        });
+      }
 
       // 2. Criar a movimentação do tipo 'nascimento' com created_by do usuário
       await createMovement({
@@ -239,13 +270,20 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
         });
 
         if (rpcError) {
-          console.warn("[BirthForm] Supabase RPC register_birth log:", rpcError);
+          console.warn(
+            "[BirthForm] Supabase RPC register_birth log:",
+            rpcError,
+          );
         }
       } catch (rpcErr) {
         console.warn("[BirthForm] RPC offline ou indisponível:", rpcErr);
       }
 
-      toast.success("Nascimento registrado com sucesso!");
+      toast.success(
+        formData.natimorto
+          ? "Natimorto registrado no histórico de mortes."
+          : "Nascimento registrado com sucesso!",
+      );
       setIsReviewOpen(false);
       setShowSuccess(true);
       onSuccess?.();
@@ -277,8 +315,9 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
             Nascimento Registrado!
           </h3>
           <p className="text-muted-foreground text-sm">
-            O novo animal e sua movimentação foram criados com sucesso no
-            rebanho.
+            {formData.natimorto
+              ? "O natimorto foi incluído no histórico de mortes."
+              : "O novo animal e sua movimentação foram criados com sucesso no rebanho."}
           </p>
         </div>
         <Button
@@ -313,6 +352,31 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
+        <FormRow label="Data" htmlFor="birth-date" required>
+          <DatePicker
+            id="birth-date"
+            value={formData.data}
+            onChange={(value) => setField("data", value)}
+            required
+          />
+        </FormRow>
+
+        <FormRow label="RGN (Bezerro)" htmlFor="baby-rgn-input">
+          <Input
+            id="baby-rgn-input"
+            name="babyRgn"
+            value={formData.rgn}
+            maxLength={10}
+            onChange={({ target }) =>
+              setField("rgn", target.value.toUpperCase())
+            }
+            autoComplete="off"
+            spellCheck={false}
+            className={`${FIELD_CLASS} placeholder:text-xs`}
+            placeholder="Em branco = automático"
+          />
+        </FormRow>
+
         <FormRow label="Sexo do animal" htmlFor="birth-sex" required>
           <Select
             value={formData.sexo}
@@ -331,159 +395,147 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
           </Select>
         </FormRow>
 
-        {formData.sexo && (
-          <div className="space-y-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <FormRow label="RGN (Bezerro)" htmlFor="baby-rgn-input">
-              <Input
-                id="baby-rgn-input"
-                name="babyRgn"
-                value={formData.rgn}
-                maxLength={10}
-                onChange={({ target }) =>
-                  setField("rgn", target.value.toUpperCase())
-                }
-                autoComplete="off"
-                spellCheck={false}
-                className={`${FIELD_CLASS} placeholder:text-xs`}
-                placeholder="Em branco = automático"
-              />
-            </FormRow>
+        <FormRow label="Pelagem / Cor" htmlFor="birth-color">
+          <Select
+            value={formData.cor}
+            onValueChange={(value) => setField("cor", value)}
+          >
+            <SelectTrigger id="birth-color" className={FIELD_CLASS}>
+              <SelectValue placeholder="Selecione" />
+            </SelectTrigger>
+            <SelectContent>
+              {ANIMAL_COLORS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormRow>
 
-            <FormRow label="Data" required>
-              <DatePicker
-                value={formData.data}
-                onChange={(value) => setField("data", value)}
-                required
-              />
-            </FormRow>
+        <FormRow
+          label="Peso (kg)"
+          htmlFor="birth-weight-input"
+          required={!formData.natimorto}
+        >
+          <Input
+            id="birth-weight-input"
+            name="birthWeight"
+            type="text"
+            inputMode="decimal"
+            value={formData.peso}
+            onChange={({ target }) => setField("peso", target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            className={`${FIELD_CLASS} placeholder:text-xs`}
+            placeholder="00.0"
+            required={!formData.natimorto}
+          />
+        </FormRow>
 
-            <FormRow label="Peso (kg)" htmlFor="birth-weight-input">
-              <Input
-                id="birth-weight-input"
-                name="birthWeight"
-                type="text"
-                inputMode="decimal"
-                value={formData.peso}
-                onChange={({ target }) => setField("peso", target.value)}
-                autoComplete="off"
-                spellCheck={false}
-                className={`${FIELD_CLASS} placeholder:text-xs`}
-                placeholder="00.0"
-              />
-            </FormRow>
+        <FormRow label="RGN da mãe" htmlFor="mother-rgn-input" required>
+          <Input
+            id="mother-rgn-input"
+            name="motherRgn"
+            value={formData.mae}
+            maxLength={10}
+            onChange={({ target }) =>
+              setField("mae", target.value.toUpperCase())
+            }
+            autoComplete="off"
+            spellCheck={false}
+            className={`${FIELD_CLASS} placeholder:text-xs`}
+            placeholder="Identificação da mãe"
+            required
+          />
+        </FormRow>
 
-            <FormRow label="RGN da mãe" htmlFor="mother-rgn-input" required>
-              <Input
-                id="mother-rgn-input"
-                name="motherRgn"
-                value={formData.mae}
-                maxLength={10}
-                onChange={({ target }) =>
-                  setField("mae", target.value.toUpperCase())
-                }
-                autoComplete="off"
-                spellCheck={false}
-                className={`${FIELD_CLASS} placeholder:text-xs`}
-                placeholder="Identificação da mãe"
-                required
-              />
-            </FormRow>
+        <FormRow label="Raça" htmlFor="birth-breed">
+          <Select
+            value={formData.raca}
+            onValueChange={(value) => setField("raca", value as AnimalBreed)}
+          >
+            <SelectTrigger id="birth-breed" className={FIELD_CLASS}>
+              <SelectValue placeholder="Selecione a raça" />
+            </SelectTrigger>
+            <SelectContent>
+              {ANIMAL_BREEDS.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {option}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormRow>
 
-            <FormRow label="Fazenda do nascimento" htmlFor="birth-farm" required>
-              {role === "member" && memberFarm ? (
-                <div
-                  id="birth-farm"
-                  className="flex h-10 w-full items-center justify-between rounded-lg border border-border bg-muted/40 px-3 text-xs font-semibold text-primary"
-                >
-                  <span>{memberFarm.farm_name}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                    Vinculada
-                  </span>
-                </div>
-              ) : (
-                <Select
-                  value={formData.farmId}
-                  onValueChange={(value) => setField("farmId", value)}
-                >
-                  <SelectTrigger id="birth-farm" className={FIELD_CLASS}>
-                    <SelectValue
-                      placeholder={
-                        farmsLoading ? "Carregando..." : "Selecione a fazenda"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {farms.map((farm) => (
-                      <SelectItem key={farm.id} value={farm.id}>
-                        {farm.farm_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-              {!farmsLoading && farms.length === 0 && !memberFarm && (
-                <p className="mt-1 text-[10px] text-destructive">
-                  Cadastre uma fazenda antes de registrar o nascimento.
-                </p>
-              )}
-            </FormRow>
-
-            <FormRow label="Pelagem / Cor" htmlFor="birth-color">
-              <Select
-                value={formData.cor}
-                onValueChange={(value) => setField("cor", value)}
-              >
-                <SelectTrigger id="birth-color" className={FIELD_CLASS}>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ANIMAL_COLORS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormRow>
-
-            <FormRow label="Raça" htmlFor="birth-breed">
-              <Select
-                value={formData.raca}
-                onValueChange={(value) => setField("raca", value as AnimalBreed)}
-              >
-                <SelectTrigger id="birth-breed" className={FIELD_CLASS}>
-                  <SelectValue placeholder="Selecione a raça" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ANIMAL_BREEDS.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormRow>
-
-            <Button
-              variant="default"
-              type="submit"
-              disabled={isSubmitting}
-              className="mt-4 flex h-11 w-full gap-2 bg-primary text-xs font-black uppercase tracking-wider shadow-md hover:bg-field-green"
+        <FormRow label="Fazenda do nascimento" htmlFor="birth-farm" required>
+          {role === "member" && memberFarm ? (
+            <div
+              id="birth-farm"
+              className="flex h-10 w-full items-center justify-between rounded-lg border border-border bg-muted/40 px-3 text-xs font-semibold text-primary"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Cadastrando...
-                </>
-              ) : (
-                <>
-                  Cadastrar Nascimento
-                  <ArrowRight className="h-5 w-5" />
-                </>
-              )}
-            </Button>
-          </div>
-        )}
+              <span>{memberFarm.farm_name}</span>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                Vinculada
+              </span>
+            </div>
+          ) : (
+            <Select
+              value={formData.farmId}
+              onValueChange={(value) => setField("farmId", value)}
+            >
+              <SelectTrigger id="birth-farm" className={FIELD_CLASS}>
+                <SelectValue
+                  placeholder={
+                    farmsLoading ? "Carregando..." : "Selecione a fazenda"
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {farms.map((farm) => (
+                  <SelectItem key={farm.id} value={farm.id}>
+                    {farm.farm_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {!farmsLoading && farms.length === 0 && !memberFarm && (
+            <p className="mt-1 text-[10px] text-destructive">
+              Cadastre uma fazenda antes de registrar o nascimento.
+            </p>
+          )}
+        </FormRow>
+
+        <FormRow label="Natimorto" htmlFor="birth-natimorto">
+          <Checkbox
+            id="birth-natimorto"
+            aria-label="Natimorto"
+            checked={formData.natimorto}
+            onCheckedChange={(checked) =>
+              setField("natimorto", checked === true)
+            }
+          />
+        </FormRow>
+
+        <Button
+          variant="default"
+          type="submit"
+          disabled={isSubmitting}
+          className="mt-4 flex h-11 w-full gap-2 bg-primary text-xs font-black uppercase tracking-wider shadow-md hover:bg-field-green"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Cadastrando...
+            </>
+          ) : (
+            <>
+              Cadastrar Nascimento
+              <ArrowRight className="h-5 w-5" />
+            </>
+          )}
+        </Button>
       </form>
 
       <BirthReviewModal
@@ -501,6 +553,7 @@ export function BirthForm({ onSuccess }: BirthFormProps) {
           farmName: effectiveFarmName,
           cor: formData.cor,
           raca: formData.raca,
+          natimorto: formData.natimorto,
         }}
       />
     </div>

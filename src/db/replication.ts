@@ -4,8 +4,7 @@ import { replicateSemenDosesNew as replicateSemenDoses } from "./replication/sem
 import { replicateFarmsNew as replicateFarms } from "./replication/farm.replication";
 import { replicateUserProfilesNew as replicateUserProfiles } from "./replication/userProfile.replication";
 import { replicateVaccinesNew as replicateVaccines } from "./replication/vaccine.replication";
-import { replicateAnimalMetricWeightNew as replicateAnimalMetricWeight } from "./replication/metric.replication";
-import { replicateAnimalMetricCENew as replicateAnimalMetricCE } from "./replication/metric.replication";
+import { replicateAnimalMetricsNew as replicateAnimalMetricWeight } from "./replication/metric.replication";
 import { replicateAnimalVaccinesNew as replicateAnimalVaccines } from "./replication/animalVaccine.replication";
 import { replicateReproductionEventsNew as replicateReproductionEvents } from "./replication/reproduction.replication";
 import { replicateAnimalSituationsNew as replicateAnimalSituations } from "./replication/situation.replication";
@@ -15,6 +14,7 @@ import { replicateMovementsNew as replicateMovements } from "./replication/movem
 import { replicateTransactionsNew as replicateTransactions } from "./replication/transaction.replication";
 import { replicateDeathsNew as replicateDeaths } from "./replication/death.replication";
 import { replicateExchangesNew as replicateExchanges } from "./replication/exchange.replication";
+import { replicateWeaningRecordsNew as replicateWeaningRecords } from "./replication/weaningRecord.replication";
 import { SyncLogger } from "@/lib/sync/syncLogger";
 import { setupRealtimeSync } from "@/lib/sync/realtimeSync";
 
@@ -178,12 +178,6 @@ export async function setupReplication(db: MyDatabase) {
       SUPABASE_KEY,
     );
 
-    const animalMetricsCEReplication = await replicateAnimalMetricCE(
-      db,
-      SUPABASE_URL,
-      SUPABASE_KEY,
-    );
-
     const animalVaccinesReplication = await replicateAnimalVaccines(
       db,
       SUPABASE_URL,
@@ -244,6 +238,12 @@ export async function setupReplication(db: MyDatabase) {
       SUPABASE_KEY,
     );
 
+    const weaningRecordsReplication = await replicateWeaningRecords(
+      db,
+      SUPABASE_URL,
+      SUPABASE_KEY,
+    );
+
     (
       db as {
         replications: {
@@ -252,7 +252,6 @@ export async function setupReplication(db: MyDatabase) {
           farms: typeof farmsReplication;
           user_profiles: typeof userProfilesReplication;
           animal_metrics_weight: typeof animalMetricsWeightReplication;
-          animal_metrics_ce: typeof animalMetricsCEReplication;
           animal_vaccines: typeof animalVaccinesReplication;
           reproduction_events: typeof reproductionEventsReplication;
           animal_situations: typeof animalSituationsReplication;
@@ -263,6 +262,7 @@ export async function setupReplication(db: MyDatabase) {
           transactions: typeof transactionsReplication;
           deaths: typeof deathsReplication;
           exchanges: typeof exchangesReplication;
+          weaning_records: typeof weaningRecordsReplication;
         };
       }
     ).replications = {
@@ -271,7 +271,6 @@ export async function setupReplication(db: MyDatabase) {
       farms: farmsReplication,
       user_profiles: userProfilesReplication,
       animal_metrics_weight: animalMetricsWeightReplication,
-      animal_metrics_ce: animalMetricsCEReplication,
       animal_vaccines: animalVaccinesReplication,
       reproduction_events: reproductionEventsReplication,
       animal_situations: animalSituationsReplication,
@@ -282,6 +281,7 @@ export async function setupReplication(db: MyDatabase) {
       transactions: transactionsReplication,
       deaths: deathsReplication,
       exchanges: exchangesReplication,
+      weaning_records: weaningRecordsReplication,
     };
 
     SyncLogger.info("setup", "Replication setup complete");
@@ -311,7 +311,6 @@ export async function setupReplication(db: MyDatabase) {
       farmsReplication.start();
       userProfilesReplication.start();
       animalMetricsWeightReplication.start();
-      animalMetricsCEReplication.start();
       animalVaccinesReplication.start();
       reproductionEventsReplication.start();
       animalSituationsReplication.start();
@@ -322,6 +321,7 @@ export async function setupReplication(db: MyDatabase) {
       transactionsReplication.start();
       deathsReplication.start();
       exchangesReplication.start();
+      weaningRecordsReplication.start();
 
       SyncLogger.info("setup", "All 16 replications started ✅");
       await Promise.race([
@@ -331,7 +331,6 @@ export async function setupReplication(db: MyDatabase) {
           farmsReplication,
           userProfilesReplication,
           animalMetricsWeightReplication,
-          animalMetricsCEReplication,
           animalVaccinesReplication,
           reproductionEventsReplication,
           animalSituationsReplication,
@@ -342,6 +341,7 @@ export async function setupReplication(db: MyDatabase) {
           transactionsReplication,
           deathsReplication,
           exchangesReplication,
+          weaningRecordsReplication,
         ].map((replication) => replication.awaitInitialReplication())),
         new Promise((resolve) => setTimeout(resolve, 10000)),
       ]);
@@ -355,7 +355,6 @@ export async function setupReplication(db: MyDatabase) {
       { name: "farms", rep: farmsReplication },
       { name: "user_profiles", rep: userProfilesReplication },
       { name: "metrics_weight", rep: animalMetricsWeightReplication },
-      { name: "metrics_ce", rep: animalMetricsCEReplication },
       { name: "animal_vaccines", rep: animalVaccinesReplication },
       { name: "reproduction", rep: reproductionEventsReplication },
       { name: "situations", rep: animalSituationsReplication },
@@ -366,6 +365,7 @@ export async function setupReplication(db: MyDatabase) {
       { name: "transactions", rep: transactionsReplication },
       { name: "deaths", rep: deathsReplication },
       { name: "exchanges", rep: exchangesReplication },
+      { name: "weaning_records", rep: weaningRecordsReplication },
     ];
 
     const errorCounts: Record<string, number> = {};

@@ -25,7 +25,7 @@ export function useCreateAnimal() {
       breed: data.breed || "Nelore",
       ...data,
       animal_key: animalKey,
-      animal_state: "ATIVO",
+      animal_state: data.animal_state ?? "ATIVO",
     } as Animal;
 
     try {

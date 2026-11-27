@@ -14,6 +14,7 @@ import { userProfileSchema } from "./schemas/user_profile.schema";
 import { MyDatabase, MyDatabaseCollections } from "./collections";
 import { animalMetricCESchema } from "./schemas/animal_metric_ce.schema";
 import { animalMetricWeightSchema } from "./schemas/animal_metric_weight.schema";
+import { AnimalMetric } from "@/types/animal_metrics.type";
 import { animalVaccineSchema } from "./schemas/animal_vaccines.type";
 import { reproductionEventSchema } from "./schemas/reproduction_event.schema";
 import { semenDoseSchema } from "./schemas/semen_dose.schema";
@@ -26,6 +27,7 @@ import { movementSchema } from "./schemas/movement.schema";
 import { transactionSchema } from "./schemas/transaction.schema";
 import { deathSchema } from "./schemas/death.schema";
 import { exchangeSchema } from "./schemas/exchange.schema";
+import { weaningRecordSchema } from "./schemas/weaning_record.schema";
 import {
   legacyUserProfileMigrationStrategies,
   userProfileMigrationStrategies,
@@ -293,18 +295,71 @@ async function migrateLegacyAnimalDatabase(
 
   for (const collectionName of LEGACY_COLLECTIONS) {
     const targetCollectionName =
-      collectionName === "sales" ? "transactions" : collectionName;
+      collectionName === "sales" || collectionName === "animal_metrics_ce"
+        ? collectionName === "sales"
+          ? "transactions"
+          : "animal_metrics_weight"
+        : collectionName;
     const collection = (targetDb as any)[targetCollectionName];
     const documents = legacyDocuments.get(collectionName) ?? [];
     for (let offset = 0; offset < documents.length; offset += 100) {
       await Promise.all(
         documents.slice(offset, offset + 100).map((document) =>
-          collection.upsert(document),
+          collection.upsert({
+            ...document,
+            ...(collectionName === "animal_metrics_ce"
+              ? { metric_type: "ce" }
+              : collectionName === "animal_metrics_weight"
+                ? { metric_type: "weight" }
+                : {}),
+          }),
         ),
       );
     }
   }
   localStorage.setItem("animal_identity_v2_migrated", "true");
+}
+
+const METRIC_COLLECTION_MIGRATION_KEY = "animal_metrics_unified_v1_migrated";
+
+async function migrateLocalCEMetrics(db: MyDatabase): Promise<void> {
+  if (
+    typeof window === "undefined" ||
+    localStorage.getItem(METRIC_COLLECTION_MIGRATION_KEY) === "true"
+  ) {
+    return;
+  }
+
+  let legacyCollection = (db.collections as unknown as Record<string, any>)
+    .animal_metrics_ce;
+  if (!legacyCollection) {
+    const added = await db.addCollections({
+      animal_metrics_ce: {
+        schema: animalMetricCESchema,
+        migrationStrategies: {
+          1: (oldDocument: Record<string, unknown>) => oldDocument,
+        },
+      },
+    } as any);
+    legacyCollection = (added as any).animal_metrics_ce;
+  }
+
+  const targetCollection = db.animal_metrics_weight;
+  const legacyDocs = await legacyCollection.find().exec();
+  for (const legacyDoc of legacyDocs) {
+    const metric = legacyDoc.toJSON() as AnimalMetric;
+    const duplicate = await targetCollection.findOne(metric.id).exec();
+    if (duplicate?.metric_type === "ce") continue;
+    await targetCollection.insert({
+      ...metric,
+      id: duplicate ? uuidv4() : metric.id,
+      metric_type: "ce",
+    });
+  }
+
+  await legacyCollection.remove();
+  delete (db.collections as unknown as Record<string, any>).animal_metrics_ce;
+  localStorage.setItem(METRIC_COLLECTION_MIGRATION_KEY, "true");
 }
 
 let storageInstance: RxStorage<any, any> | null = null;
@@ -327,8 +382,7 @@ let dbPromise: Promise<MyDatabase> | null = null;
 async function createDatabase(): Promise<MyDatabase> {
   await loadDevModePlugin();
 
-  // The legacy and current databases each contain 16 collections; read and
-  // close the legacy database before opening the current one.
+  // Read and close the legacy database before opening the current one.
   const legacyDocuments = await loadLegacyAnimalDocuments();
   const storage = getStorage();
 
@@ -358,6 +412,37 @@ async function createDatabase(): Promise<MyDatabase> {
           },
         });
         console.log("[RxDB] user_profiles migrated to v2 in existing database");
+      }
+      if (!db.animal_metrics_weight) {
+        await db.addCollections({
+          animal_metrics_weight: {
+            schema: animalMetricWeightSchema,
+            migrationStrategies: {
+              1: (oldDocument: Record<string, unknown>) => ({
+                ...oldDocument,
+                metric_type: oldDocument.metric_type ?? "weight",
+              }),
+              2: (oldDocument: Record<string, unknown>) => ({
+                ...oldDocument,
+                metric_type: oldDocument.metric_type ?? "weight",
+              }),
+            },
+          },
+        });
+      }
+      await migrateLocalCEMetrics(db);
+      if (!db.collections.weaning_records) {
+        await db.addCollections({
+          weaning_records: {
+            schema: weaningRecordSchema,
+            conflictHandler: {
+              isEqual: defaultConflictHandler.isEqual,
+              resolve: async (i: any) =>
+                lastWriteWins(i.newDocumentState, i.realMasterState),
+            },
+          },
+        });
+        console.log("[RxDB] weaning_records added to existing database");
       }
       await migrateLegacyAnimalDatabase(db, legacyDocuments);
       console.log(
@@ -397,18 +482,30 @@ async function createDatabase(): Promise<MyDatabase> {
           conflictHandler: customConflictHandler,
           migrationStrategies: userProfileMigrationStrategies,
         },
-        animal_metrics_ce: {
-          schema: animalMetricCESchema,
-          conflictHandler: customConflictHandler,
-          migrationStrategies: {
-            1: (oldDocument: Record<string, unknown>) => oldDocument,
-          },
-        },
+        ...(typeof window !== "undefined" &&
+        localStorage.getItem(METRIC_COLLECTION_MIGRATION_KEY) !== "true"
+          ? {
+              animal_metrics_ce: {
+                schema: animalMetricCESchema,
+                conflictHandler: customConflictHandler,
+                migrationStrategies: {
+                  1: (oldDocument: Record<string, unknown>) => oldDocument,
+                },
+              },
+            }
+          : {}),
         animal_metrics_weight: {
           schema: animalMetricWeightSchema,
           conflictHandler: customConflictHandler,
           migrationStrategies: {
-            1: (oldDocument: Record<string, unknown>) => oldDocument,
+            1: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              metric_type: oldDocument.metric_type ?? "weight",
+            }),
+            2: (oldDocument: Record<string, unknown>) => ({
+              ...oldDocument,
+              metric_type: oldDocument.metric_type ?? "weight",
+            }),
           },
         },
         animal_vaccines: {
@@ -480,6 +577,13 @@ async function createDatabase(): Promise<MyDatabase> {
           migrationStrategies: {
             1: (oldDocument: Record<string, unknown>) => oldDocument,
           },
+        },
+      });
+      await migrateLocalCEMetrics(db);
+      await db.addCollections({
+        weaning_records: {
+          schema: weaningRecordSchema,
+          conflictHandler: customConflictHandler,
         },
       });
     } catch (err: any) {

@@ -21,6 +21,7 @@ export interface BirthReviewData {
   farmName: string;
   cor: string;
   raca: string;
+  natimorto: boolean;
 }
 
 interface BirthReviewModalProps {
@@ -80,6 +81,9 @@ export function BirthReviewModal({
             label="Data de nascimento"
             value={formatDate(reviewData.data) || "-"}
           />
+          {reviewData.natimorto && (
+            <ReviewRow label="Natimorto" value="Sim" />
+          )}
           <ReviewRow label="Peso ao nascer" value={pesoLabel} />
           <ReviewRow label="RGN da mãe" value={reviewData.mae || "-"} />
           <ReviewRow label="Fazenda" value={reviewData.farmName || "-"} />

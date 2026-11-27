@@ -5,7 +5,7 @@ import { AnimalMetric } from "@/types/animal_metrics.type";
 
 export function useUpdateAnimalCE() {
   const { loading, error, actions } =
-    useLocalMutation<AnimalMetric>("animal_metrics_ce");
+    useLocalMutation<AnimalMetric>("animal_metrics_weight");
 
   const updateAnimalCE = async (
     id: string,

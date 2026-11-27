@@ -9,6 +9,7 @@ export function useAnimalWeights(rgn?: string, animalKey?: string) {
     () => ({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
         ...(animalKey
           ? { animal_key: { $eq: animalKey } }
           : rgn

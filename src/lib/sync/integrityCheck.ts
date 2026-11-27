@@ -32,8 +32,7 @@ const COLLECTION_TABLE_MAP: Record<string, string> = {
   animals: "animals",
   vaccines: "vaccines",
   farms: "farms",
-  animal_metrics_ce: "animal_metrics_ce",
-  animal_metrics_weight: "animal_metrics_weight",
+  animal_metrics_weight: "animal_metrics",
   animal_vaccines: "animal_vaccines",
   reproduction_events: "reproduction_events",
   animal_situations: "animal_situations",
@@ -89,29 +88,37 @@ export async function runIntegrityCheck(
 
       // Contagem remota via HEAD + content-range
       try {
-        const response = await fetch(
-          `${supabaseUrl}/rest/v1/${tableName}?select=*&_deleted=is.false`,
-          {
-            method: "HEAD",
-            headers: {
-              apikey: supabaseKey,
-              Authorization: `Bearer ${supabaseKey}`,
-              Prefer: "count=exact",
+        const physicalTables = tableName === "animal_metrics"
+          ? ["animal_metrics_weight", "animal_metrics_ce"]
+          : [tableName];
+        const responses = await Promise.all(physicalTables.map((physicalTable) =>
+          fetch(
+            `${supabaseUrl}/rest/v1/${physicalTable}?select=*&_deleted=is.false`,
+            {
+              method: "HEAD",
+              headers: {
+                apikey: supabaseKey,
+                Authorization: `Bearer ${supabaseKey}`,
+                Prefer: "count=exact",
+              },
+              signal: AbortSignal.timeout(10000),
             },
-            signal: AbortSignal.timeout(10000),
-          },
-        );
-
-        if (response.ok || response.status === 206) {
-          const range = response.headers.get("content-range");
-          if (range) {
-            const total = range.split("/")[1];
-            result.remoteCount = total === "*" ? -1 : parseInt(total, 10);
+          ),
+        ));
+        let remoteCount = 0;
+        for (const response of responses) {
+          if (response.ok || response.status === 206) {
+            const range = response.headers.get("content-range");
+            if (range) {
+              const total = range.split("/")[1];
+              remoteCount += total === "*" ? -1 : parseInt(total, 10);
+            }
+          } else {
+            result.status = "error";
+            result.error = `HTTP ${response.status}`;
           }
-        } else {
-          result.status = "error";
-          result.error = `HTTP ${response.status}`;
         }
+        if (result.status !== "error") result.remoteCount = remoteCount;
       } catch (fetchErr) {
         result.status = "error";
         result.error =

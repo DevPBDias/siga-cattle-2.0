@@ -18,6 +18,7 @@ const ALLOWED_TABLES = new Set([
   "vaccines",
   "animal_metrics_weight",
   "animal_metrics_ce",
+  "animal_metrics",
   "animal_vaccines",
   "reproduction_events",
   "deaths",
@@ -27,6 +28,7 @@ const ALLOWED_TABLES = new Set([
   "agenda_reminders",
   "movements",
   "semen_doses",
+  "weaning_records",
 ]);
 
 // ---------------------------------------------------------------------------
@@ -75,9 +77,53 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const isUnifiedMetrics = table === "animal_metrics";
   const serverPk = SERVER_PK_OVERRIDE[table] ?? clientPrimaryKey;
 
   console.log(`[SyncAPI] Pull: ${table} (pk=${serverPk}) for ${user.email}`);
+
+  if (isUnifiedMetrics) {
+    const combined: Record<string, unknown>[] = [];
+    for (const [physicalTable, metricType] of [
+      ["animal_metrics_weight", "weight"],
+      ["animal_metrics_ce", "ce"],
+    ] as const) {
+      let metricQuery = supabase
+        .from(physicalTable)
+        .select("*")
+        .order("updated_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(parseInt(limit));
+      const checkpoint = Number(lastModified ?? 0);
+      if (checkpoint > 0) {
+        const validId = lastId && lastId !== "undefined" && lastId !== "null";
+        metricQuery = validId
+          ? metricQuery.or(
+              `updated_at.gt.${checkpoint},and(updated_at.eq.${checkpoint},id.gt."${lastId}")`,
+            )
+          : metricQuery.gte("updated_at", checkpoint);
+      }
+      const { data, error } = await metricQuery;
+      if (error) {
+        console.error(`[SyncAPI] Pull error for ${physicalTable}:`, error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+      for (const row of data ?? []) {
+        combined.push({
+          ...row,
+          metric_type: metricType,
+          server_updated_at: row.server_updated_at ?? row.updated_at,
+        });
+      }
+    }
+    combined.sort((a, b) => {
+      const updatedA = Number(a.server_updated_at ?? a.updated_at ?? 0);
+      const updatedB = Number(b.server_updated_at ?? b.updated_at ?? 0);
+      return updatedA - updatedB || String(a.id).localeCompare(String(b.id));
+    });
+    const page = combined.slice(0, parseInt(limit));
+    return NextResponse.json(page);
+  }
 
   // Consulta todas as colunas existentes na tabela no Supabase
   let query = supabase
@@ -197,7 +243,7 @@ export async function POST(req: NextRequest) {
     }
 
     let animalOrgId: string | null = null;
-    if (table === "animals") {
+    if (table === "animals" || table === "weaning_records") {
       const { data: profile, error: profileError } = await supabase
         .from("user_profiles")
         .select("id, role, owner_id, org_id")
@@ -234,9 +280,13 @@ export async function POST(req: NextRequest) {
       delete clean.server_updated_at;
       delete clean.device_id;
 
-      if (table === "animals") {
+      if (table === "animals" || table === "weaning_records") {
         clean.org_id = animalOrgId;
-        if (typeof clean.farm_id === "string" && clean.farm_id.trim() === "") {
+        if (
+          table === "animals" &&
+          typeof clean.farm_id === "string" &&
+          clean.farm_id.trim() === ""
+        ) {
           clean.farm_id = null;
         }
       } else if (table !== "user_profiles") {
@@ -251,6 +301,41 @@ export async function POST(req: NextRequest) {
       table === "user_profiles"
         ? sanitizedDocuments.filter((document) => document._deleted !== true)
         : sanitizedDocuments;
+
+    if (table === "animal_metrics") {
+      const syncedMetrics: Record<string, unknown>[] = [];
+      for (const [metricType, physicalTable] of [
+        ["weight", "animal_metrics_weight"],
+        ["ce", "animal_metrics_ce"],
+      ] as const) {
+        const metricDocuments = documentsToUpsert
+          .filter((document) => document.metric_type === metricType)
+          .map((document) => {
+            const { metric_type: _metricType, ...physicalDocument } = document;
+            return physicalDocument;
+          });
+        if (metricDocuments.length === 0) continue;
+
+        const { data, error } = await supabase
+          .from(physicalTable)
+          .upsert(metricDocuments, {
+            onConflict: serverPk,
+            ignoreDuplicates: false,
+          })
+          .select();
+        if (error) {
+          console.error(`[SyncAPI] Push error for ${physicalTable}:`, error);
+          return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+        syncedMetrics.push(
+          ...(data ?? []).map((document) => ({
+            ...document,
+            metric_type: metricType,
+          })),
+        );
+      }
+      return NextResponse.json(syncedMetrics);
+    }
 
     const { data, error } = documentsToUpsert.length
       ? await supabase

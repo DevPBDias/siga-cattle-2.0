@@ -149,6 +149,36 @@ CREATE TABLE IF NOT EXISTS animal_metrics_weight (
   _deleted    BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- WEANING_RECORDS
+CREATE TABLE IF NOT EXISTS weaning_records (
+  id                     TEXT PRIMARY KEY,
+  org_id                 UUID NOT NULL,
+  device_id              UUID,
+  animal_key             TEXT NOT NULL,
+  animal_rgn             VARCHAR(10) NOT NULL,
+  mother_animal_key      TEXT,
+  mother_rgn             VARCHAR(10) NOT NULL,
+  farm_id                TEXT,
+  born_date              DATE NOT NULL,
+  weaning_date           DATE NOT NULL,
+  age_days               INTEGER NOT NULL CHECK (age_days > 0),
+  birth_weight_kg        NUMERIC NOT NULL CHECK (birth_weight_kg > 0),
+  calf_weight_kg         NUMERIC NOT NULL CHECK (calf_weight_kg > 0),
+  mother_weight_kg       NUMERIC NOT NULL CHECK (mother_weight_kg > 0),
+  adjusted_weight_210_kg NUMERIC NOT NULL CHECK (adjusted_weight_210_kg > 0),
+  efficiency_percent     NUMERIC NOT NULL CHECK (efficiency_percent > 0),
+  visual_class           TEXT NOT NULL CHECK (visual_class IN ('A', 'B', 'C', 'D')),
+  field_updated_at       JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at             BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+  updated_at             BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+  server_updated_at      BIGINT NOT NULL DEFAULT (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT,
+  _deleted               BOOLEAN NOT NULL DEFAULT FALSE
+);
+CREATE INDEX IF NOT EXISTS weaning_records_org_id_idx ON weaning_records (org_id);
+CREATE INDEX IF NOT EXISTS weaning_records_animal_key_idx ON weaning_records (animal_key);
+CREATE INDEX IF NOT EXISTS weaning_records_weaning_date_idx ON weaning_records (weaning_date);
+CREATE INDEX IF NOT EXISTS weaning_records_updated_at_idx ON weaning_records (updated_at);
+
 -- ANIMAL_METRICS_CE
 CREATE TABLE IF NOT EXISTS animal_metrics_ce (
   id          TEXT    PRIMARY KEY,
@@ -674,6 +704,7 @@ ALTER TABLE clients             ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vaccines            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE animal_vaccines     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE animal_metrics_weight ENABLE ROW LEVEL SECURITY;
+ALTER TABLE weaning_records     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE animal_metrics_ce   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE animal_statuses     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE animal_situations   ENABLE ROW LEVEL SECURITY;
@@ -695,6 +726,7 @@ DROP POLICY IF EXISTS "clients_all"           ON clients;
 DROP POLICY IF EXISTS "vaccines_all"          ON vaccines;
 DROP POLICY IF EXISTS "animal_vaccines_all"   ON animal_vaccines;
 DROP POLICY IF EXISTS "amw_all"               ON animal_metrics_weight;
+DROP POLICY IF EXISTS "weaning_records_org_isolation" ON weaning_records;
 DROP POLICY IF EXISTS "amce_all"              ON animal_metrics_ce;
 DROP POLICY IF EXISTS "animal_statuses_all"   ON animal_statuses;
 DROP POLICY IF EXISTS "animal_situations_all" ON animal_situations;
@@ -786,6 +818,36 @@ REVOKE ALL ON FUNCTION public.get_current_user_org_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.is_current_user_org_owner() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_current_user_org_id() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_current_user_org_owner() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.set_weaning_records_sync_timestamps()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  current_millis BIGINT := (EXTRACT(EPOCH FROM NOW()) * 1000)::BIGINT;
+BEGIN
+  NEW.updated_at := current_millis;
+  NEW.server_updated_at := current_millis;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_weaning_records_sync_timestamps
+  ON public.weaning_records;
+CREATE TRIGGER trg_weaning_records_sync_timestamps
+  BEFORE UPDATE ON public.weaning_records
+  FOR EACH ROW
+  EXECUTE FUNCTION public.set_weaning_records_sync_timestamps();
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON public.weaning_records TO authenticated;
+
+CREATE POLICY weaning_records_org_isolation
+  ON public.weaning_records
+  FOR ALL
+  TO authenticated
+  USING (org_id = public.get_current_user_org_id())
+  WITH CHECK (org_id = public.get_current_user_org_id());
 
 ALTER TABLE public.user_profile_deletions ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS user_profile_deletions_select_org
@@ -1103,7 +1165,7 @@ DECLARE
     'animal_vaccines', 'animal_metrics_weight', 'animal_metrics_ce',
     'animal_statuses', 'animal_situations', 'reproduction_events',
     'deaths', 'sales', 'exchanges', 'movements', 'semen_doses',
-    'agenda_reminders', 'retreats'
+    'agenda_reminders', 'retreats', 'weaning_records'
   ];
   tbl TEXT;
 BEGIN

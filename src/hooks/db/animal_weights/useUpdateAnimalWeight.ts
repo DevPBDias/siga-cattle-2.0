@@ -12,7 +12,7 @@ export function useUpdateAnimalWeight() {
     id: string,
     data: Partial<AnimalMetric>,
   ): Promise<void> => {
-    await actions.update(id, data);
+    await actions.update(id, { ...data, metric_type: "weight" });
   };
 
   return {

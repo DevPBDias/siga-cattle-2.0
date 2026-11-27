@@ -14,6 +14,7 @@ import { Transaction } from "@/types/transaction.type";
 import { Death } from "@/types/death.type";
 import { Exchange } from "@/types/exchange.type";
 import { UserProfile } from "@/types/user_profile.type";
+import { WeaningRecord } from "@/types/weaning_record.type";
 
 import { Movement } from "@/types/movement.type";
 
@@ -21,7 +22,6 @@ export type AnimalCollection = RxCollection<Animal>;
 export type VaccineCollection = RxCollection<Vaccine>;
 export type FarmCollection = RxCollection<Farm>;
 export type AnimalMetricWeightCollection = RxCollection<AnimalMetric>;
-export type AnimalMetricCECollection = RxCollection<AnimalMetric>;
 export type AnimalVaccineCollection = RxCollection<AnimalVaccine>;
 export type ReproductionCollection = RxCollection<ReproductionEvent>;
 export type AnimalSituationCollection = RxCollection<AnimalSituation>;
@@ -33,6 +33,7 @@ export type TransactionCollection = RxCollection<Transaction>;
 export type DeathCollection = RxCollection<Death>;
 export type ExchangeCollection = RxCollection<Exchange>;
 export type UserProfileCollection = RxCollection<UserProfile>;
+export type WeaningRecordCollection = RxCollection<WeaningRecord>;
 
 export type MyDatabaseCollections = {
   animals: AnimalCollection;
@@ -40,7 +41,6 @@ export type MyDatabaseCollections = {
   farms: FarmCollection;
   user_profiles: UserProfileCollection;
   animal_metrics_weight: AnimalMetricWeightCollection;
-  animal_metrics_ce: AnimalMetricCECollection;
   animal_vaccines: AnimalVaccineCollection;
   reproduction_events: ReproductionCollection;
   animal_situations: AnimalSituationCollection;
@@ -51,6 +51,7 @@ export type MyDatabaseCollections = {
   transactions: TransactionCollection;
   deaths: DeathCollection;
   exchanges: ExchangeCollection;
+  weaning_records: WeaningRecordCollection;
 };
 
 export type MyDatabase = RxDatabase<MyDatabaseCollections> & {
@@ -60,7 +61,6 @@ export type MyDatabase = RxDatabase<MyDatabaseCollections> & {
     farms: RxReplicationState<Farm, any>;
     user_profiles: RxReplicationState<UserProfile, any>;
     animal_metrics_weight: RxReplicationState<AnimalMetric, any>;
-    animal_metrics_ce: RxReplicationState<AnimalMetric, any>;
     animal_vaccines: RxReplicationState<AnimalVaccine, any>;
     reproduction_events: RxReplicationState<ReproductionEvent, any>;
     animal_situations: RxReplicationState<AnimalSituation, any>;
@@ -71,5 +71,6 @@ export type MyDatabase = RxDatabase<MyDatabaseCollections> & {
     transactions: RxReplicationState<Transaction, any>;
     deaths: RxReplicationState<Death, any>;
     exchanges: RxReplicationState<Exchange, any>;
+    weaning_records: RxReplicationState<WeaningRecord, any>;
   };
 };

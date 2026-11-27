@@ -7,7 +7,7 @@ export const APP_PERMISSIONS = [
   { key: "calendario", label: "Calendário", route: "/calendario" },
   { key: "reproducao", label: "Reprodução", route: "/reproducao" },
   { key: "vacinas", label: "Vacinas", route: "/vacinas" },
-  { key: "nascimentos", label: "Nascimentos", route: "/nascimentos" },
+  { key: "nascimentos", label: "Nascimentos e Desmamas", route: "/nascimentos" },
   { key: "pesagem", label: "Pesagem", route: "/pesagem-ce" },
   { key: "comercial", label: "Comercial", route: "/comercial" },
   { key: "movimentacoes", label: "Movimentações", route: "/movimentacoes" },

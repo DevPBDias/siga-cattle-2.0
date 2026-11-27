@@ -1,71 +1,34 @@
-import { createReplication } from "./base";
 import { AnimalMetric } from "@/types/animal_metrics.type";
 import { cleanSupabaseDocument } from "@/lib/supabase/auth-helper";
+import { createReplication } from "./base";
 
-/**
- * Replicação de Pesagens de Animais usando o template padronizado.
- */
-export const animalMetricWeightReplication = createReplication<AnimalMetric>({
+/** One local collection replicates weight and CE rows to their existing tables. */
+export const animalMetricReplication = createReplication<AnimalMetric>({
   collectionName: "animal_metrics_weight",
-  tableName: "animal_metrics_weight",
-  replicationIdentifier: "animal-metrics-weight-replication-v13",
+  tableName: "animal_metrics",
+  replicationIdentifier: "animal-metrics-unified-replication-v1",
   mapToSupabase: (doc) => ({
     id: doc.id,
+    metric_type: doc.metric_type ?? "weight",
     animal_key: doc.animal_key ?? null,
     rgn: doc.rgn,
     born_metric: doc.born_metric ?? false,
     date: doc.date,
     value: doc.value,
+    created_at: doc.created_at,
     updated_at: doc.updated_at,
     _deleted: doc._deleted,
   }),
-
-  mapFromSupabase: (doc) => {
-    return cleanSupabaseDocument(doc) as unknown as AnimalMetric;
-  },
+  mapFromSupabase: (doc) => ({
+    ...cleanSupabaseDocument(doc),
+    metric_type: doc.metric_type === "ce" ? "ce" : "weight",
+  }) as unknown as AnimalMetric,
 });
 
-/**
- * Função wrapper para compatibilidade.
- */
-export async function replicateAnimalMetricWeightNew(
-  db: Parameters<typeof animalMetricWeightReplication>[0],
+export async function replicateAnimalMetricsNew(
+  db: Parameters<typeof animalMetricReplication>[0],
   supabaseUrl: string,
   supabaseKey: string,
 ) {
-  return animalMetricWeightReplication(db, supabaseUrl, supabaseKey);
-}
-
-/**
- * Replicação de Circunferência Escrotal (CE) usando o template padronizado.
- */
-export const animalMetricCEReplication = createReplication<AnimalMetric>({
-  collectionName: "animal_metrics_ce",
-  tableName: "animal_metrics_ce",
-  replicationIdentifier: "animal-metrics-ce-replication-v13",
-  mapToSupabase: (doc) => ({
-    id: doc.id,
-    animal_key: doc.animal_key ?? null,
-    rgn: doc.rgn,
-    born_metric: doc.born_metric ?? false,
-    date: doc.date,
-    value: doc.value,
-    updated_at: doc.updated_at,
-    _deleted: doc._deleted,
-  }),
-
-  mapFromSupabase: (doc) => {
-    return cleanSupabaseDocument(doc) as unknown as AnimalMetric;
-  },
-});
-
-/**
- * Função wrapper para compatibilidade.
- */
-export async function replicateAnimalMetricCENew(
-  db: Parameters<typeof animalMetricCEReplication>[0],
-  supabaseUrl: string,
-  supabaseKey: string
-) {
-  return animalMetricCEReplication(db, supabaseUrl, supabaseKey);
+  return animalMetricReplication(db, supabaseUrl, supabaseKey);
 }

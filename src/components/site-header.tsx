@@ -18,7 +18,7 @@ const ROUTE_LABELS: Record<string, string> = {
   "/pesagem-ce": "Pesagem",
   "/vacinas": "Sanitário & Vacinas",
   "/reproducao": "Reprodução & IATF",
-  "/nascimentos": "Maternidade & Nascimentos",
+  "/nascimentos": "Nascimentos e Desmamas",
   "/movimentacoes": "Movimentações",
   "/mortes": "Mortes",
   "/comercial": "Comercial / Vendas",

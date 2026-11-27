@@ -9,6 +9,7 @@ export function useAnimalCE(rgn?: string, animalKey?: string) {
     () => ({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "ce" },
         ...(animalKey
           ? { animal_key: { $eq: animalKey } }
           : rgn
@@ -21,7 +22,7 @@ export function useAnimalCE(rgn?: string, animalKey?: string) {
   );
 
   const { data, loading, error, actions } = useLocalQuery<AnimalMetric>(
-    "animal_metrics_ce",
+    "animal_metrics_weight",
     query,
   );
 

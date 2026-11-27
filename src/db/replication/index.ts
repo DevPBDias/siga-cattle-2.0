@@ -18,10 +18,8 @@ export {
   replicateAnimalVaccinesNew,
 } from "./animalVaccine.replication";
 export {
-  animalMetricWeightReplication,
-  replicateAnimalMetricWeightNew,
-  animalMetricCEReplication,
-  replicateAnimalMetricCENew,
+  animalMetricReplication,
+  replicateAnimalMetricsNew,
 } from "./metric.replication";
 export {
   reproductionEventReplication,

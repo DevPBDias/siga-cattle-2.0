@@ -90,6 +90,7 @@ async function syncBirthDateRelations(
         selector: {
           born_metric: { $eq: true },
           _deleted: { $eq: false },
+          metric_type: { $eq: "weight" },
         },
       })
       .exec();
@@ -251,7 +252,6 @@ export function useUpdateAnimal() {
 
       const relatedCollections = [
         [db.animal_metrics_weight, "rgn"],
-        [db.animal_metrics_ce, "rgn"],
         [db.animal_vaccines, "rgn"],
         [db.reproduction_events, "rgn"],
         [db.deaths, "animal_rgn"],

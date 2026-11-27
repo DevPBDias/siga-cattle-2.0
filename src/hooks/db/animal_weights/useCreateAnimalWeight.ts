@@ -14,6 +14,7 @@ export function useCreateAnimalWeight() {
   ): Promise<AnimalMetric> => {
     const newWeight: Partial<AnimalMetric> = {
       id: uuidv4(),
+      metric_type: "weight",
       ...data,
     };
 

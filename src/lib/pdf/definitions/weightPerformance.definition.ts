@@ -59,6 +59,7 @@ async function generateWeightReport(
     .find({
       selector: {
         _deleted: { $eq: false },
+        metric_type: { $eq: "weight" },
         rgn: { $in: animalRgns },
       },
       sort: [{ date: "desc" as const }],

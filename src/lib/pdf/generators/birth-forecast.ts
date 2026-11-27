@@ -24,18 +24,13 @@ export const generateBirthForecastPDF = async (reportData: BirthForecastReportDa
   };
 
   const columns = [
-    { header: "RGN", dataKey: "rgn" },
-    { header: "DATA NASCIMENTO", dataKey: "birth_date" },
+    { header: "DATA NASC", dataKey: "birth_date" },
     { header: "DATA IA", dataKey: "ia_date" },
-    { header: "DIAS DE GESTAÇÃO", dataKey: "gestation_days" },
+    { header: "DIAS GESTAÇÃO", dataKey: "gestation_days" },
     { header: "SEXO", dataKey: "sex" },
     { header: "COR", dataKey: "color" },
     { header: "PESO", dataKey: "weight" },
-    { header: "MATRIZ (MÃE)", dataKey: "mother" },
-    { header: "PAI", dataKey: "father" },
-    { header: "FAZENDA/PASTO", dataKey: "farm_name" },
-    { header: "DATA REGISTRO", dataKey: "registration_date" },
-    { header: "REGISTRADO POR", dataKey: "created_by" },
+    { header: "MATRIZ", dataKey: "mother" },
   ];
 
   autoTable(doc, {
@@ -43,18 +38,13 @@ export const generateBirthForecastPDF = async (reportData: BirthForecastReportDa
     columns,
     body: reportData.data,
     columnStyles: {
-      rgn: { cellWidth: 24 },
-      birth_date: { cellWidth: 28 },
-      ia_date: { cellWidth: 24 },
-      gestation_days: { cellWidth: 25 },
-      sex: { cellWidth: 20 },
-      color: { cellWidth: 24 },
-      weight: { cellWidth: 20 },
-      mother: { cellWidth: 30 },
-      father: { cellWidth: 32 },
-      farm_name: { cellWidth: 35 },
-      registration_date: { cellWidth: 28 },
-      created_by: { cellWidth: 38 },
+      birth_date: { cellWidth: 35 },
+      ia_date: { cellWidth: 35 },
+      gestation_days: { cellWidth: 35 },
+      sex: { cellWidth: 30 },
+      color: { cellWidth: 30 },
+      weight: { cellWidth: 30 },
+      mother: { cellWidth: 45 },
     },
     styles: { ...DEFAULT_TABLE_STYLES.styles, fontSize: 8 },
     didParseCell: (data) => {
