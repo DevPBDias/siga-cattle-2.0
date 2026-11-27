@@ -20,6 +20,7 @@ import { semenDoseSchema } from "./schemas/semen_dose.schema";
 import { lastWriteWins } from "./replication/base/conflictResolver";
 import { RxConflictHandler, defaultConflictHandler } from "rxdb";
 import { animalSituationSchema } from "./schemas/animal_situation.schema";
+import { animalPartnershipSchema } from "./schemas/animal_partnership.schema";
 import { clientSchema } from "./schemas/client.schema";
 import { movementSchema } from "./schemas/movement.schema";
 import { transactionSchema } from "./schemas/transaction.schema";
@@ -430,6 +431,10 @@ async function createDatabase(): Promise<MyDatabase> {
         },
         animal_situations: {
           schema: animalSituationSchema,
+          conflictHandler: customConflictHandler,
+        },
+        animal_partnerships: {
+          schema: animalPartnershipSchema,
           conflictHandler: customConflictHandler,
         },
         semen_doses: {

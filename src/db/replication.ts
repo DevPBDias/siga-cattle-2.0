@@ -9,6 +9,7 @@ import { replicateAnimalMetricCENew as replicateAnimalMetricCE } from "./replica
 import { replicateAnimalVaccinesNew as replicateAnimalVaccines } from "./replication/animalVaccine.replication";
 import { replicateReproductionEventsNew as replicateReproductionEvents } from "./replication/reproduction.replication";
 import { replicateAnimalSituationsNew as replicateAnimalSituations } from "./replication/situation.replication";
+import { replicateAnimalPartnershipsNew as replicateAnimalPartnerships } from "./replication/partnership.replication";
 import { replicateClientsNew as replicateClients } from "./replication/client.replication";
 import { replicateMovementsNew as replicateMovements } from "./replication/movement.replication";
 import { replicateTransactionsNew as replicateTransactions } from "./replication/transaction.replication";
@@ -201,6 +202,12 @@ export async function setupReplication(db: MyDatabase) {
       SUPABASE_KEY,
     );
 
+    const animalPartnershipsReplication = await replicateAnimalPartnerships(
+      db,
+      SUPABASE_URL,
+      SUPABASE_KEY,
+    );
+
     const semenDosesReplication = await replicateSemenDoses(
       db,
       SUPABASE_URL,
@@ -249,6 +256,7 @@ export async function setupReplication(db: MyDatabase) {
           animal_vaccines: typeof animalVaccinesReplication;
           reproduction_events: typeof reproductionEventsReplication;
           animal_situations: typeof animalSituationsReplication;
+          animal_partnerships: typeof animalPartnershipsReplication;
           semen_doses: typeof semenDosesReplication;
           clients: typeof clientsReplication;
           movements: typeof movementsReplication;
@@ -267,6 +275,7 @@ export async function setupReplication(db: MyDatabase) {
       animal_vaccines: animalVaccinesReplication,
       reproduction_events: reproductionEventsReplication,
       animal_situations: animalSituationsReplication,
+      animal_partnerships: animalPartnershipsReplication,
       semen_doses: semenDosesReplication,
       clients: clientsReplication,
       movements: movementsReplication,
@@ -306,6 +315,7 @@ export async function setupReplication(db: MyDatabase) {
       animalVaccinesReplication.start();
       reproductionEventsReplication.start();
       animalSituationsReplication.start();
+      animalPartnershipsReplication.start();
       semenDosesReplication.start();
       clientsReplication.start();
       movementsReplication.start();
@@ -313,7 +323,7 @@ export async function setupReplication(db: MyDatabase) {
       deathsReplication.start();
       exchangesReplication.start();
 
-      SyncLogger.info("setup", "All 15 replications started ✅");
+      SyncLogger.info("setup", "All 16 replications started ✅");
       await Promise.race([
         Promise.allSettled([
           animalsReplication,
@@ -325,6 +335,7 @@ export async function setupReplication(db: MyDatabase) {
           animalVaccinesReplication,
           reproductionEventsReplication,
           animalSituationsReplication,
+          animalPartnershipsReplication,
           semenDosesReplication,
           clientsReplication,
           movementsReplication,
@@ -348,6 +359,7 @@ export async function setupReplication(db: MyDatabase) {
       { name: "animal_vaccines", rep: animalVaccinesReplication },
       { name: "reproduction", rep: reproductionEventsReplication },
       { name: "situations", rep: animalSituationsReplication },
+      { name: "partnerships", rep: animalPartnershipsReplication },
       { name: "semen_doses", rep: semenDosesReplication },
       { name: "clients", rep: clientsReplication },
       { name: "movements", rep: movementsReplication },

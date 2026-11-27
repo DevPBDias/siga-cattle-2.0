@@ -5,7 +5,7 @@ import { AnimalSituation } from "@/types/situation.type";
 
 export function useDeleteSituation() {
   const { loading, error, actions } = useLocalMutation<AnimalSituation>(
-    "document_situations",
+    "animal_situations",
   );
 
   const deleteSituation = async (id: string): Promise<void> => {

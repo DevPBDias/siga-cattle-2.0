@@ -32,6 +32,10 @@ export {
   replicateAnimalSituationsNew,
 } from "./situation.replication";
 export {
+  animalPartnershipReplication,
+  replicateAnimalPartnershipsNew,
+} from "./partnership.replication";
+export {
   transactionReplication,
   replicateTransactionsNew,
 } from "./transaction.replication";

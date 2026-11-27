@@ -8,27 +8,11 @@ import { Animal } from "@/types/animal.type";
 import { PartnershipSuccessModal } from "@/components/features/animals/modals/sociedade/PartnershipSuccessModal";
 import { ConfirmActionModal } from "@/components/modals/ConfirmActionModal";
 import { FeatureErrorBoundary } from "@/components/ui/FeatureErrorBoundary";
-
-const PARTNERSHIPS = [
-  { name: "Alex", initial: "Alex" },
-  { name: "Fátima", initial: "Fat" },
-  { name: "Jacir", initial: "Jac" },
-  { name: "Ricardo", initial: "Ric" },
-];
-
-const getPartnershipString = (names: string[]) => {
-  return PARTNERSHIPS.filter((p) => names.includes(p.name))
-    .map((p) => p.initial)
-    .join("/");
-};
-
-const getSelectedNames = (str: string | null | undefined) => {
-  if (!str) return [];
-  const parts = str.split("/");
-  return PARTNERSHIPS.filter((p) => parts.includes(p.initial)).map(
-    (p) => p.name,
-  );
-};
+import { usePartnerships } from "@/hooks/db/partnerships";
+import {
+  formatPartnershipNames,
+  parsePartnershipNames,
+} from "@/utils/partnership";
 
 interface ManageSocietyProps {
   selectedAnimal: Animal | null;
@@ -50,6 +34,7 @@ const ManageSocietyContent = ({
   const {
     actions: { updateAnimal },
   } = useUpdateAnimal();
+  const { data: partnerships = [] } = usePartnerships();
 
   const [successModalOpen, setSuccessModalOpen] = useState(false);
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
@@ -58,11 +43,16 @@ const ManageSocietyContent = ({
 
   useEffect(() => {
     if (selectedAnimal) {
-      setSelectedNames(getSelectedNames(selectedAnimal.partnership));
+      setSelectedNames(
+        parsePartnershipNames(
+          selectedAnimal.partnership,
+          partnerships.map((p) => p.partner_name),
+        ),
+      );
     } else {
       setSelectedNames([]);
     }
-  }, [selectedAnimal]);
+  }, [selectedAnimal, partnerships]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,7 +60,7 @@ const ManageSocietyContent = ({
     setError(null);
 
     try {
-      const partnershipString = getPartnershipString(selectedNames);
+      const partnershipString = formatPartnershipNames(selectedNames);
       await updateAnimal(selectedAnimal.animal_key || selectedAnimal.rgn, {
         partnership: partnershipString,
       });

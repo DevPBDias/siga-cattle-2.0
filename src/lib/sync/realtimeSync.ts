@@ -13,6 +13,7 @@ const TABLES = [
   "animal_vaccines",
   "reproduction_events",
   "animal_situations",
+  "animal_partnerships",
   "semen_doses",
   "clients",
   "movements",

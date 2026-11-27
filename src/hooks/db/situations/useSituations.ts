@@ -5,7 +5,7 @@ import { AnimalSituation } from "@/types/situation.type";
 
 export function useSituations() {
   const { data, loading, error, actions } = useLocalQuery<AnimalSituation>(
-    "document_situations",
+    "animal_situations",
     {
       selector: {
         _deleted: { $eq: false },

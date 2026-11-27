@@ -11,17 +11,33 @@ import {
   useCreateSituation,
   useDeleteSituation,
 } from "@/hooks/db/situations";
+import {
+  usePartnerships,
+  useCreatePartnership,
+  useDeletePartnership,
+} from "@/hooks/db/partnerships";
 import { ANIMAL_BREEDS } from "@/constants/animalVariations";
 import { STATUS_ABCZ_OPTIONS } from "@/types/status.type";
-import { formatDate, calculateAgeInMonths as getAgeMonths, getAgeRange, isFutureDate, toISODate } from "@/utils/dates";
-import { AddFarmModal } from "@/components/features/farm/modals/farm/AddFarmModal";
-import { DeleteFarmModal } from "@/components/features/farm/modals/farm/DeleteFarmModal";
-import { FarmSuccessModal } from "@/components/features/farm/modals/farm/FarmSuccessModal";
-import { AddSituationModal } from "@/components/features/animals/modals/situation/AddSituationModal";
-import { DeleteSituationModal } from "@/components/features/animals/modals/situation/DeleteSituationModal";
-import { SituationSuccessModal } from "@/components/features/animals/modals/situation/SituationSuccessModal";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, Settings, Save, AlertCircle } from "lucide-react";
+import {
+  formatDate,
+  calculateAgeInMonths as getAgeMonths,
+  getAgeRange,
+  isFutureDate,
+  toISODate,
+} from "@/utils/dates";
+import {
+  formatPartnershipNames,
+  parsePartnershipNames,
+} from "@/utils/partnership";
+import { ManageFarmsModal } from "@/components/features/farm/modals/farm/ManageFarmsModal";
+import { ManagePartnershipsModal } from "@/components/features/animals/modals/sociedade/ManagePartnershipsModal";
+import { ManageSituationsModal } from "@/components/features/animals/modals/situation/ManageSituationsModal";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Check, Plus, Save, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 interface EditAnimalManagementLayoutProps {
@@ -29,47 +45,48 @@ interface EditAnimalManagementLayoutProps {
   onSuccess?: () => void;
 }
 
-const LABEL = "text-[10px] text-gray-500 uppercase font-semibold";
+const LABEL = "text-[9.5px] text-gray-500 uppercase font-semibold leading-tight";
 const INPUT =
-  "w-full max-w-[170px] rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary outline-none focus:border-field-green font-semibold transition-colors";
+  "w-full max-w-[155px] h-7 rounded-md border border-input bg-[#f7faf6] px-2 py-0.5 text-right text-[11px] text-primary outline-none focus:border-field-green font-semibold transition-colors";
 const SELECT =
-  "w-full max-w-[170px] rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary outline-none focus:border-field-green font-semibold transition-colors";
+  "w-full max-w-[155px] h-7 rounded-md border border-input bg-[#f7faf6] px-2 py-0.5 text-right text-[11px] text-primary outline-none focus:border-field-green font-semibold transition-colors";
+const ADD_BUTTON_CLASS =
+  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer";
 
 const Row = ({
   label,
   children,
-  actionButton,
 }: {
   label: string;
   children: React.ReactNode;
-  actionButton?: React.ReactNode;
 }) => (
-  <div className="flex items-center justify-between gap-2 border-b border-border py-1 last:border-b-0 min-h-[34px]">
-    <div className="flex items-center gap-1.5">
-      <span className={LABEL}>{label}</span>
-      {actionButton}
-    </div>
+  <div className="flex items-center justify-between gap-2 border-b border-border py-0.5 last:border-b-0 min-h-[30px]">
+    <span className={LABEL}>{label}</span>
     {children}
   </div>
 );
 
-const Card = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="bg-card border border-border rounded-lg px-3 py-2 w-full shadow-xs">
-    <h3 className="text-[10px] font-bold text-primary uppercase tracking-wider mb-0.5">{title}</h3>
+const Card = ({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) => (
+  <div className="bg-card border border-border rounded-lg px-2.5 py-1.5 w-full shadow-xs">
+    <h3 className="text-[9.5px] font-bold text-primary uppercase tracking-wider mb-0.5">
+      {title}
+    </h3>
     {children}
   </div>
 );
 
-const PARTNERSHIP_OPTIONS = [
-  { name: "Alex", initial: "Alex" },
-  { name: "Fátima", initial: "Fat" },
-  { name: "Jacir", initial: "Jac" },
-  { name: "Ricardo", initial: "Ric" },
-];
+const CLASSIFICATION_OPTIONS = ["-", "A", "B", "C", "D"];
 
-const CLASSIFICATION_OPTIONS = ["-", "A", "B", "C", "D", "Elite"];
-
-export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalManagementLayoutProps) {
+export function EditAnimalManagementLayout({
+  animal,
+  onSuccess,
+}: EditAnimalManagementLayoutProps) {
   const {
     actions: { updateAnimal },
     loading: isSaving,
@@ -77,23 +94,35 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
 
   // Farms hooks
   const { data: farms = [], loading: farmsLoading } = useFarms();
-  const { actions: { createFarm } } = useCreateFarm();
-  const { actions: { deleteFarm } } = useDeleteFarm();
+  const {
+    actions: { createFarm },
+  } = useCreateFarm();
+  const {
+    actions: { deleteFarm },
+  } = useDeleteFarm();
+
+  // Partnerships hooks
+  const { data: partnerships = [] } = usePartnerships();
+  const {
+    actions: { createPartnership },
+  } = useCreatePartnership();
+  const {
+    actions: { deletePartnership },
+  } = useDeletePartnership();
 
   // Situations hooks
   const { data: situations = [], loading: situationsLoading } = useSituations();
-  const { actions: { createSituation } } = useCreateSituation();
-  const { actions: { deleteSituation } } = useDeleteSituation();
+  const {
+    actions: { createSituation },
+  } = useCreateSituation();
+  const {
+    actions: { deleteSituation },
+  } = useDeleteSituation();
 
-  // Modais de Fazendas
-  const [addFarmOpen, setAddFarmOpen] = useState(false);
-  const [deleteFarmOpen, setDeleteFarmOpen] = useState(false);
-  const [farmSuccessOpen, setFarmSuccessOpen] = useState(false);
-
-  // Modais de Situação
-  const [addSituationOpen, setAddSituationOpen] = useState(false);
-  const [deleteSituationOpen, setDeleteSituationOpen] = useState(false);
-  const [situationSuccessOpen, setSituationSuccessOpen] = useState(false);
+  // Modais de Gerenciamento
+  const [manageFarmsOpen, setManageFarmsOpen] = useState(false);
+  const [managePartnershipsOpen, setManagePartnershipsOpen] = useState(false);
+  const [manageSituationsOpen, setManageSituationsOpen] = useState(false);
 
   // Estados dos campos do formulário
   const [formData, setFormData] = useState({
@@ -115,7 +144,9 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
   });
 
   const [selectedStatus, setSelectedStatus] = useState<string[]>([]);
-  const [selectedPartnerships, setSelectedPartnerships] = useState<string[]>([]);
+  const [selectedPartnerships, setSelectedPartnerships] = useState<string[]>(
+    [],
+  );
   const [selectedSituations, setSelectedSituations] = useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -142,38 +173,43 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
 
       // Status ABCZ
       if (animal.status) {
-        const parts = animal.status.split(" / ").map((s) => s.trim()).filter((s) => s && s !== "-");
+        const parts = animal.status
+          .split(" / ")
+          .map((s) => s.trim())
+          .filter((s) => s && s !== "-");
         setSelectedStatus(parts);
       } else {
         setSelectedStatus([]);
       }
 
       // Sociedade
-      if (animal.partnership) {
-        const parts = animal.partnership.split("/").map((p) => p.trim());
-        const mapped = PARTNERSHIP_OPTIONS.filter((p) => parts.includes(p.initial)).map((p) => p.name);
-        setSelectedPartnerships(mapped);
-      } else {
-        setSelectedPartnerships([]);
-      }
+      setSelectedPartnerships(
+        parsePartnershipNames(
+          animal.partnership,
+          partnerships.map((p) => p.partner_name),
+        ),
+      );
 
       // Situação
       if (animal.document_situation) {
-        const parts = animal.document_situation.split(" / ").map((s) => s.trim()).filter((s) => s && s !== "-");
+        const parts = animal.document_situation
+          .split(" / ")
+          .map((s) => s.trim())
+          .filter((s) => s && s !== "-");
         setSelectedSituations(parts);
       } else {
         setSelectedSituations([]);
       }
     }
-  }, [animal]);
+  }, [animal, partnerships]);
 
   const getMonths = getAgeMonths(formData.born_date);
 
-  const handleFieldChange = (key: keyof typeof formData) => (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    setFormData((prev) => ({ ...prev, [key]: e.target.value }));
-  };
+  const handleFieldChange =
+    (key: keyof typeof formData) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      setFormData((prev) => ({ ...prev, [key]: e.target.value }));
+    };
 
   const toggleStatus = (st: string) => {
     setSelectedStatus((prev) =>
@@ -203,14 +239,12 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
     }
 
     try {
-      const partnershipString = PARTNERSHIP_OPTIONS.filter((p) =>
-        selectedPartnerships.includes(p.name),
-      )
-        .map((p) => p.initial)
-        .join("/");
+      const partnershipString = formatPartnershipNames(selectedPartnerships);
 
-      const statusString = selectedStatus.length > 0 ? selectedStatus.join(" / ") : "-";
-      const situationString = selectedSituations.length > 0 ? selectedSituations.join(" / ") : "-";
+      const statusString =
+        selectedStatus.length > 0 ? selectedStatus.join(" / ") : "-";
+      const situationString =
+        selectedSituations.length > 0 ? selectedSituations.join(" / ") : "-";
 
       const payload: Partial<Animal> = {
         farm_id: formData.farm_id || undefined,
@@ -238,42 +272,51 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
       onSuccess?.();
     } catch (err) {
       console.error("Erro ao salvar dados do animal:", err);
-      const msg = err instanceof Error ? err.message : "Erro ao salvar alterações.";
+      const msg =
+        err instanceof Error ? err.message : "Erro ao salvar alterações.";
       setSaveError(msg);
       toast.error(msg);
     }
   };
 
   return (
-    <div className="space-y-3 w-full animate-in fade-in-50 duration-300">
+    <div
+      className="space-y-2 w-full animate-in fade-in-50 duration-300"
+      style={
+        {
+          "--control-height": "1.75rem",
+          "--control-font-size": "0.75rem",
+          "--action-min-height": "1.75rem",
+        } as React.CSSProperties
+      }
+    >
       {/* Dados Básicos */}
       <Card title="Dados Básicos">
-        <Row
-          label="Fazenda / Pasto"
-          actionButton={
+        <Row label="Fazenda / Pasto">
+          <div className="flex items-center justify-end gap-1.5 flex-1 max-w-[190px]">
+            <select
+              value={formData.farm_id}
+              onChange={handleFieldChange("farm_id")}
+              className={SELECT}
+              aria-label="Fazenda/Pasto"
+            >
+              <option value="">Selecione...</option>
+              {farms.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.farm_name}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
-              onClick={() => setAddFarmOpen(true)}
-              title="Gerenciar Fazendas/Pastos"
-              className="p-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer rounded"
+              onClick={() => setManageFarmsOpen(true)}
+              title="Gerenciar Fazendas"
+              aria-label="Gerenciar Fazendas"
+              className={ADD_BUTTON_CLASS}
             >
-              <Settings className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
             </button>
-          }
-        >
-          <select
-            value={formData.farm_id}
-            onChange={handleFieldChange("farm_id")}
-            className={SELECT}
-            aria-label="Fazenda/Pasto"
-          >
-            <option value="">Selecione...</option>
-            {farms.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.farm_name}
-              </option>
-            ))}
-          </select>
+          </div>
         </Row>
 
         <Row label="Raça">
@@ -457,9 +500,15 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
               <button
                 type="button"
                 className="max-w-[170px] truncate rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary font-semibold hover:border-field-green cursor-pointer"
-                title={selectedStatus.length ? selectedStatus.join(", ") : "Selecionar status"}
+                title={
+                  selectedStatus.length
+                    ? selectedStatus.join(", ")
+                    : "Selecionar status"
+                }
               >
-                {selectedStatus.length ? selectedStatus.join(", ") : "Selecione..."}
+                {selectedStatus.length
+                  ? selectedStatus.join(", ")
+                  : "Selecione..."}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2 bg-card" align="end">
@@ -476,10 +525,21 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
                       onClick={() => toggleStatus(st)}
                       className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded hover:bg-muted text-left cursor-pointer"
                     >
-                      <span className={isChecked ? "font-bold text-primary" : "text-foreground"}>
+                      <span
+                        className={
+                          isChecked
+                            ? "font-bold text-primary"
+                            : "text-foreground"
+                        }
+                      >
                         {st}
                       </span>
-                      {isChecked && <Check className="h-3.5 w-3.5 text-primary" strokeWidth={3} />}
+                      {isChecked && (
+                        <Check
+                          className="h-3.5 w-3.5 text-primary"
+                          strokeWidth={3}
+                        />
+                      )}
                     </button>
                   );
                 })}
@@ -490,96 +550,150 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
 
         {/* Sociedade Popup */}
         <Row label="Sociedade">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="max-w-[170px] truncate rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary font-semibold hover:border-field-green cursor-pointer"
-                title={selectedPartnerships.length ? selectedPartnerships.join(", ") : "Selecionar sociedade"}
-              >
-                {selectedPartnerships.length ? selectedPartnerships.join(", ") : "Nenhuma (-)"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-56 p-2 bg-card" align="end">
-              <div className="space-y-1">
-                <p className="text-[11px] font-bold text-gray-500 uppercase px-1 pb-1 border-b border-border">
-                  Sociedades
-                </p>
-                {PARTNERSHIP_OPTIONS.map((p) => {
-                  const isChecked = selectedPartnerships.includes(p.name);
-                  return (
-                    <button
-                      key={p.name}
-                      type="button"
-                      onClick={() => togglePartnership(p.name)}
-                      className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded hover:bg-muted text-left cursor-pointer"
-                    >
-                      <span className={isChecked ? "font-bold text-primary" : "text-foreground"}>
-                        {p.name} ({p.initial})
-                      </span>
-                      {isChecked && <Check className="h-3.5 w-3.5 text-primary" strokeWidth={3} />}
-                    </button>
-                  );
-                })}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </Row>
-
-        {/* Situação do Animal Popup com Engrenagem */}
-        <Row
-          label="Situação do animal"
-          actionButton={
+          <div className="flex items-center justify-end gap-1.5 flex-1 max-w-[190px]">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="h-7 max-w-[155px] truncate rounded-md border border-input bg-[#f7faf6] px-2 py-0.5 text-right text-[11px] text-primary font-semibold hover:border-field-green cursor-pointer"
+                  title={
+                    selectedPartnerships.length
+                      ? selectedPartnerships.join(", ")
+                      : "Selecionar sociedade"
+                  }
+                >
+                  {selectedPartnerships.length
+                    ? selectedPartnerships.join(", ")
+                    : "Nenhuma (-)"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2 bg-card" align="end">
+                <div className="space-y-1 max-h-56 overflow-y-auto no-scrollbar">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase px-1 pb-1 border-b border-border">
+                    Sócios Cadastrados
+                  </p>
+                  {partnerships.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">
+                      Nenhum sócio cadastrado.
+                    </p>
+                  ) : (
+                    partnerships.map((p) => {
+                      const isChecked = selectedPartnerships.includes(
+                        p.partner_name,
+                      );
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => togglePartnership(p.partner_name)}
+                          className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded hover:bg-muted text-left cursor-pointer"
+                        >
+                          <span
+                            className={
+                              isChecked
+                                ? "font-bold text-primary"
+                                : "text-foreground"
+                            }
+                          >
+                            {p.partner_name}
+                          </span>
+                          {isChecked && (
+                            <Check
+                              className="h-3.5 w-3.5 text-primary"
+                              strokeWidth={3}
+                            />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
             <button
               type="button"
-              onClick={() => setAddSituationOpen(true)}
-              title="Gerenciar Situações"
-              className="p-0.5 text-gray-400 hover:text-primary transition-colors cursor-pointer rounded"
+              onClick={() => setManagePartnershipsOpen(true)}
+              title="Gerenciar Sócios"
+              aria-label="Gerenciar Sócios"
+              className={ADD_BUTTON_CLASS}
             >
-              <Settings className="h-3.5 w-3.5" />
+              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
             </button>
-          }
-        >
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="max-w-[170px] truncate rounded-md border border-input bg-[#f7faf6] px-2 py-1 text-right text-xs text-primary font-semibold hover:border-field-green cursor-pointer"
-                title={selectedSituations.length ? selectedSituations.join(", ") : "Selecionar situação"}
-              >
-                {selectedSituations.length ? selectedSituations.join(", ") : "Nenhuma (-)"}
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-2 bg-card" align="end">
-              <div className="space-y-1 max-h-56 overflow-y-auto no-scrollbar">
-                <p className="text-[11px] font-bold text-gray-500 uppercase px-1 pb-1 border-b border-border">
-                  Situações Cadastradas
-                </p>
-                {situations.length === 0 ? (
-                  <p className="text-xs text-muted-foreground p-2 text-center">
-                    Nenhuma situação cadastrada.
+          </div>
+        </Row>
+
+        {/* Situação do Animal Popup */}
+        <Row label="Situação do animal">
+          <div className="flex items-center justify-end gap-1.5 flex-1 max-w-[190px]">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="h-7 max-w-[155px] truncate rounded-md border border-input bg-[#f7faf6] px-2 py-0.5 text-right text-[11px] text-primary font-semibold hover:border-field-green cursor-pointer"
+                  title={
+                    selectedSituations.length
+                      ? selectedSituations.join(", ")
+                      : "Selecionar situação"
+                  }
+                >
+                  {selectedSituations.length
+                    ? selectedSituations.join(", ")
+                    : "Nenhuma (-)"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-64 p-2 bg-card" align="end">
+                <div className="space-y-1 max-h-56 overflow-y-auto no-scrollbar">
+                  <p className="text-[11px] font-bold text-gray-500 uppercase px-1 pb-1 border-b border-border">
+                    Situações Cadastradas
                   </p>
-                ) : (
-                  situations.map((sit) => {
-                    const isChecked = selectedSituations.includes(sit.situation_name);
-                    return (
-                      <button
-                        key={sit.id}
-                        type="button"
-                        onClick={() => toggleSituation(sit.situation_name)}
-                        className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded hover:bg-muted text-left cursor-pointer"
-                      >
-                        <span className={isChecked ? "font-bold text-primary" : "text-foreground"}>
-                          {sit.situation_name}
-                        </span>
-                        {isChecked && <Check className="h-3.5 w-3.5 text-primary" strokeWidth={3} />}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
+                  {situations.length === 0 ? (
+                    <p className="text-xs text-muted-foreground p-2 text-center">
+                      Nenhuma situação cadastrada.
+                    </p>
+                  ) : (
+                    situations.map((sit) => {
+                      const isChecked = selectedSituations.includes(
+                        sit.situation_name,
+                      );
+                      return (
+                        <button
+                          key={sit.id}
+                          type="button"
+                          onClick={() => toggleSituation(sit.situation_name)}
+                          className="flex items-center justify-between w-full px-2 py-1.5 text-xs rounded hover:bg-muted text-left cursor-pointer"
+                        >
+                          <span
+                            className={
+                              isChecked
+                                ? "font-bold text-primary"
+                                : "text-foreground"
+                            }
+                          >
+                            {sit.situation_name}
+                          </span>
+                          {isChecked && (
+                            <Check
+                              className="h-3.5 w-3.5 text-primary"
+                              strokeWidth={3}
+                            />
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+            <button
+              type="button"
+              onClick={() => setManageSituationsOpen(true)}
+              title="Gerenciar Situações"
+              aria-label="Gerenciar Situações"
+              className={ADD_BUTTON_CLASS}
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+            </button>
+          </div>
         </Row>
       </Card>
 
@@ -607,85 +721,62 @@ export function EditAnimalManagementLayout({ animal, onSuccess }: EditAnimalMana
         </button>
       </div>
 
-      {/* Modais de Fazenda */}
-      <AddFarmModal
-        open={addFarmOpen}
-        onClose={() => setAddFarmOpen(false)}
-        onAdd={async (name: string) => {
-          try {
-            await createFarm({ farm_name: name });
-            setAddFarmOpen(false);
-            setFarmSuccessOpen(true);
-          } catch (e) {
-            console.error(e);
-            toast.error("Erro ao cadastrar fazenda.");
-          }
-        }}
-      />
-
-      <DeleteFarmModal
-        open={deleteFarmOpen}
-        onClose={() => setDeleteFarmOpen(false)}
+      {/* Modais de Gerenciamento */}
+      <ManageFarmsModal
+        open={manageFarmsOpen}
         farms={farms}
-        onDelete={async (id: string) => {
-          try {
-            await deleteFarm(id);
-            if (formData.farm_id === id) {
-              setFormData((prev) => ({ ...prev, farm_id: "" }));
-            }
-            setDeleteFarmOpen(false);
-            toast.success("Fazenda excluída com sucesso.");
-          } catch (e) {
-            console.error(e);
-            toast.error("Erro ao excluir fazenda.");
-          }
-        }}
-      />
-
-      <FarmSuccessModal
-        open={farmSuccessOpen}
-        onClose={() => setFarmSuccessOpen(false)}
-      />
-
-      {/* Modais de Situação */}
-      <AddSituationModal
-        open={addSituationOpen}
-        onClose={() => setAddSituationOpen(false)}
+        onClose={() => setManageFarmsOpen(false)}
         onAdd={async (name: string) => {
-          try {
-            await createSituation({ situation_name: name });
-            setAddSituationOpen(false);
-            setSituationSuccessOpen(true);
-          } catch (e) {
-            console.error(e);
-            toast.error("Erro ao cadastrar situação.");
-          }
+          await createFarm({ farm_name: name });
+          toast.success("Fazenda cadastrada com sucesso!");
         }}
-      />
-
-      <DeleteSituationModal
-        open={deleteSituationOpen}
-        onClose={() => setDeleteSituationOpen(false)}
-        situations={situations}
         onDelete={async (id: string) => {
-          try {
-            const deleted = situations.find((s) => s.id === id);
-            await deleteSituation(id);
-            if (deleted) {
-              setSelectedSituations((prev) => prev.filter((s) => s !== deleted.situation_name));
-            }
-            setDeleteSituationOpen(false);
-            toast.success("Situação excluída com sucesso.");
-          } catch (e) {
-            console.error(e);
-            toast.error("Erro ao excluir situação.");
+          await deleteFarm(id);
+          if (formData.farm_id === id) {
+            setFormData((prev) => ({ ...prev, farm_id: "" }));
           }
+          toast.success("Fazenda excluída com sucesso.");
         }}
       />
 
-      <SituationSuccessModal
-        open={situationSuccessOpen}
-        onClose={() => setSituationSuccessOpen(false)}
+      <ManagePartnershipsModal
+        open={managePartnershipsOpen}
+        partnerships={partnerships}
+        onClose={() => setManagePartnershipsOpen(false)}
+        onAdd={async (name: string) => {
+          await createPartnership({ partner_name: name });
+          toast.success("Sócio cadastrado com sucesso!");
+        }}
+        onDelete={async (id: string) => {
+          const deleted = partnerships.find((p) => p.id === id);
+          await deletePartnership(id);
+          if (deleted) {
+            setSelectedPartnerships((prev) =>
+              prev.filter((name) => name !== deleted.partner_name),
+            );
+          }
+          toast.success("Sócio excluído com sucesso.");
+        }}
+      />
+
+      <ManageSituationsModal
+        open={manageSituationsOpen}
+        situations={situations}
+        onClose={() => setManageSituationsOpen(false)}
+        onAdd={async (name: string) => {
+          await createSituation({ situation_name: name });
+          toast.success("Situação cadastrada com sucesso!");
+        }}
+        onDelete={async (id: string) => {
+          const deleted = situations.find((s) => s.id === id);
+          await deleteSituation(id);
+          if (deleted) {
+            setSelectedSituations((prev) =>
+              prev.filter((s) => s !== deleted.situation_name),
+            );
+          }
+          toast.success("Situação excluída com sucesso.");
+        }}
       />
     </div>
   );

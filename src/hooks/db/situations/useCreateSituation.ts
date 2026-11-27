@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export function useCreateSituation() {
   const { loading, error, actions } = useLocalMutation<AnimalSituation>(
-    "document_situations",
+    "animal_situations",
   );
 
   const createSituation = async (

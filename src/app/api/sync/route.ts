@@ -14,6 +14,7 @@ const ALLOWED_TABLES = new Set([
   "user_profiles",
   "clients",
   "animal_situations",
+  "animal_partnerships",
   "vaccines",
   "animal_metrics_weight",
   "animal_metrics_ce",

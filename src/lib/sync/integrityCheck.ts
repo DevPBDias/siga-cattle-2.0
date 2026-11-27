@@ -37,6 +37,7 @@ const COLLECTION_TABLE_MAP: Record<string, string> = {
   animal_vaccines: "animal_vaccines",
   reproduction_events: "reproduction_events",
   animal_situations: "animal_situations",
+  animal_partnerships: "animal_partnerships",
   semen_doses: "semen_doses",
   clients: "clients",
   movements: "movements",

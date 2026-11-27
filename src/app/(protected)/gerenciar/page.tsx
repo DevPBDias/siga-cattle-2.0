@@ -12,8 +12,8 @@ export default function GerenciarPage() {
     <main className="flex h-dvh flex-col overflow-hidden bg-background pb-12">
       <ShortHeader title="Gestão Animal" />
 
-      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 no-scrollbar">
-        <div className="mx-auto w-full max-w-lg space-y-4">
+      <div className="min-h-0 flex-1 space-y-2.5 overflow-y-auto p-3 no-scrollbar">
+        <div className="mx-auto w-full max-w-lg space-y-2.5">
           <AnimalManageSelector
             selectedAnimal={data.selectedAnimal}
             rgnOptions={data.rgnOptions}
