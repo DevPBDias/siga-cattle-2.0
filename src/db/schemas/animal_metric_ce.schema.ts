@@ -8,6 +8,7 @@ export const animalMetricCESchema: RxJsonSchema<AnimalMetric> = {
   type: "object",
   properties: {
     id: { type: "string", maxLength: 36 },
+    metric_type: { type: "string", enum: ["weight", "ce"] },
     animal_key: { type: "string" },
     rgn: { type: "string", maxLength: 10 },
     born_metric: { type: "boolean" },

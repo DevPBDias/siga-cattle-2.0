@@ -6,8 +6,8 @@ declare const self: ServiceWorkerGlobalScope;
 // ============================================================================
 // CONFIGURATION - Version and Cache Names
 // ============================================================================
-// v38: Precache current routes, public imagery, and production Next.js assets.
-const SCHEMA_VERSION = "v38";
+// v39: Refresh offline caches for the updated app shell and static assets.
+const SCHEMA_VERSION = "v39";
 const CACHE_NAME = `rico-ouro-cache-${SCHEMA_VERSION}`;
 const API_CACHE_NAME = `rico-ouro-api-${SCHEMA_VERSION}`;
 const STATIC_ASSETS_MANIFEST = "/sw-static-assets.json";
